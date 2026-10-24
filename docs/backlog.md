@@ -32,6 +32,43 @@ Level 1 gate stays open until the end-to-end UI verification.
   rendered with a temporary (uncommitted) route using the real partial payload.
   Re-run the full modal smoke with a signed-in browser before the demo.
 
+## Integration verification follow-ups
+
+All non-blocking; they do not change the delivered behaviour.
+
+1. **Recommendation merge.** `source_result`/`recommendation` events are applied
+   before `done`, so a `done` payload without `recommendation` would overwrite
+   the recommendation event with `null`. Today the backend includes it, but the
+   merge should keep the last non-null recommendation.
+2. **Inventory idempotency.** `POST /api/inventory` is not idempotent: a retry
+   after a lost response can create a duplicate item. Add an idempotency key or
+   reuse the already-created item.
+3. **Error copy and 422.** The generic error message can surface a raw FastAPI
+   `422` when `detail` is an array (validation errors). Map validation errors to
+   friendly text and avoid showing the raw payload.
+4. **503 all-blocked loses per-source detail.** On `503` all-blocked the
+   `error.sources` map is discarded and `MarketProgress` shows every row as
+   `Pendiente`. Map `error.sources` onto the source rows.
+5. **Partial heading.** “Precios reales de 3 mercados” is also shown for a
+   partial result. Adjust the copy so a partial outcome is not presented as a
+   complete three-source result.
+6. **`aria-live` scope.** `aria-live` wraps the whole section and re-announces
+   too much on each update. Limit it to the source rows or a compact status
+   summary.
+7. **List keys.** Recommendation bullets/risks and warnings use their text as
+   the React key; duplicate texts collide. Use a composite index-based key.
+8. **Blank name/category.** `name`/`category` are not validated as non-blank
+   before the request is sent, which can produce a `422`. Trim and validate
+   before building `MarketAnalysisRequest`.
+9. **Test wiring.** `vision-to-market.test.mjs` is not wired into
+   `package.json`; add a script or document the
+   `node --test src/components/mobile-sync/vision-to-market.test.mjs` command
+   (already listed in `docs/market-analysis.md`).
+10. **Silent missing recommendation.** When the backend omits the
+    recommendation, the modal simply does not render it. Show an explicit
+    notice (the API already returns a warning such as “No se pudo generar la
+    recomendación”).
+
 ## Still deferred (non-blocking)
 
 | # | Item | Reason | Status | Blocking? |
