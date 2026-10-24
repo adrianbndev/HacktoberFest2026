@@ -133,9 +133,11 @@ def test_search_urls_match_the_frozen_browser_contract() -> None:
     assert WallapopSource().search_url("Silla de madera") == (
         "https://es.wallapop.com/app/search?keywords=Silla+de+madera&order_by=newest"
     )
-    assert MilanunciosSource().search_url("Silla de madera") == (
-        "https://www.milanuncios.com/anuncios/?s=Silla+de+madera"
-    )
+    milanuncios = MilanunciosSource().search_urls("Silla de madera")
+    assert milanuncios[0] == "https://www.milanuncios.com/anuncios/?s=Silla+de+madera"
+    assert milanuncios[1].endswith("&pagina=2")
+    assert milanuncios[2].endswith("&pagina=3")
+    assert len(milanuncios) == 6
 
 
 # --------------------------------------------------------------------------- collection
@@ -174,13 +176,31 @@ async def test_ebay_stops_at_page_one_with_enough_results() -> None:
     assert len(outcome.listings) == 20
 
 
+async def test_milanuncios_paginates_until_it_has_enough_cards() -> None:
+    source = MilanunciosSource()
+    page = FakePage(
+        [
+            _payload([_raw_item(f"Silla {index}", "30 €", f"/silla/{index}") for index in range(5)]),
+            _payload([_raw_item("Silla extra", "35 €", "/silla/extra")]),
+            _payload([_raw_item(f"Silla mid {index}", "38 €", f"/silla/mid-{index}") for index in range(5)]),
+            _payload([_raw_item(f"Silla final {index}", "40 €", f"/silla/final-{index}") for index in range(4)]),
+        ]
+    )
+
+    outcome = await source.collect(page, "Silla de madera")
+
+    assert len(page.urls) == 4
+    assert outcome.status == "ok"
+    assert len(outcome.listings) == 15
+
+
 async def test_wallapop_scrolls_before_extracting() -> None:
     source = WallapopSource()
     page = FakePage([_payload([_raw_item("Silla de madera", "35 €", "/item/silla-1")])])
 
     outcome = await source.collect(page, "Silla de madera")
 
-    assert page.scroll_calls == [(4, 350)]
+    assert page.scroll_calls == [(4, 300)]
     assert outcome.status == "ok"
     assert outcome.listings[0].url == "https://es.wallapop.com/item/silla-1"
 

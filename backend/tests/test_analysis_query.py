@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from app.mcp.normalize import (
+from app.mcp.analysis_query import (
     build_analysis_query,
     build_relevance_query,
     clean_brand,
@@ -51,6 +51,7 @@ def test_relevance_query_skips_generic_identity_and_falls_back_to_the_name() -> 
         "Apple iPhone 13"
     )
     assert build_relevance_query("iPhone 13 128GB", "Generica", "N/A") == "iPhone 13 128GB"
+    assert build_relevance_query("iPhone 13", "Apple", "iPhone 13") == "iPhone 13"
 
 
 def test_valuate_normalisation_is_untouched() -> None:

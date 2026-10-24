@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from app.models.market_health import MarketHealthResponse
 from app.models.sdd import (
-    MarketHealthResponse,
     MarketListingSample,
     MarketValuationResult,
     PricePoint,

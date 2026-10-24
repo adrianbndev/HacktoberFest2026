@@ -12,13 +12,13 @@ from collections.abc import Mapping, Sequence
 from time import monotonic
 
 from app.config import Settings
+from app.mcp.analysis_query import build_platform_search_url
 from app.mcp.browser.session import BrowserSessionManager, BrowserUnavailableError
 from app.mcp.browser.sources.base import BrowserSourceProtocol
-from app.mcp.normalize import (
-    build_platform_search_url,
-    dedupe_listings,
-    filter_usable_listings,
-)
+from app.mcp.browser.sources.ebay import EbaySource
+from app.mcp.browser.sources.milanuncios import MilanunciosSource
+from app.mcp.browser.sources.wallapop import WallapopSource
+from app.mcp.normalize import dedupe_listings, filter_usable_listings
 from app.models.market_analysis import (
     MAX_SOURCE_LISTINGS,
     MarketSourceResult,
@@ -131,3 +131,11 @@ class BrowserSourceRunner:
             ),
             error=error,
         )
+
+
+def default_sources() -> dict[MarketPlatform, BrowserSourceProtocol]:
+    return {
+        "ebay": EbaySource(),
+        "wallapop": WallapopSource(),
+        "milanuncios": MilanunciosSource(),
+    }

@@ -51,9 +51,15 @@ class MilanunciosSource(BaseBrowserSource):
         "unusual traffic",
     )
     render_wait_ms = 1_200
+    min_results = 14
+    max_pages = 6
 
     def search_url(self, query: str) -> str:
         return f"{self.base_url}/anuncios/?s={quote_plus(query)}"
+
+    def search_urls(self, query: str) -> tuple[str, ...]:
+        first = self.search_url(query)
+        return (first, *(f"{first}&pagina={page}" for page in range(2, self.max_pages + 1)))
 
     def extract_script(self) -> str:
         return page_payload_script(MILANUNCIOS_ITEMS_SCRIPT)

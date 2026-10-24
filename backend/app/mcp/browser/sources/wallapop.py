@@ -44,9 +44,9 @@ class WallapopSource(BaseBrowserSource):
         "cf-chl",
         "verifying you are human",
     )
-    render_wait_ms = 2_000
+    render_wait_ms = 1_500
     scroll_steps = 4
-    scroll_pause_ms = 350
+    scroll_pause_ms = 300
 
     def search_url(self, query: str) -> str:
         encoded = quote_plus(query)

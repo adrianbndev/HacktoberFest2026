@@ -11,13 +11,12 @@ from fastapi.responses import JSONResponse
 from app.config import Settings, get_settings
 from app.mcp.deep_analysis import DeepMarketAnalyzer
 from app.mcp.market_analysis import MarketAnalyzer, MarketUnavailableError
-from app.models.sdd import (
+from app.models.market_health import (
     BrowserHealthStatus,
     MarketCacheStatus,
     MarketHealthResponse,
-    MarketValuationResult,
-    ValuationRequest,
 )
+from app.models.sdd import MarketValuationResult, ValuationRequest
 from app.routers.market_analysis import get_deep_analyzer
 
 router = APIRouter(prefix="/market", tags=["market"])

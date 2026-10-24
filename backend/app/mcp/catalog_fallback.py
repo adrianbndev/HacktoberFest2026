@@ -5,7 +5,8 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from app.mcp.normalize import build_platform_search_url, normalize_query, strip_accents
+from app.mcp.analysis_query import build_platform_search_url
+from app.mcp.normalize import normalize_query, strip_accents
 from app.mcp.pricing_math import compute_price_triplet
 from app.models.sdd import MarketListingSample, MarketPlatform, MarketValuationResult
 

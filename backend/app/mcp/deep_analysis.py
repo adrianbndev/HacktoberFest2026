@@ -7,12 +7,9 @@ price triplet from a single IQR pass and caches only real results.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import AsyncIterator, Mapping
-from datetime import UTC, datetime
 from time import monotonic
-from typing import Protocol
 
 from app.config import Settings
 from app.mcp.analysis_events import (
@@ -26,28 +23,15 @@ from app.mcp.analysis_events import (
     SourceStarted,
     ValuationReady,
 )
+from app.mcp.analysis_query import build_analysis_query, build_relevance_query
 from app.mcp.browser.session import BrowserSessionManager
 from app.mcp.browser.sources.base import BrowserSourceProtocol
-from app.mcp.browser.sources.ebay import EbaySource
-from app.mcp.browser.sources.milanuncios import MilanunciosSource
-from app.mcp.browser.sources.wallapop import WallapopSource
 from app.mcp.cache import MarketAnalysisCache, build_cache_key
-from app.mcp.deep_cache import read_cached, write_cached
-from app.mcp.deep_sources import BrowserSourceRunner
-from app.mcp.deep_support import (
-    clamp_recommendation,
-    market_valuation,
-    select_comparables,
-    single_iqr_filter,
-    source_warnings,
-    valuation_request,
-)
-from app.mcp.deepseek import (
-    CLAMP_WARNING,
-    DeepSeekRecommender,
-    RecommendationOutcome,
-)
-from app.mcp.normalize import build_analysis_query, build_relevance_query
+from app.mcp.deep_cache import now_iso, read_cached, write_cached
+from app.mcp.deep_recommend import RecommenderProtocol, recommend
+from app.mcp.deep_sources import BrowserSourceRunner, default_sources
+from app.mcp.deep_support import select_comparables, single_iqr_filter, source_warnings
+from app.mcp.deepseek import DeepSeekRecommender
 from app.mcp.pricing_math import compute_price_triplet_from_clean, confidence_score
 from app.mcp.relevance import score_relevance
 from app.models.market_analysis import (
@@ -56,13 +40,7 @@ from app.models.market_analysis import (
     MarketAnalysisValuation,
     MarketSourceResult,
 )
-from app.models.sdd import (
-    MarketListingSample,
-    MarketPlatform,
-    MarketValuationResult,
-    ValuationRecommendation,
-    ValuationRequest,
-)
+from app.models.sdd import MarketListingSample, MarketPlatform
 
 logger = logging.getLogger(__name__)
 
@@ -71,20 +49,9 @@ BROWSER_UNAVAILABLE_DETAIL = "browser_unavailable"
 ANALYSIS_DISABLED_DETAIL = "analysis_disabled"
 ANALYSIS_FAILED_DETAIL = "analysis_failed"
 SMALL_SAMPLE_WARNING = "Muestra de mercado pequeña: interpreta el rango con cautela."
-RECOMMENDATION_SKIPPED_WARNING = "No se pudo generar la recomendación; se omite."
 RELEVANCE_SKIPPED_WARNING = (
     "No se pudo aplicar el filtro de relevancia; se usa la muestra completa."
 )
-
-
-class RecommenderProtocol(Protocol):
-    async def recommend(
-        self,
-        *,
-        request: ValuationRequest,
-        valuation: MarketValuationResult,
-        budget_sec: float | None = None,
-    ) -> RecommendationOutcome: ...
 
 
 class DeepMarketAnalyzer:
@@ -107,7 +74,7 @@ class DeepMarketAnalyzer:
         self._runner = BrowserSourceRunner(
             settings,
             self.browser,
-            sources if sources is not None else _default_sources(),
+            sources if sources is not None else default_sources(),
         )
         self._recommender: RecommenderProtocol = recommender or DeepSeekRecommender(
             settings, allow_template=False
@@ -208,8 +175,15 @@ class DeepMarketAnalyzer:
         )
         yield ValuationReady(valuation)
 
-        recommendation = await self._recommend(
-            request, query, valuation, comparables, deadline, warnings
+        recommendation = await recommend(
+            settings=self._settings,
+            recommender=self._recommender,
+            request=request,
+            query=query,
+            valuation=valuation,
+            comparables=comparables,
+            deadline=deadline,
+            warnings=warnings,
         )
         if recommendation is not None:
             yield RecommendationReady(recommendation)
@@ -222,58 +196,10 @@ class DeepMarketAnalyzer:
             recommendation=recommendation,
             warnings=list(dict.fromkeys(warnings)),
             cached=False,
-            analyzed_at=_now_iso(),
+            analyzed_at=now_iso(),
         )
         await write_cached(self.cache, cache_key, analysis)
         yield AnalysisDone(analysis)
-
-    async def _recommend(
-        self,
-        request: MarketAnalysisRequest,
-        query: str,
-        valuation: MarketAnalysisValuation,
-        comparables: list[MarketListingSample],
-        deadline: float,
-        warnings: list[str],
-    ) -> ValuationRecommendation | None:
-        if not request.include_recommendation:
-            return None
-        budget = min(
-            self._settings.deepseek_recommendation_budget_sec,
-            max(0.0, deadline - monotonic()),
-        )
-        if budget <= 0:
-            warnings.append(RECOMMENDATION_SKIPPED_WARNING)
-            return None
-        try:
-            outcome = await asyncio.wait_for(
-                self._recommender.recommend(
-                    request=valuation_request(request, query),
-                    valuation=market_valuation(valuation, comparables),
-                    budget_sec=budget,
-                ),
-                timeout=budget + 1.0,
-            )
-        except Exception:
-            warnings.append(RECOMMENDATION_SKIPPED_WARNING)
-            return None
-        recommendation, clamped = clamp_recommendation(outcome.recommendation, valuation)
-        warnings.extend(outcome.warnings)
-        if clamped:
-            warnings.append(CLAMP_WARNING)
-        return recommendation
-
-
-def _default_sources() -> dict[MarketPlatform, BrowserSourceProtocol]:
-    return {
-        "ebay": EbaySource(),
-        "wallapop": WallapopSource(),
-        "milanuncios": MilanunciosSource(),
-    }
-
-
-def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 _SHARED: DeepMarketAnalyzer | None = None

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from app.mcp.normalize import build_platform_search_url, clean_brand, clean_model
+from app.mcp.analysis_query import (
+    build_platform_search_url,
+    clean_brand,
+    clean_model,
+)
 from app.mcp.pricing_math import iqr_fences
 from app.models.market_analysis import (
     MarketAnalysisRequest,

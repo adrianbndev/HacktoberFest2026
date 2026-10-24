@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from app.mcp.cache import MarketAnalysisCache
 from app.models.market_analysis import MarketAnalysisResult
@@ -41,3 +42,7 @@ async def write_cached(
         )
     except Exception:
         logger.warning("market cache write failed", exc_info=True)
+
+
+def now_iso() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")

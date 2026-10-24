@@ -6,7 +6,7 @@ import re
 import unicodedata
 from collections.abc import Iterable, Iterator
 from typing import Any
-from urllib.parse import quote, urljoin
+from urllib.parse import urljoin
 
 from app.models.sdd import MarketListingSample, MarketPlatform
 
@@ -69,30 +69,6 @@ _CONDITION_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
 _WHITESPACE = re.compile(r"\s+")
 PRICE_PATTERN = re.compile(r"\d[\d.,\s]*")
 
-# Vision models frequently fill "Sin marca" / "Genérico" into the form. In the
-# deep analysis those values must behave as "absent" so they never pollute the
-# marketplace query or the relevance filter. `/valuate` is frozen and keeps the
-# old behaviour.
-GENERIC_BRAND_VALUES = frozenset(
-    {"sin marca", "generica", "n/a", "na", "-", "unknown", "no aplica"}
-)
-GENERIC_MODEL_VALUES = frozenset({"generico", "generica", "n/a", "-"})
-
-PLATFORM_SEARCH_URLS: dict[MarketPlatform, str] = {
-    "wallapop": "https://es.wallapop.com/app/search?keywords={query}",
-    "vinted": "https://www.vinted.es/catalog?search_text={query}",
-    "milanuncios": "https://www.milanuncios.com/anuncios/?s={query}",
-    "ebay": "https://www.ebay.es/sch/i.html?_nkw={query}",
-}
-
-
-def build_platform_search_url(platform: MarketPlatform, query: str) -> str | None:
-    """Functional platform search deep link (never a dead listing URL)."""
-    template = PLATFORM_SEARCH_URLS.get(platform)
-    if template is None:
-        return None
-    return template.format(query=quote(normalize_query(query), safe=""))
-
 
 def strip_accents(text: str) -> str:
     decomposed = unicodedata.normalize("NFD", text)
@@ -117,44 +93,6 @@ def normalize_query(query: str, *, brand: str | None = None, model: str | None =
     meaningful = [word for word in words if strip_accents(word.lower()) not in FILLER_WORDS]
     selected = (meaningful or words)[:MAX_QUERY_WORDS]
     return " ".join(selected)[:MAX_QUERY_LENGTH].strip() or squeeze(query)[:MAX_QUERY_LENGTH]
-
-
-def _identity_key(value: str) -> str:
-    return strip_accents(squeeze(value).lower())
-
-
-def clean_brand(value: str | None) -> str | None:
-    """Return the brand, or ``None`` when it is a generic/placeholder value."""
-    cleaned = squeeze(value or "")
-    if not cleaned or _identity_key(cleaned) in GENERIC_BRAND_VALUES:
-        return None
-    return cleaned
-
-
-def clean_model(value: str | None, *, name: str = "") -> str | None:
-    """Return the model, or ``None`` when it is generic or just repeats the name."""
-    cleaned = squeeze(value or "")
-    if not cleaned or _identity_key(cleaned) in GENERIC_MODEL_VALUES:
-        return None
-    if name and _identity_key(cleaned) == _identity_key(name):
-        return None
-    return cleaned
-
-
-def build_analysis_query(name: str) -> str:
-    """`name` is the marketplace query for the deep analysis (brief §5.1)."""
-    return normalize_query(name)
-
-
-def build_relevance_query(
-    name: str, brand: str | None = None, model: str | None = None
-) -> str:
-    """Identity-aware query used only for relevance/recommendation, not the URL."""
-    identity_brand = clean_brand(brand)
-    identity_model = clean_model(model, name=name)
-    if identity_brand or identity_model:
-        return normalize_query(name, brand=identity_brand, model=identity_model)
-    return build_analysis_query(name)
 
 
 def normalize_condition(*texts: str, default: str = "Buen estado") -> str:
