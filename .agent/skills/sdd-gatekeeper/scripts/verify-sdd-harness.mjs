@@ -81,7 +81,7 @@ function walkFiles(dir, extFilter = ['.ts', '.tsx']) {
   const results = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory() && !['node_modules', '.next', '.git'].includes(entry.name)) {
+    if (entry.isDirectory() && !['node_modules', '.next', '.git', '.venv', 'venv', '__pycache__', '.pytest_cache'].includes(entry.name)) {
       results.push(...walkFiles(full, extFilter));
     } else if (entry.isFile() && extFilter.includes(path.extname(entry.name))) {
       results.push(full);

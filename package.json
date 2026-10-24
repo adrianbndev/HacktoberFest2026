@@ -1,0 +1,31 @@
+{
+  "name": "lifeos-recommerce-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:api": "cd backend && ../.venv/bin/uvicorn app.main:app --reload --port 8000",
+    "setup:api": "uv venv .venv --python 3.11 && uv pip install -p .venv -r backend/requirements.txt",
+    "test:api": ".venv/bin/pytest backend/tests",
+    "typecheck": "next typegen && tsc --noEmit",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "lucide-react": "^1.61.0",
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
