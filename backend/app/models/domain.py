@@ -10,6 +10,7 @@ from app.models.base import (
     CamelModel, CaptureSessionStatus, ConditionLabel, ConditionScore, MarketPlatform, MetricChanged,
     NotificationType, PriceTriplet, TeamMemberId, WeatherCondition,
 )
+from app.models.sdd import VisionAnalysisResult, VisionAnalyzeRequest  # Track B, se amplían abajo
 
 
 # ---------- 1. Usuario y perfil ----------
@@ -198,3 +199,28 @@ class AppStoreState(CamelModel):
     notifications: list[MarketNotification]
     calendar_events: list[CalendarEvent]
     last_updated_at: str
+
+
+# ---------- Preguntas de seguimiento de la Visión IA ----------
+# Amplían los modelos de Visión de sdd.py (Track B) sin modificarlos; los campos nuevos son opcionales.
+class VisionFollowUpQuestion(CamelModel):
+    id: str
+    question: str
+    reason: str
+    affects: Literal["identification", "condition"]
+    options: list[str] = []
+
+
+class VisionAnswer(CamelModel):
+    question_id: str
+    question: str
+    answer: str
+
+
+class VisionAnalyzeRequestWithAnswers(VisionAnalyzeRequest):
+    answers: list[VisionAnswer] = []
+
+
+class VisionAnalysisWithFollowUp(VisionAnalysisResult):
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    follow_up_questions: list[VisionFollowUpQuestion] = []
