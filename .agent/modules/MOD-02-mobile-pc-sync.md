@@ -2,7 +2,7 @@
 
 * **Nivel SDD:** 🟢 Nivel 1.2
 * **Responsable:** **Track B (Adri)**
-* **Estado Actual:** `⏳ READY`
+* **Estado Actual:** `🚧 IN_PROGRESS` (QR, cámara, compresión, polling y pipeline hechos; falta SSE)
 * **SLA de Latencia:** Detección de foto en PC $\le 1.5\text{ s}$ tras captura en móvil.
 
 ---
@@ -48,9 +48,9 @@ stateDiagram-v2
 
 ## 4. Checklist de Control y Calidad (MOD-02)
 
-- [ ] Generación de sesión única con QR escaneable (SVG limpio sin dependencias externas frágiles o con `qrcode`).
-- [ ] Detección automática de IP LAN local (`192.168.x.x` / `10.x.x.x`) para que el QR sea accesible desde el teléfono en la misma Wi-Fi.
+- [x] Generación de sesión única con QR escaneable (SVG limpio sin dependencias externas frágiles o con `qrcode`).
+- [x] Detección automática de IP LAN local (`192.168.x.x` / `10.x.x.x`) para que el QR sea accesible desde el teléfono en la misma Wi-Fi.
 - [ ] Al abrir el enlace en el móvil, el PC cambia su estado a *"📱 Móvil conectado — esperando foto..."* en $< 1.5\text{ s}$.
 - [ ] Compresión en `<canvas>` verificada: toda imagen subida pesa $< 400\text{ KB}$.
-- [ ] En cuanto el móvil sube la foto, el PC muestra la previsualización de la imagen y dispara automáticamente `MOD-03` (Visión IA) + `MOD-04` (MCP Stealth).
-- [ ] Botón de respaldo *"Simular envío desde móvil"* incluido en el modal para tests automatizados del harness.
+- [x] En cuanto el móvil sube la foto, el PC muestra la previsualización de la imagen y dispara automáticamente `MOD-03` (Visión IA) + `MOD-04` (MCP Stealth).
+- [x] Botón de respaldo *"Simular envío desde móvil"* incluido en el modal para tests automatizados del harness.

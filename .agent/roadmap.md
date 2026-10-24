@@ -19,21 +19,21 @@
 
 ### 1.0 Inicialización del Proyecto Base (`MOD-00` — Común para los 3 Tracks antes de ramificar)
 - [x] Inicializar Frontend Next.js (`src/`, App Router + TypeScript + Tailwind CSS + `lucide-react` + Rewrite Proxy `/api/* -> :8000`) y Backend Python FastAPI (`backend/app/main.py`, `requirements.txt`, `Pillow`, `FastMCP`).
-- [x] Definir todas las interfaces compartidas en `src/types/sdd.ts` (Frontend) y los modelos Pydantic v2 equivalentes en `backend/app/models/sdd.py` (Backend) según [`.agent/architecture.md`](architecture.md).
-- [x] Crear capa de persistencia local atómica en Python (`backend/app/store/repository.py` con `RLock` + `.tmp` `os.replace`) y perfiles semilla para **Ales**, **Adri**, **Matías** y **Jurado** + endpoint `/api/store/reset`.
-- [ ] Configurar `.env.example`, `backend/Dockerfile` y `docker-compose.yml` (con volumen `./data` y túnel HTTPS `cloudflared` para evitar AP Isolation en el móvil).
+- [x] Definir todas las interfaces compartidas en `src/types/sdd.ts` (Frontend) y los modelos Pydantic v2 equivalentes en `backend/app/models/` (Backend) según [`.agent/architecture.md`](architecture.md).
+- [x] Crear la capa de datos (`StoreRepository` + Firestore, solo vía backend) con 3 productos de demo por usuario en su primer login + endpoint `/api/store/reset`.
+- [ ] Configurar `.env.example`, `backend/Dockerfile` y `docker-compose.yml` (con la clave de servicio de Firebase montada y túnel HTTPS `cloudflared` para evitar AP Isolation en el móvil).
 
 ### 1.1 Inicio de Sesión y Perfil de Usuario (`Track A - Ales`)
-- [x] Selector de sesión rápida / Login sin fricción (Ales, Adri, Matías, Jurado) con persistencia de sesión.
+- [x] Login con **Google** (Firebase Auth) de un único usuario, con sesión persistente y botón *Salir*.
 - [x] Vista principal del Perfil con **"Mi Inventario"** en layout Bento Grid.
 - [x] KPI de **Valoración Total Acumulada** del inventario (mostrando suma de $P_{\min}$, $P_{\text{avg}}$ y $P_{\max}$).
 
 ### 1.2 Flujo Cámara Móvil $\leftrightarrow$ Web PC sin Fricción (`Track B - Adri`)
-- [ ] Botón destacado en PC: *"📱 Añadir Producto con el Móvil"*.
-- [ ] Generación de sesión única (`/mobile-capture/[sessionId]`) con código QR escaneable y link directo integrable en LAN/túnel.
-- [ ] Interfaz móvil limpia con apertura directa de cámara trasera (`<input type="file" accept="image/*" capture="environment" />`) y compresión cliente en Canvas ($\le 800\text{ px}$, JPEG $0.75$, $<200\text{ KB}$) para evitar errores de payload.
-- [ ] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1.2\text{ s}$.
-- [ ] Recepción instantánea de la foto en la pantalla del PC y disparo automático del análisis sin intervención manual.
+- [x] Botón destacado en PC: *"📱 Añadir Producto con el Móvil"*.
+- [x] Generación de sesión única (`/mobile-capture/[sessionId]`) con código QR escaneable y link directo integrable en LAN/túnel.
+- [x] Interfaz móvil limpia con apertura directa de cámara trasera (`<input type="file" accept="image/*" capture="environment" />`) y compresión cliente en Canvas ($\le 800\text{ px}$, JPEG $0.75$, $<200\text{ KB}$) para evitar errores de payload.
+- [ ] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1.2\text{ s}$ (el *short-polling* ya funciona; falta el SSE).
+- [x] Recepción instantánea de la foto en la pantalla del PC y disparo automático del análisis sin intervención manual.
 
 ### 1.3 Reconocimiento por Visión IA + Salud/Estado + SEO (`Track B - Adri`)
 - [x] Endpoint `/api/vision/analyze` que recibe la imagen capturada.
@@ -53,7 +53,7 @@
   1. 📉 **Precio Mínimo ($P_{\min}$):** Venta rápida / liquidez inmediata.
   2. 🎯 **Precio Medio ($P_{\text{avg}}$):** Valor real de mercado ajustado por salud.
   3. 📈 **Precio Más Alto ($P_{\max}$):** Techo de mercado para artículos impecables.
-- [ ] Guardado automático/confirmado del producto tasado en el perfil del usuario.
+- [x] Guardado automático/confirmado del producto tasado en el perfil del usuario.
 
 > ✅ **CRITERIO DE CIERRE NIVEL 1 (GATE 1):**
 > - [ ] El usuario inicia sesión, abre el QR en el teléfono, toma una foto real, la imagen aparece sola en la pantalla del PC en $<1.5\text{ s}$, la IA muestra salud ($0-100\%$) + SEO, el MCP devuelve $P_{\min}, P_{\text{avg}}, P_{\max}$ en $<6\text{ s}$, y el objeto queda guardado en "Mi Inventario".

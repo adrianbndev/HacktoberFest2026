@@ -18,7 +18,7 @@
 | **Conectividad Móvil-PC** | **Auto-detección IP LAN (`192.168.x.x`) en Python + QR dinámico** | Solo `localhost` (inaccesible desde el móvil) | `npx cloudflared tunnel --url http://localhost:3000` si el Wi-Fi aísla clientes |
 | **Reconocimiento Imágenes** | **Python `Pillow` + `google-genai` (Gemini 2.5 Flash) / `openai`** | Procesamiento en JS sin librerías de visión nativas | `DeterministicVisionProvider` en Python (análisis visual `PIL` + catálogo en $<50\text{ ms}$) |
 | **Motor MCP de Precios** | **Python `FastMCP` (`mcp`) + `httpx` Async + `BeautifulSoup4`** | Scraping síncrono con Selenium/Playwright pesado | `DeterministicMarketFallback` en Python (Catálogo real España 2026 + $W_{\text{health}}$) |
-| **Persistencia de Datos** | **Repositorio Python JSON Atómico (`/data/store.json` + `RLock`)** | DB en la nube con latencia o motores SQL complejos | Reset instantáneo en 1 clic (`POST /api/store/reset`) a datos semilla |
+| **Usuarios y Datos** | **Firebase (plan Spark, coste cero): Auth con Google + Firestore vía backend** | JSON local / SQLite (no se comparten entre máquinas); Cloud Storage (exige plan Blaze) | Reset en 1 clic (`POST /api/store/reset`) a los 3 productos de demo; `503` claro si falta la clave |
 | **Validación y Contratos** | **Pydantic v2 (`camelCase`) en Python + TypeScript `strict` en Front** | Diccionarios Python sin esquema (`dict[str, Any]`) | Validación automática de entrada/salida con `model_validate` |
 
 ---

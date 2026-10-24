@@ -9,9 +9,9 @@
 | Módulo / Carpeta | Track A (**Ales**) | Track B (**Adri**) | Track C (**Matías**) | Regla de Coordinación |
 | :--- | :---: | :---: | :---: | :--- |
 | `src/types/sdd.ts` & `backend/app/models/sdd.py` | Lectura | Lectura | Lectura | Fuente de verdad común (definida en `MOD-00`). |
-| `backend/app/store/` | Lectura/Uso | Lectura/Uso | Lectura/Uso | Capa de persistencia JSON atómica en Python compartida. |
+| `backend/app/store/`, `auth.py`, `firebase.py` | Lectura/Uso | Lectura/Uso | Lectura/Uso | Datos en Firestore (`StoreRepository`) y usuario del token de Firebase (`CurrentUser`). Ver `architecture.md` §5. |
 | `src/app/(dashboard)/` | **PROPIETARIO** | No tocar | No tocar | Ales ensambla los widgets de B y C en el Bento Grid. |
-| `src/components/dashboard/` | **PROPIETARIO** | No tocar | No tocar | Layout general, Login switcher, KPIs superiores. |
+| `src/components/dashboard/` | **PROPIETARIO** | No tocar | No tocar | Layout general, login con Google, KPIs superiores. |
 | `src/components/inventory/` | **PROPIETARIO** | No tocar | No tocar | Tarjetas de producto, 3 precios ($P_{\min}, P_{\text{avg}}, P_{\max}$), Sparklines. |
 | `src/components/notifications/` | **PROPIETARIO** | No tocar | No tocar | Centro de alertas y badges $\uparrow/\downarrow$. |
 | `src/components/mobile-sync/` | Importa componente | **PROPIETARIO** | No tocar | Adri exporta `<MobileSyncModal onItemCreated={...} />`. |
@@ -30,7 +30,7 @@
 1. **Prohibido Ramificar antes de `MOD-00` (Minutos 0:00 - 0:30):**
    * Antes de que Ales, Adri y Matías creen sus ramas o lancen agentes en paralelo, **se debe completar `MOD-00` en `main`**:
      * Inicialización del Frontend Next.js (`src/`, `next.config.ts` con rewrite proxy `/api/* -> :8000`) y del Backend Python FastAPI (`backend/app/main.py`, `requirements.txt`).
-     * Creación de `src/types/sdd.ts`, `backend/app/models/sdd.py` (Pydantic v2) y `backend/app/store/` con datos semilla para `ales`, `adri`, `matias` y `jurado`.
+     * Creación de `src/types/sdd.ts`, `backend/app/models/sdd.py` (Pydantic v2) y `backend/app/store/` (hoy: Firestore + 3 productos de demo por usuario en su primer login).
      * Creación de **endpoints stub (mocks de 5 líneas en FastAPI)** en `/api/vision/analyze` y `/api/market/valuate` para que Track A y Track B puedan probar de extremo a extremo sin esperar a que Track C termine el motor MCP.
 2. **Re-equilibrio de Carga de Trabajo en Niveles 2, 3 y 4:**
    * En el **Nivel 1**, **Adri (`Track B`)** tiene la carga crítica de Cámara Móvil + Reconocimiento de Imágenes en Python (`MOD-02` y `MOD-03`).

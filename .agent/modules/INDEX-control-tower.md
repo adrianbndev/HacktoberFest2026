@@ -8,9 +8,9 @@
 
 | ID Módulo | Nombre del Módulo | Nivel SDD | Track / Owner | SLA Latencia | Estado | Spec & Tracking |
 | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
-| **MOD-00** | Foundation: Tipos, Modelos Pydantic & Store Atómico | 🟢 Nivel 1.0 | **Compartido** | $< 15\text{ ms}$ | `⏳ READY` | [MOD-00-foundation-store-types.md](MOD-00-foundation-store-types.md) |
-| **MOD-01** | Auth, Perfiles, Bento UI & "Mi Inventario" | 🟢 Nivel 1.1 | **Track A (Ales)** | $< 100\text{ ms}$ | `⏳ READY` | [MOD-01-auth-and-inventory-ui.md](MOD-01-auth-and-inventory-ui.md) |
-| **MOD-02** | Sync Cámara Móvil $\leftrightarrow$ PC (QR + SSE/Polling) | 🟢 Nivel 1.2 | **Track B (Adri)** | $< 1500\text{ ms}$ | `⏳ READY` | [MOD-02-mobile-pc-sync.md](MOD-02-mobile-pc-sync.md) |
+| **MOD-00** | Foundation: Tipos, Login con Google & Datos en Firestore | 🟢 Nivel 1.0 | **Compartido** | ~4 s la 1.ª carga | `✅ DONE` | [MOD-00-foundation-store-types.md](MOD-00-foundation-store-types.md) |
+| **MOD-01** | Login, Bento UI & "Mi Inventario" | 🟢 Nivel 1.1 | **Track A (Ales)** | $< 100\text{ ms}$ | `✅ DONE` | [MOD-01-auth-and-inventory-ui.md](MOD-01-auth-and-inventory-ui.md) |
+| **MOD-02** | Sync Cámara Móvil $\leftrightarrow$ PC (QR + SSE/Polling) | 🟢 Nivel 1.2 | **Track B (Adri)** | $< 1500\text{ ms}$ | `🚧 IN_PROGRESS` (falta SSE) | [MOD-02-mobile-pc-sync.md](MOD-02-mobile-pc-sync.md) |
 | **MOD-03** | Visión IA: Producto, Salud ($0-100\%$) & SEO | 🟢 Nivel 1.3 | **Track B (Adri)** | $< 2500\text{ ms}$ | `✅ DONE` | [MOD-03-vision-health-seo.md](MOD-03-vision-health-seo.md) |
 | **MOD-04** | Motor MCP Stealth Multi-Web & 3 Precios | 🟢 Nivel 1.4 | **Track C (Matías)** | $< 2800\text{ ms}$ | `⏳ READY` | [MOD-04-mcp-stealth-valuation.md](MOD-04-mcp-stealth-valuation.md) |
 | **MOD-05** | Rastreo Periódico, Botón Demo & Alertas ($\uparrow/\downarrow$) | 🟡 Nivel 2 | **Track C + A** | $< 2500\text{ ms}$ | `🔒 LOCKED (Gate 1)` | [MOD-05-price-tracker-and-alerts.md](MOD-05-price-tracker-and-alerts.md) |

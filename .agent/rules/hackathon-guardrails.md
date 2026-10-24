@@ -15,7 +15,7 @@
      2. Incluir un **input editable en vivo para la URL base del QR**, permitiendo pegar al instante un túnel público (`npx cloudflared tunnel --url http://localhost:3000`) o usar el Hotspot del teléfono.
      3. Incluir siempre un botón **"🧪 Simular Captura Móvil / Subir Foto"** en el propio modal para que la demo sea 100% indestructible incluso sin cobertura móvil.
 3. **Compresión de Imagen en el Cliente antes de Subir ($< 200\text{ KB}$):**
-   * Las cámaras móviles actuales generan fotos de $5\text{ MB}$ a $15\text{ MB}$, lo que rompe límites de body en Next.js o engorda `/data/store.json`.
+   * Las cámaras móviles actuales generan fotos de $5\text{ MB}$ a $15\text{ MB}$, lo que rompe límites de body en Next.js o supera el límite de 1 MiB por documento de Firestore.
    * **Regla:** Antes de hacer `PUT /api/capture-session/[sessionId]`, el navegador móvil debe redimensionar la imagen en un `<canvas>` a un máximo de **$800\text{ px}$** en su lado mayor y comprimirla en JPEG (`quality: 0.75`), asegurando un payload $< 200\text{ KB}$ y una transmisión en $< 300\text{ ms}$.
 4. **Doble vía de Sincronización (SSE + Short-Polling $1.2\text{ s}$):**
    * El PC debe escuchar cambios de la sesión cada $\le 1.2\text{ s}$ para que, en cuanto el móvil suba la foto, la pantalla del PC transicione sola al análisis sin que el usuario tenga que tocar el teclado ni refrescar la página.
@@ -40,13 +40,15 @@
 
 ---
 
-## 3. Persistencia Atómica sin Race Conditions y Datos Semilla para el Jurado
+## 3. Persistencia en Firestore, Coste Cero y Datos de Demo para el Jurado
 
-1. **Repositorio en Memoria + Escritura Atómica en Disco (`backend/app/store/repository.py`):**
-   * Con peticiones concurrentes (polling del PC + subida del móvil), escribir directamente sobre `/data/store.json` puede corromper el archivo JSON a mitad de escritura.
-   * **Regla:** Mantener el estado en memoria en una única instancia del repositorio protegida con `threading.RLock` y persistir en disco escribiendo primero en `/data/store.json.tmp` seguido de `os.replace('/data/store.json.tmp', '/data/store.json')`.
-2. **Perfiles Listos desde el Minuto 1 + Botón de Reset Demo:**
-   * El sistema debe incluir perfiles preconfigurados para **Ales**, **Adri**, **Matías** y **Jurado**, con al menos 3 artículos realistas ya cargados en el inventario semilla para poder demostrar el Nivel 2, 3 y 4 al instante, además de un endpoint/botón `POST /api/store/reset` para restaurar el estado inicial antes de salir a presentar ante el jurado.
+1. **Datos solo en Firestore y solo a través del backend (`backend/app/store/`):**
+   * **Regla:** Todo acceso a datos pasa por `StoreRepository` (`get_store()`); nada del navegador lee ni escribe Firestore directamente (`firestore.rules` lo bloquea). Toda llamada a Firestore lleva timeout.
+   * **Propiedad:** el usuario sale siempre del ID token de Firebase (`CurrentUser`); ningún endpoint acepta `userId` del cliente.
+2. **Coste cero innegociable:** el proyecto `lifeos-recommerce-hf26` está en el plan Spark sin facturación. **Prohibido** activar Blaze o servicios que lo exijan (Cloud Storage incluido): las fotos van comprimidas dentro del documento del producto.
+3. **Clave de servicio fuera del repo:** `firebase-service-account.json` está en `.gitignore`; se comparte en privado. Sin ella la API responde `503` explicando qué falta.
+4. **Datos de Demo desde el Minuto 1 + Botón de Reset:**
+   * El primer login de cada usuario crea su perfil y **3 productos realistas** (una subida, una bajada y uno estable) para demostrar los Niveles 2, 3 y 4 al instante, además de `POST /api/store/reset` para restaurarlos antes de presentar ante el jurado.
 
 ---
 
