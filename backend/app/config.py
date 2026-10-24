@@ -48,6 +48,18 @@ class Settings(BaseSettings):
     market_min_sample_size: int = Field(default=3, ge=1, le=50)
     market_max_listing_price_eur: int = Field(default=100_000, ge=1)
 
+    # Phase 2: browser-backed deep analysis (`/api/market/analyze`). Additive and
+    # fully independent from the frozen 2.8 s `/valuate` budget.
+    market_analysis_enabled: bool = True
+    market_analysis_deadline_sec: float = Field(default=60.0, gt=0.0, le=180.0)
+    market_source_timeout_sec: float = Field(default=25.0, gt=0.0, le=60.0)
+    market_browser_timeout_sec: float = Field(default=45.0, gt=0.0, le=120.0)
+    market_platform_quota: int = Field(default=4, ge=1, le=12)
+    market_cache_path: str = "/app/data/market_cache.sqlite"
+    market_cache_ttl_sec: int = Field(default=900, ge=0, le=86_400)
+    cdp_url: str = "http://market-browser:9222"
+    market_browser_mcp_command: str = "npx -y chrome-devtools-mcp@1.10.1"
+
     # DeepSeek (OpenAI-compatible API).
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
@@ -71,6 +83,10 @@ class Settings(BaseSettings):
         if self.market_deadline_sec <= self.market_connector_timeout_sec:
             raise ValueError(
                 "market_deadline_sec must be greater than market_connector_timeout_sec"
+            )
+        if self.market_analysis_deadline_sec <= self.market_source_timeout_sec:
+            raise ValueError(
+                "market_analysis_deadline_sec must be greater than market_source_timeout_sec"
             )
         return self
 
