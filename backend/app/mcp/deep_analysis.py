@@ -274,3 +274,23 @@ def _default_sources() -> dict[MarketPlatform, BrowserSourceProtocol]:
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+_SHARED: DeepMarketAnalyzer | None = None
+_SHARED_SETTINGS: Settings | None = None
+
+
+def shared_analyzer(settings: Settings) -> DeepMarketAnalyzer:
+    """Process-wide analyzer so the browser lock/client and cache are reused."""
+    global _SHARED, _SHARED_SETTINGS
+    if _SHARED is None or _SHARED_SETTINGS is not settings:
+        _SHARED = DeepMarketAnalyzer(settings)
+        _SHARED_SETTINGS = settings
+    return _SHARED
+
+
+def reset_shared_analyzer() -> None:
+    """Test helper: drop the process-wide analyzer."""
+    global _SHARED, _SHARED_SETTINGS
+    _SHARED = None
+    _SHARED_SETTINGS = None

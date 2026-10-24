@@ -218,6 +218,17 @@ class MarketValuationResult(CamelModel):
         return self
 
 
+class BrowserHealthStatus(CamelModel):
+    connected: bool
+    url: str
+    last_error: str | None = None
+
+
+class MarketCacheStatus(CamelModel):
+    path: str
+    ttl_seconds: int = Field(ge=0)
+
+
 class MarketHealthResponse(CamelModel):
     status: Literal["ok"]
     service: str
@@ -226,6 +237,13 @@ class MarketHealthResponse(CamelModel):
     jitter_enabled: bool
     recommendation_enabled: bool
     timestamp: str
+    browser: BrowserHealthStatus = Field(
+        default_factory=lambda: BrowserHealthStatus(connected=False, url="")
+    )
+    cache: MarketCacheStatus = Field(
+        default_factory=lambda: MarketCacheStatus(path="", ttl_seconds=900)
+    )
+    analysis_enabled: bool = False
 
     @field_validator("timestamp")
     @classmethod
