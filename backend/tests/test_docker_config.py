@@ -55,6 +55,9 @@ def test_browser_container_never_uses_headless_or_automation_flags() -> None:
     assert "CHROME_PORT" in active
     assert "cdp_proxy.py" in active
     assert "--user-data-dir=/chrome-profile" in active
+    assert "--disable-background-tab-throttling" in active
+    assert "--disable-renderer-backgrounding" in active
+    assert "--disable-backgrounding-occluded-windows" in active
 
 
 def test_env_example_documents_the_required_flags() -> None:
@@ -83,6 +86,10 @@ def test_deep_analysis_env_and_cache_volume_are_wired() -> None:
         "MARKET_SOURCE_TIMEOUT_SEC",
         "MARKET_BROWSER_TIMEOUT_SEC",
         "MARKET_PLATFORM_QUOTA",
+        "MARKET_MILANUNCIOS_MAX_PAGES",
+        "MARKET_MILANUNCIOS_TRANSPORT",
+        "MARKET_BROWSER_POOL_SIZE",
+        "MARKET_SOURCE_CONCURRENCY",
         "MARKET_CACHE_PATH",
         "MARKET_CACHE_TTL_SEC",
         "CDP_URL",
@@ -110,6 +117,10 @@ def test_env_example_documents_the_deep_analysis_flags() -> None:
         "MARKET_SOURCE_TIMEOUT_SEC",
         "MARKET_BROWSER_TIMEOUT_SEC",
         "MARKET_PLATFORM_QUOTA",
+        "MARKET_MILANUNCIOS_MAX_PAGES",
+        "MARKET_MILANUNCIOS_TRANSPORT",
+        "MARKET_BROWSER_POOL_SIZE",
+        "MARKET_SOURCE_CONCURRENCY",
         "MARKET_CACHE_PATH",
         "MARKET_CACHE_TTL_SEC",
     ):

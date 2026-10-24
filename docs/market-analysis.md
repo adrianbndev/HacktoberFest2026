@@ -1,18 +1,20 @@
-# Market valuation API (MOD-04, Phase 1 + Phase 2)
+# Market valuation API (MOD-04, Phase 1 + Phase 2 + Phase 3)
 
 Second-hand valuation for the LifeOS & ReCommerce AI demo, with two independent
 paths sharing the same pricing contract:
 
 ```
-Fast path (frozen, <= 2.8 s)               Deep path (Phase 2, <= 60 s)
+Fast path (frozen, <= 2.8 s)               Deep path (Phase 3, <= 60 s)
 POST /api/market/valuate                   POST /api/market/analyze
   -> normalise query                         -> clean generic brand/model
-  -> eBay + Wallapop + Milanuncios           -> real CDP browser, 3 sources
-     in parallel (1.6 s/source)              -> per-source statuses + listings
-  -> filter / dedupe / IQR                   -> relevance + one IQR pass
-  -> P_min < P_avg < P_max                   -> per-platform quota (4/12)
-  -> comparable listings                     -> confidence + cached recommendation
-  -> optional DeepSeek recommendation        -> SQLite cache (15 min, real only)
+  -> eBay + Wallapop + Milanuncios           -> 2 MCP slots: eBay + Wallapop
+     in parallel (1.6 s/source)              -> Milanuncios HTTP (3 pages) in parallel
+  -> filter / dedupe / IQR                   -> HTTP blocked/<8: browser fallback
+  -> P_min < P_avg < P_max                   -> per-source statuses + listings
+  -> comparable listings                     -> relevance + one IQR pass
+  -> optional DeepSeek recommendation        -> per-platform quota (4/12)
+                                             -> confidence + cached recommendation
+                                             -> SQLite cache (15 min, real only)
 
                                            POST /api/market/analyze/stream (SSE)
 ```
@@ -28,9 +30,12 @@ routers/market.py                  -> mcp/market_analysis.py (fast, frozen)
                                    -> mcp/deep_analysis.py (shared browser manager)
 routers/market_analysis.py         -> mcp/deep_analysis.py, mcp/sse.py
 mcp/deep_analysis.py
-  -> mcp/analysis_query.py         -> mcp/normalize.py
-  -> mcp/deep_sources.py           -> mcp/browser/session.py
+  -> mcp/deep_parallel.py          -> run_sources + aggregate_results
+  -> mcp/deep_sources.py           -> mcp/browser/pool.py
+                                   -> mcp/deep_milanuncios.py
                                    -> mcp/browser/sources/{base,ebay,wallapop,milanuncios}.py
+  -> mcp/deep_milanuncios.py       -> mcp/connectors.py, mcp/browser/pool.py
+  -> mcp/browser/pool.py           -> mcp/browser/session.py, mcp/browser/mcp_client.py
   -> mcp/deep_support.py           -> mcp/analysis_query.py, mcp/pricing_math.py
   -> mcp/deep_recommend.py         -> mcp/deepseek.py
   -> mcp/deep_cache.py             -> mcp/cache.py
@@ -156,10 +161,13 @@ fails (a warning is added instead).
 
 ## Deep analysis: `POST /api/market/analyze`
 
-Real browser data only. The endpoint uses the headful browser managed by the
-`market-browser` container through `chrome-devtools-mcp@1.10.1`; it never
-launches Chrome itself, never uses `--headless`/`--enable-automation`, and never
-solves a captcha.
+Real data only. eBay and Wallapop use two independent
+`chrome-devtools-mcp@1.10.1` processes (one page each) attached to the headful
+browser managed by the `market-browser` container. Milanuncios tries the fast
+HTTP connector first (3 pages by default) in parallel with them; if HTTP is
+blocked, empty or yields fewer than 8 usable listings, it falls back to the
+browser source on a free pool slot. The engine never launches Chrome itself,
+never uses `--headless`/`--enable-automation`, and never solves a captcha.
 
 ### Request
 
@@ -198,10 +206,11 @@ curl -s -X POST http://127.0.0.1:8000/api/market/analyze \
 
 ### Response
 
-- `sources[]`: one entry per requested source with
-  `status ∈ {ok, blocked, timeout, no_listings, error}`, `sampleSize`,
-  `listings`, `latencyMs` and optional `error`. Every listing URL is absolute;
-  a missing listing URL falls back to the platform search deep link.
+- `sources[]`: one entry per requested source, **sorted by the order of
+  `request.sources`**, with `status ∈ {ok, blocked, timeout, no_listings,
+  error}`, `sampleSize`, `listings`, `latencyMs` and optional `error`. Every
+  listing URL is absolute; a missing listing URL falls back to the platform
+  search deep link. Completion order only affects SSE, never this array.
 - `valuation`: `0 < priceMin < priceAvg < priceMax`, `sampleSize` is the number
   of listings actually priced after one IQR pass, `platforms` includes every
   source with usable data (even if its listings are not in the final 12), and
@@ -225,7 +234,7 @@ warning instead of inventing text.
 | Case | HTTP | Body |
 |---|---|---|
 | Every source blocked / no usable listings | `503` | `{"detail": "...", "sources": {"ebay": "blocked", ...}}` |
-| Browser/MCP unavailable | `503` | `{"detail": "browser_unavailable", "sources": {}}` |
+| Browser pool/MCP unavailable | `503` | `{"detail": "browser_unavailable", "sources": {}}` |
 | Analysis disabled | `503` | `{"detail": "analysis_disabled", "sources": {}}` |
 | Unexpected engine error | `503` | `{"detail": "analysis_failed", "sources": {}}` |
 | Invalid request | `422` | Pydantic details |
@@ -238,19 +247,19 @@ Never `500`, never synthetic data.
 `X-Accel-Buffering: no`. Wire format is `event: <name>\ndata: <json>\n\n`.
 
 1. `analysis_started` — `{query, sources, cached}`.
-2. `source_started` — `{source}`.
-3. `source_result` — the same object as `sources[]`.
+2. `source_started` — `{source}` for **all** requested sources, immediately.
+3. `source_result` — the same object as `sources[]`, in **completion order**
+   (may differ from the request order).
 4. `valuation` — the valuation object.
 5. `recommendation` — the recommendation object (omitted when disabled/failed).
-6. `done` — the full response object.
+6. `done` — the full response object; its `sources[]` is sorted by request order.
 7. `error` — `{detail, sources?}` on a fatal error.
 
-- `source_result` is emitted as soon as that source finishes.
 - A heartbeat comment (`: ping\n\n`) is sent every 15 s.
 - A cache hit emits `analysis_started` with `cached=true` and then `done` fast.
-- On client disconnect the analysis task is cancelled, the browser lock/page is
-  released and `BrowserSessionManager.stop()` closes the page and the MCP
-  process (the next request lazily respawns it).
+- On client disconnect the producer is cancelled; each in-flight source releases
+  **its own** pool slot. The pool and its other slots stay alive for concurrent
+  requests (no process-wide stop).
 
 ```bash
 curl -N -X POST http://127.0.0.1:8000/api/market/analyze/stream \
@@ -275,11 +284,29 @@ curl -N -X POST http://127.0.0.1:8000/api/market/analyze/stream \
 |---|---|---|---|
 | eBay | `ebay.es/sch/i.html` with `LH_BIN=1`, `LH_ItemCondition=3000`, `_ipg=60` | `li.s-item, li.s-card`, strips the accessibility suffix, skips "Shop on eBay", optional page 2 if < 20 | ≥ 20 |
 | Wallapop | `es.wallapop.com/app/search?keywords=…&order_by=newest` | scrolls 4 times, extracts `a[href*='/item/']`, parses `1.234 €` and `1.234,56 €` | ≥ 20 |
-| Milanuncios | `milanuncios.com/anuncios/?s=…` | `article` cards; PerimeterX/captcha/access-denied → `blocked` | ≥ 10 |
+| Milanuncios | `milanuncios.com/anuncios/?s=…&pagina=N` | **HTTP first**: `article` cards, depth `MARKET_MILANUNCIOS_MAX_PAGES` (1–6, default 3); PerimeterX/captcha/access-denied → browser fallback. `MARKET_MILANUNCIOS_TRANSPORT=auto|http|browser` | ≥ 8 with 3 pages |
 
 Parser unit tests use saved HTML fixtures under `backend/tests/fixtures/`
 (`*_browser.html`, `milanuncios_blocked.html`). Fixtures are test-only and are
 never imported by the runtime deep path. Vinted is deferred (backlog).
+
+### Milanuncios page depth
+
+`MARKET_MILANUNCIOS_MAX_PAGES` (1–6, default **3**) bounds how many result pages
+the browser source visits. Measured on 2026-10-24 (`iPhone 13 128GB`, forced
+depth, headful Chromium under Xvfb):
+
+| Pages | Latency | Raw listings | Usable listings |
+|---|---|---|---|
+| 3 | **10.7 s** | 8 | **8** |
+| 6 | 21.5 s | 16 | 15 |
+
+Three pages reach the 8 usable samples a demo needs; six pages cost **+10.8 s**
+for **+7 usable samples** (~1.5 s per extra usable listing). Use `3` for the
+demo and `6` only for completeness runs. In normal operation the source stops
+early once it has 14 raw cards, so 6 pages is an upper bound. This is a
+configuration knob only: the `/analyze` request/response contract does not
+change.
 
 ## Contract
 
@@ -356,9 +383,12 @@ interactive endpoint.
 | Recommendation (when enabled) | minutes are not acceptable | remaining deadline ∩ `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` |
 | Cache hit (`/analyze` and SSE) | < 1 s | no browser call |
 
-Sources run sequentially on the single locked page, so per-source latency adds
-up; the deadline is shared, and a source that would exceed it is reported as
-`timeout` instead of aborting the response.
+eBay and Wallapop run on two browser slots; Milanuncios HTTP runs in parallel
+with them. When HTTP is blocked, the browser fallback waits for a free slot
+(eBay/Wallapop usually release it in ~4–5 s), so the worst case is
+`max(eBay, Wallapop) + Milanuncios browser` ≈ 16 s. The deadline is shared, and
+a source that would exceed it is reported as `timeout` instead of aborting the
+response.
 
 ## Fallback policy
 
@@ -421,6 +451,10 @@ up; the deadline is shared, and a source that would exceed it is reported as
 | `MARKET_SOURCE_TIMEOUT_SEC` | `25` | per-source browser timeout |
 | `MARKET_BROWSER_TIMEOUT_SEC` | `45` | MCP tool-call timeout |
 | `MARKET_PLATFORM_QUOTA` | `4` | max listings per source in the final 12 |
+| `MARKET_MILANUNCIOS_MAX_PAGES` | `3` | Milanuncios result pages (1–6); 6 = completeness |
+| `MARKET_MILANUNCIOS_TRANSPORT` | `auto` | `http`, `browser` or `auto` (HTTP first, browser fallback) |
+| `MARKET_BROWSER_POOL_SIZE` | `2` | MCP processes/pages for eBay + Wallapop (1–3) |
+| `MARKET_SOURCE_CONCURRENCY` | `3` | simultaneous sources (1 = Phase 2 sequential) |
 | `MARKET_CACHE_PATH` | `/app/data/market_cache.sqlite` | SQLite cache (`./data/...` works locally too) |
 | `MARKET_CACHE_TTL_SEC` | `900` | cache TTL; `0` disables hits |
 | `CDP_URL` | `http://market-browser:9222` | Chrome DevTools endpoint |
@@ -462,6 +496,9 @@ dependency (`condition: service_healthy`, `required: false`), and the
   port `8000`, non-root user, healthcheck on `/api/market/health`.
 - `market-browser`: Debian + headful Chromium/Chrome under Xvfb, port `9222`,
   persistent `chrome-profile` volume, `shm_size: 2g`, no host display needed.
+  The entrypoint disables background-tab/renderer throttling
+  (`--disable-background-tab-throttling`, `--disable-renderer-backgrounding`,
+  `--disable-backgrounding-occluded-windows`) so the two pages keep running.
 - Marker: the MCP never launches Chrome and never uses `--headless` or
   `--enable-automation`.
 
@@ -490,33 +527,37 @@ Always run the fingerprint check on the architecture used for the demo.
 
 ## Live source status (2026-10-24)
 
-| Source | Fast `/valuate` path | Browser path |
+| Source | Fast `/valuate` path | Deep path (Phase 3) |
 |---|---|---|
-| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | **12–15 usable** with up to 6 result pages (~18–22 s); PerimeterX/captcha would be reported as `blocked` |
-| eBay | HTTP 403 from this network | **58 usable** when not blocked (~4.2 s); the intermittent eBay error page is reported as `blocked` |
-| Wallapop | HTML is a JS shell (0 server-rendered items) | **37–40 usable** (~4.8–5.1 s after the render/scroll tuning) |
+| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | HTTP 3 pages **7–10 usable in 1.5–2.5 s** when not blocked; after warming, HTTP returns an anti-bot page → browser fallback **8 usable in ~10.7 s** |
+| eBay | HTTP 403 from this network | **58 usable** (~4.0–4.4 s) on its own MCP slot; the intermittent eBay error page is reported as `blocked` |
+| Wallapop | HTML is a JS shell (0 server-rendered items) | **40 usable** (~4.5–5.5 s) on its own MCP slot |
 
-Measured on 2026-10-24 in this worktree (arm64, Debian Chromium 156, Xvfb)
-with `scripts/smoke_analyze.py --query "iPhone 13 128GB"`:
+Measured on 2026-10-24 in this worktree (arm64, Debian Chromium 156, Xvfb):
 
-- per-source usable listings: eBay **58**, Wallapop **38**, Milanuncios **15**
-  when all three respond; another run had eBay `blocked`, Wallapop **40** and
-  Milanuncios **12**;
-- first `source_result`: **4.2 s** (eBay) and **4.8–5.1 s** (Wallapop warm);
-  full analysis: **25.5–31.9 s** without recommendation (no key);
-- valuation in the all-source run: `priceMin=200`, `priceAvg=268`,
-  `priceMax=332`, `sampleSize=98`, `confidence=0.72`;
-- second identical run: `cached=true` in **0.01 s**;
+- Hybrid smoke (`transport=auto`, query `iPhone 13 128GB`): eBay **58
+  usable / 4.0 s**, Wallapop **40 / 4.5 s**, Milanuncios HTTP blocked → browser
+  **7 / 11.1 s**; total **17.3–18.4 s** (*reported* in the Phase 3 session; not
+  persisted as an artifact), all three platforms in the valuation, no warnings.
+  The Phase 2 sequential engine took 25–32 s for the same query.
+- Parallel spike with 3 pages: sequential 20.6 s vs parallel **12.0 s**
+  (wall/max = 1.00, wall/sum = 0.53).
+- Milanuncios depth: 3 pages **10.7 s / 8 usable**; 6 pages **21.5 s / 15
+  usable**. The demo default is 3; 6 is completeness mode.
+- HTTP spike: first run 2 pages **1.52 s / 10 usable**, 3 pages **2.51 s / 7
+  usable**; subsequent HTTP runs were blocked and fell back to the browser.
+  Because 7 is below `MIN_USABLE_LISTINGS=8`, `transport=auto` falls back to the
+  browser instead of pricing the short HTTP sample.
+- Fingerprint (`scripts/fingerprint_check.py`): `webdriver=false`, no
+  `HeadlessChrome`, `__puppeteer`/`__playwright` undefined, `es-ES`,
+  `Europe/Madrid`.
+- Second identical run: `cached=true` in **0.01 s**.
 - eBay alternates between working and its anti-bot error page across runs; when
   blocked it is reported explicitly, never replaced with synthetic prices.
 
-The Phase 2 `/analyze` results are reported by
-`python scripts/smoke_analyze.py`: per-source status, usable count, latency and
-the second-run cache hit. The live counts depend on the venue network.
-
-This is why `source="live_mcp"` is achieved with Milanuncios while eBay and
-Wallapop keep the response valid through warnings; Wallapop requires the Phase 2
-browser engine.
+The `/analyze` results are reported by `python scripts/smoke_analyze.py`:
+per-source status, usable count, latency and the second-run cache hit. The live
+counts depend on the venue network.
 
 ## Browser spike (non-blocking)
 
@@ -541,8 +582,8 @@ Result on 2026-10-24 (arm64, Debian Chromium 156, Xvfb):
 - eBay extraction: 60 listings on the first run; later runs hit eBay's
   `Error Page | eBay` anti-bot interstitial, so the spike reports `partial`
 
-The browser path is therefore viable but must remain Phase 2 and must not be on
-the `/valuate` hot path.
+The browser path is therefore viable but must remain on the deep path and must
+not be on the `/valuate` hot path.
 
 ## Troubleshooting
 
@@ -557,6 +598,7 @@ the `/valuate` hot path.
 | Docker build network error | Retry; the Dockerfile retries pip downloads. |
 | DeepSeek returns empty content | In `/valuate` it retries then uses the template; in `/analyze` the recommendation is omitted with a warning. |
 | `/analyze` returns `503 browser_unavailable` | Start the browser profile (`docker compose --profile browser up -d market-browser`) and check `/api/market/health`. |
+| Milanuncios HTTP is blocked but browser works | Expected on the venue network: `transport=auto` falls back to the browser automatically. Use `transport=browser` to force it. |
 | Browser connected but every source `blocked` | Anti-bot/captcha page; this is reported, not solved. Retry later or use another egress. |
 | Second `/analyze` is not `cached` | Query, conditionScore or sources changed; the key is exact. TTL `0` also disables hits. |
 | `analysisEnabled=false` | Set `MARKET_ANALYSIS_ENABLED=true` and recreate `lifeos-backend`. |
@@ -606,7 +648,7 @@ interface MarketValuationResult {
 
 ```bash
 cd backend
-pytest -q          # 303 tests (hermetic; no CDP, no network)
+pytest -q          # 336 tests (hermetic; no CDP, no network)
 ruff check app tests
 mypy app
 docker compose config

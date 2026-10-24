@@ -107,7 +107,19 @@ class MarketAnalysisCache:
     def _connect(self) -> sqlite3.Connection:
         Path(self._path).parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self._path, timeout=5.0)
-        connection.execute("PRAGMA journal_mode=WAL")
         connection.execute("PRAGMA busy_timeout=5000")
+        _enable_wal(connection)
         connection.execute(SCHEMA)
         return connection
+
+
+def _enable_wal(connection: sqlite3.Connection, *, attempts: int = 3) -> None:
+    """Set WAL once; concurrent first connections can briefly hold the lock."""
+    for attempt in range(attempts):
+        try:
+            connection.execute("PRAGMA journal_mode=WAL")
+            return
+        except sqlite3.OperationalError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.05)

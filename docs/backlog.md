@@ -1,6 +1,6 @@
 # Backlog — deferred items
 
-Classified per the phase briefs. **No blocking items remain in Phase 2**; the
+Classified per the phase briefs. **No blocking items remain in Phase 3**; the
 Level 1 gate stays open until the end-to-end UI verification.
 
 ## Closed in Phase 2
@@ -118,3 +118,86 @@ These affect the frozen fast path only and are intentionally not changed here:
 13. `keywords()` does not normalise capacities/aliases.
 14. Missing a direct `tests/test_relevance.py` and the `iPhone 13 mini` case.
 15. The timeout test uses 0.05 s, not the production 1.6 s value.
+
+
+## Phase 3 follow-ups (non-blocking)
+
+1. **Milanuncios HTTP anti-bot.** HTTP is 4–10× faster when it works, but after a
+   few rapid requests the site returns a 200 anti-bot body. `transport=auto`
+   falls back to the browser, which costs ~11 s. A future transport could add
+   human jitter/backoff or an HTTP/TLS profile closer to the browser; do not
+   solve captchas.
+2. **Fallback waits for a browser slot.** With `MARKET_BROWSER_POOL_SIZE=2`, a
+   blocked HTTP Milanuncios waits for eBay/Wallapop to release a slot. A third
+   ephemeral slot only for fallback is a possible optimization (higher memory).
+3. **Pool memory.** Two Chromium pages plus MCP processes measured ~2.3 GB
+   summed RSS in the spike. Keep `shm_size: 2g`; monitor on the demo laptop.
+4. **Pool lifespan hook.** `shared_analyzer` keeps the pool/MCP processes alive;
+   a FastAPI lifespan hook that calls `pool.stop()` on shutdown is still
+   pending.
+5. **Threshold is a constant.** `MIN_USABLE_LISTINGS = 8` lives in
+   `deep_milanuncios.py`; consider exposing it as settings if the demo needs a
+   different bar.
+6. **Wallapop transient `no_listings`.** One live parallel run returned
+   `no_listings` while the next returned 40. It is reported as a partial result,
+   never filled synthetically; retry/telemetry would help diagnose.
+7. **SSE ordering tests are event-level.** They validate completion order and the
+   request-order `done` payload; a true HTTP disconnect test with a pool-backed
+   analyzer is still deferred.
+8. **Ruff global baseline.** `ruff check app tests` reports 78 pre-existing
+   errors in `app/vision/*` (Track B). Phase 3 validates only its own files and
+   leaves Track B untouched.
+
+## Phase 3 verification follow-ups (non-blocking)
+
+No blocking items. These are review findings from the Phase 3 verification.
+
+1. **A dead slot aborts the whole `/analyze`.** A `BrowserUnavailableError` from
+   one slot becomes `None` in `BrowserSourceRunner` and the engine returns
+   `503 browser_unavailable`, discarding real partial data from the other
+   sources. Distinguish a dead slot (retry/partial) from a fully unavailable
+   pool.
+2. **MCP crash leaves an orphan page; the token can reuse it.** When the MCP
+   process dies, the page stays in Chrome and the slot token is reused on the
+   restart. Close the page by token before respawning, or rotate the token on
+   every restart.
+3. **Silent `DEFAULT_PAGE_ID=1` fallback in pool mode.** `parse_page_id` falls
+   back to page `1` when the token is missing. In pool mode, raise instead of
+   risking two slots sharing a page.
+4. **Shutdown race.** `pool.stop()` can race with a concurrent `session()` that
+   spawns or resurrects an MCP process. Re-check `_closed` after acquisition
+   and close any session created during shutdown.
+5. **Cancelled tool call leaves an orphan `to_thread` worker.** `asyncio.wait_for`
+   cancels the await but the blocking MCP call keeps running in its thread; the
+   slot is returned and can be reused while the worker is still alive. Wait for
+   or isolate cancelled workers.
+6. **HTTP Milanuncios page N failure discards pages 1..N-1.** A block on page 3
+   returns a blocked/empty source even when pages 1–2 produced real listings.
+   Return the partial real sample with a warning (and let the browser fallback
+   decide whether to improve it).
+7. **Fallback slot wait is not clamped to the remaining deadline.** The pool
+   acquire timeout is `MARKET_SOURCE_TIMEOUT_SEC`, not the request deadline.
+   Clamp the fallback wait to `deadline - now`.
+8. **ADR-004 wording.** The ADR said the page id is parsed from `list_pages`;
+   the implementation parses it from the `new_page` response (no extra
+   `list_pages` call). Corrected in ADR-004.
+9. **Threshold mismatch.** `MIN_USABLE_LISTINGS=8`, but the 3-page HTTP spike
+   measured 7 usable. `transport=auto` falls back to the browser in that case;
+   the threshold is intentional and unchanged, but the docs must state it
+   explicitly.
+10. **Test gaps.** The wall-clock assertions (`< 0.35 s`, `>= 0.2 s`) are flaky
+    on a loaded CI; use deterministic synchronization or generous bounds. There
+    is no stop-during-in-flight test nor a stale-token reuse test.
+11. **Vinted is explicitly deferred.** It is not part of Phase 3: the contract
+    supports a subset and the live transport is still eBay, Wallapop and
+    Milanuncios only.
+
+### Report-only measurements
+
+- The hybrid smoke **17.3–18.4 s** and the earlier **31.1 s vs 20.9 s**
+  six-page comparison were reported in the Phase 3 session. They are not
+  reproducible from a committed artifact: `artifacts/pool-spike.json` was
+  overwritten by the later 3-page run and the `artifacts/` directory is
+  gitignored. They are labelled as *reported* in `docs/market-analysis.md` and
+  ADR-004. Re-run `scripts/pool_spike.py` / a hybrid smoke to persist fresh
+  numbers.

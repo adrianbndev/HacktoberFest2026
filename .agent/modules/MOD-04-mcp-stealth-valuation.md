@@ -2,7 +2,7 @@
 
 * **Nivel SDD:** 🟢 Nivel 1.4
 * **Responsable:** **Track C (Matías)**
-* **Estado Actual:** `🚧 IN_PROGRESS` (Fases 1–2; el gate del Nivel 1 sigue abierto)
+* **Estado Actual:** `🚧 IN_PROGRESS` (Fases 1–3; el gate del Nivel 1 sigue abierto)
 * **SLA de Latencia:** $\le 2800\text{ ms}$ (incluyendo *jitter* humano de $650\text{ ms} - 1200\text{ ms}$; $200-600\text{ ms}$ en `/valuate`)
 
 ---
@@ -51,7 +51,10 @@
 | `backend/app/mcp/analysis_query.py` | Limpieza de marca/modelo genéricos y deep links (solo `/analyze`) | $\le 90$ |
 | `backend/app/mcp/deep_recommend.py` | Ventana LLM opcional con clamp y omisión segura | $\le 90$ |
 | `backend/app/models/market_health.py` | `browser`, `cache` y `analysisEnabled` del health | $\le 60$ |
-| `backend/app/mcp/deep_sources.py` | Ejecución por fuente con aislamiento de bloqueos/timeouts | $\le 130$ |
+| `backend/app/mcp/deep_sources.py` | Ejecución por fuente con aislamiento de bloqueos/timeouts | $\le 220$ |
+| `backend/app/mcp/deep_parallel.py` | `run_sources` concurrente + agregación (IQR único, cuota, confianza) | $\le 180$ |
+| `backend/app/mcp/deep_milanuncios.py` | Transporte híbrido Milanuncios: HTTP primero, navegador de fallback | $\le 180$ |
+| `backend/app/mcp/browser/pool.py` | Pool acotado de `BrowserSessionManager` con lock por slot y página propia | $\le 150$ |
 | `backend/app/mcp/deep_support.py` | Selección de comparables, avisos y clamp (puro) | $\le 130$ |
 | `backend/app/mcp/deep_cache.py` | Serialización y persistencia del resultado en SQLite | $\le 60$ |
 | `backend/app/mcp/browser/session.py` | `BrowserSessionManager`: MCP lazy, lock único, una pestaña, reinicio | $\le 230$ |
@@ -66,14 +69,18 @@
 - [x] Tests unitarios sobre `pricing_math.py` (equivalente Python de `pricing-math.ts`) verificando que para cualquier combinación de precios y `conditionScore` $\in [0, 100]$ se cumple $0 < P_{\min} < P_{\text{avg}} < P_{\max}$ (`backend/tests/test_pricing_math.py`, property-based con Hypothesis).
 - [x] Verificación de que un `conditionScore = 95` ("Nuevo") devuelve un $P_{\text{avg}}$ superior a un `conditionScore = 50` ("Desgaste visible") para el mismo artículo (test de monotonicidad).
 - [x] Jitter humano configurable (`human_jitter`, 650-1200 ms por defecto según `stealth-market-mcp.md` §2.1; `max_sec=0` instantáneo para tests unitarios).
-- [x] Retorno de `comparableListings` con muestras de `wallapop`, `milanuncios` y `ebay` (Vinted diferido a Fase 2, ver ADR-002).
+- [x] Retorno de `comparableListings` con muestras de `wallapop`, `milanuncios` y `ebay` (Vinted sigue diferido en Fase 3, ver ADR-002).
 - [x] Endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$ (SLA interna $< 2.8\text{ s}$ con conectores mockeados).
 - [x] `POST /api/market/analyze` con datos reales de navegador, estados por fuente, IQR único, cuota por plataforma (máx. 4) y confianza determinista.
 - [x] `POST /api/market/analyze/stream` (SSE): orden `analysis_started → source_started → source_result → valuation → recommendation? → done`, heartbeat cada 15 s y cancelación al desconectar.
 - [x] Caché SQLite TTL 900 s (`MARKET_CACHE_PATH`), clave query + condición + fuentes, sin `description` ni PII; `cached=true` solo en hit real.
 - [x] Gestor de navegador MCP compartido: `chrome-devtools-mcp@1.10.1 --browserUrl $CDP_URL`, lock único, una pestaña, timeout, reinicio y cierre.
 - [x] Fuentes eBay, Wallapop y Milanuncios con detección de captcha/anti-bot (`blocked`); Vinted diferido.
-- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): fuera del alcance de la Fase 2 (ver ADR-003).
+- [x] Pool de 2 procesos MCP (eBay + Wallapop) con una página propia por slot, lock por slot y reinicio de proceso.
+- [x] Milanuncios híbrido: HTTP (3 páginas) en paralelo; fallback real al navegador si HTTP bloquea, no devuelve anuncios o da < 8 usables.
+- [x] `asyncio` concurrente para las 3 fuentes, `source_result` en orden de finalización y `sources[]` en orden de request.
+- [x] Config `MARKET_MILANUNCIOS_TRANSPORT=auto|http|browser`, `MARKET_BROWSER_POOL_SIZE=2`, `MARKET_SOURCE_CONCURRENCY=3`.
+- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): sigue diferido en Fase 3 (ver ADR-003/004).
 
 ---
 
@@ -104,7 +111,7 @@
 ### Diferido (no bloqueante)
 
 * Conector Vinted.
-* `backend/mcp_server.py` (FastMCP CLI), Vinted y `/api/market/refresh` (Nivel 2). La Fase 2 (`/analyze`, SSE, caché y motor de navegador) ya está implementada, pero el **gate del Nivel 1 permanece abierto** hasta la verificación end-to-end con la UI.
+* `backend/mcp_server.py` (FastMCP CLI), Vinted y `/api/market/refresh` (Nivel 2) siguen diferidos en Fase 3. Las Fases 2–3 (`/analyze`, SSE, caché, pool y motor híbrido) ya están implementadas, pero el **gate del Nivel 1 permanece abierto** hasta la verificación end-to-end con la UI.
 * Espejo de campos opcionales en `src/types/sdd.ts` (MOD-00 / Track A).
 * Validación con una API key real de DeepSeek (no disponible en este entorno).
 
@@ -133,3 +140,49 @@
 ### Diferido (no bloqueante)
 
 * Vinted, `backend/mcp_server.py` (FastMCP CLI), `/api/market/refresh` (Nivel 2), cableado de la UI (Track A), SSE con varias pestañas y CI multi-arch.
+
+
+## 7. Estado de implementación — Fase 3 (Parallel Browser Sources)
+
+* **Estado:** `🚧 IN_PROGRESS` — pool híbrido implementado y verificado; el gate
+  del Nivel 1 sigue abierto.
+
+### Implementado
+
+* `browser/pool.py`: pool acotado (2 por defecto) de `BrowserSessionManager`;
+  cada slot crea su propia página con `new_page` y un token único, tiene su
+  propio lock y reinicia su proceso MCP si cae. `stop()` solo se usa en
+  shutdown; una desconexión SSE libera únicamente su slot.
+* `deep_parallel.py`: `run_sources` lanza las 3 fuentes con concurrencia
+  configurable y entrega resultados en orden de finalización; `aggregate_results`
+  mantiene el IQR único, la cuota por plataforma y la confianza.
+* `deep_milanuncios.py`: HTTP primero (3 páginas), fallback al navegador cuando
+  HTTP está bloqueado, vacío o da menos de 8 usables. `transport=http|browser`
+  fuerza un único transporte. Nunca hay datos sintéticos.
+* `deep_analysis.py`: `source_started` para las 3 fuentes al inicio,
+  `source_result` en orden de finalización, `sources[]` ordenado por request y
+  `503` si las 3 bloquean o el pool no está disponible.
+* `connectors.py`: `MilanunciosConnector(max_pages=…)` multi-página; el
+  `/valuate` rápido sigue usando 1 página.
+* Docker: flags anti-throttling en `browser-entrypoint.sh`; variables
+  `MARKET_MILANUNCIOS_TRANSPORT`, `MARKET_BROWSER_POOL_SIZE` y
+  `MARKET_SOURCE_CONCURRENCY` en compose y `.env.example`.
+
+### Evidencia
+
+* `pytest`: **336 tests** verdes (herméticos; fake MCP, sin CDP ni red);
+  `ruff` scoped a Track C y `mypy app` limpios.
+* Spike: 3 procesos MCP contra el mismo Chrome, wall/max = 1.00, speed-up 1.72×
+  con 3 páginas de Milanuncios; fingerprint limpio; HTTP 2 páginas 1.52 s / 10
+  usables en la primera pasada y bloqueo posterior → fallback validado.
+* Smoke híbrido real: eBay 58 usables / 4.0 s, Wallapop 40 / 4.5 s, Milanuncios
+  fallback 7 / 11.1 s, total 17.3–18.4 s (*reportado* en la sesión; no persistido
+  como artifact).
+* ADR: [`004-parallel-browser-sources.md`](../decisions/004-parallel-browser-sources.md).
+
+### Diferido (no bloqueante)
+
+* Vinted (explícitamente diferido), FastMCP CLI, `/api/market/refresh` y alertas
+  (Nivel 2), cableado UI de Track A, backoff/jitter para HTTP Milanuncios,
+  page recovery/stale `pageId` tras un crash MCP, hook de lifespan del pool y CI
+  multi-arch. Ver `docs/backlog.md`.

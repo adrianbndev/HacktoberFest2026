@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -55,6 +56,14 @@ class Settings(BaseSettings):
     market_source_timeout_sec: float = Field(default=25.0, gt=0.0, le=60.0)
     market_browser_timeout_sec: float = Field(default=45.0, gt=0.0, le=120.0)
     market_platform_quota: int = Field(default=4, ge=1, le=12)
+    # Hybrid Phase 3: 2 browser slots (eBay + Wallapop), Milanuncios over HTTP
+    # first, 3 sources in flight at most.
+    market_browser_pool_size: int = Field(default=2, ge=1, le=3)
+    market_source_concurrency: int = Field(default=3, ge=1, le=3)
+    market_milanuncios_transport: Literal["http", "browser", "auto"] = "auto"
+    # Milanuncios is the slowest source (~3-4 s per result page). The demo uses
+    # 3 pages for latency; 6 maximizes usable samples when completeness matters.
+    market_milanuncios_max_pages: int = Field(default=3, ge=1, le=6)
     market_cache_path: str = "/app/data/market_cache.sqlite"
     market_cache_ttl_sec: int = Field(default=900, ge=0, le=86_400)
     cdp_url: str = "http://market-browser:9222"

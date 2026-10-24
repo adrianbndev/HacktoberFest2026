@@ -39,6 +39,9 @@ done
     --no-default-browser-check \
     --no-sandbox \
     --disable-dev-shm-usage \
+    --disable-background-tab-throttling \
+    --disable-renderer-backgrounding \
+    --disable-backgrounding-occluded-windows \
     --start-maximized \
     about:blank &
 CHROME_PID=$!

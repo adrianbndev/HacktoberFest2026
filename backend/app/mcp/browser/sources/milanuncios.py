@@ -38,6 +38,10 @@ MILANUNCIOS_ITEMS_SCRIPT = """
 """
 
 
+DEFAULT_MAX_PAGES = 3
+MAX_MAX_PAGES = 6
+
+
 class MilanunciosSource(BaseBrowserSource):
     platform: MarketPlatform = "milanuncios"
     base_url = "https://www.milanuncios.com"
@@ -52,7 +56,15 @@ class MilanunciosSource(BaseBrowserSource):
     )
     render_wait_ms = 1_200
     min_results = 14
-    max_pages = 6
+    max_pages = DEFAULT_MAX_PAGES
+
+    def __init__(self, max_pages: int | None = None) -> None:
+        if max_pages is not None:
+            if not 1 <= max_pages <= MAX_MAX_PAGES:
+                raise ValueError(
+                    f"max_pages must be between 1 and {MAX_MAX_PAGES}"
+                )
+            self.max_pages = max_pages
 
     def search_url(self, query: str) -> str:
         return f"{self.base_url}/anuncios/?s={quote_plus(query)}"

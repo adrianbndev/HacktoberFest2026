@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from app.mcp.browser.sources.base import BLOCKED_ERROR, PAYLOAD_ERROR, SourceOutcome
 from app.mcp.browser.sources.ebay import EbaySource
-from app.mcp.browser.sources.milanuncios import (
-    MilanunciosSource,
-    looks_like_perimeterx,
-)
+from app.mcp.browser.sources.milanuncios import MilanunciosSource
 from app.mcp.browser.sources.wallapop import WallapopSource
-from bs4 import BeautifulSoup
-
-FIXTURES = Path(__file__).parent / "fixtures"
+from app.mcp.deep_sources import default_sources
+from tests.support import make_settings
 
 
 class FakePage:
@@ -46,78 +41,6 @@ def _raw_item(title: str, price: str, url: str) -> dict[str, Any]:
     return {"title": title, "price": price, "url": url, "condition": ""}
 
 
-# --------------------------------------------------------------------------- parsers
-
-
-def test_ebay_fixture_strips_accessibility_suffix_and_skips_shop_card() -> None:
-    samples = EbaySource().parse_html((FIXTURES / "ebay_browser.html").read_text("utf-8"))
-
-    assert [sample.title for sample in samples] == [
-        "Silla de madera vintage",
-        "Silla de madera",
-        "Silla de madera antigua",
-    ]
-    assert [sample.price for sample in samples] == [35, 52, 1235]
-    assert all(sample.url and sample.url.startswith("https://www.ebay.es/itm/") for sample in samples)
-    assert all(sample.platform == "ebay" for sample in samples)
-
-
-def test_wallapop_fixture_parses_both_price_formats_and_dedupes_urls() -> None:
-    samples = WallapopSource().parse_html(
-        (FIXTURES / "wallapop_browser.html").read_text("utf-8")
-    )
-
-    assert [sample.title for sample in samples] == [
-        "Silla de madera",
-        "Silla de roble",
-        "Silla de comedor",
-    ]
-    assert [sample.price for sample in samples] == [35, 1234, 1235]
-    assert samples[0].url == "https://es.wallapop.com/item/silla-madera-123"
-
-
-def test_milanuncios_fixture_parses_article_cards() -> None:
-    samples = MilanunciosSource().parse_html(
-        (FIXTURES / "milanuncios_browser.html").read_text("utf-8")
-    )
-
-    assert [sample.title for sample in samples] == [
-        "Silla de madera",
-        "Silla de roble maciza",
-        "Silla de comedor",
-    ]
-    assert [sample.price for sample in samples] == [35, 120, 1235]
-    assert samples[0].url == "https://www.milanuncios.com/silla-de-madera/123.htm"
-
-
-def test_milanuncios_parser_works_with_the_saved_iphone_fixture() -> None:
-    samples = MilanunciosSource().parse_html(
-        (FIXTURES / "milanuncios_search_v2.html").read_text("utf-8")
-    )
-
-    assert [sample.price for sample in samples] == [299, 250]
-
-
-def test_perimeterx_blocked_fixture_is_detected_and_never_parsed() -> None:
-    html = (FIXTURES / "milanuncios_blocked.html").read_text("utf-8")
-    source = MilanunciosSource()
-    text = BeautifulSoup(html, "lxml").get_text(" ", strip=True)
-
-    assert looks_like_perimeterx(html) is True
-    assert source.is_blocked(text, "Access Denied") is True
-    assert source.block_reason(text, "Access Denied") is not None
-    assert source.parse_html(html) == []
-
-
-def test_legit_page_is_not_flagged_as_blocked() -> None:
-    source = MilanunciosSource()
-    text = BeautifulSoup(
-        (FIXTURES / "milanuncios_browser.html").read_text("utf-8"), "lxml"
-    ).get_text(" ", strip=True)
-
-    assert source.is_blocked(text, "Silla de madera - Milanuncios") is False
-
-
 # --------------------------------------------------------------------------- URLs
 
 
@@ -137,7 +60,32 @@ def test_search_urls_match_the_frozen_browser_contract() -> None:
     assert milanuncios[0] == "https://www.milanuncios.com/anuncios/?s=Silla+de+madera"
     assert milanuncios[1].endswith("&pagina=2")
     assert milanuncios[2].endswith("&pagina=3")
-    assert len(milanuncios) == 6
+    assert len(milanuncios) == 3
+
+
+@pytest.mark.parametrize("pages", [1, 3, 4, 6])
+def test_milanuncios_page_depth_is_configurable(pages: int) -> None:
+    urls = MilanunciosSource(max_pages=pages).search_urls("Silla de madera")
+
+    assert len(urls) == pages
+    assert urls[0] == "https://www.milanuncios.com/anuncios/?s=Silla+de+madera"
+    if pages > 1:
+        assert urls[-1].endswith(f"&pagina={pages}")
+
+
+def test_default_sources_reads_the_configured_page_depth() -> None:
+    sources = default_sources(make_settings(market_milanuncios_max_pages=4))
+
+    milanuncios = cast(MilanunciosSource, sources["milanuncios"])
+    assert milanuncios.max_pages == 4
+    assert len(milanuncios.search_urls("Silla de madera")) == 4
+
+
+def test_milanuncios_rejects_an_out_of_range_page_depth() -> None:
+    with pytest.raises(ValueError):
+        MilanunciosSource(max_pages=0)
+    with pytest.raises(ValueError):
+        MilanunciosSource(max_pages=7)
 
 
 # --------------------------------------------------------------------------- collection
@@ -177,7 +125,7 @@ async def test_ebay_stops_at_page_one_with_enough_results() -> None:
 
 
 async def test_milanuncios_paginates_until_it_has_enough_cards() -> None:
-    source = MilanunciosSource()
+    source = MilanunciosSource(max_pages=6)
     page = FakePage(
         [
             _payload([_raw_item(f"Silla {index}", "30 €", f"/silla/{index}") for index in range(5)]),

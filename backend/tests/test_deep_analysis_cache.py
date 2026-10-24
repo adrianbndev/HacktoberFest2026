@@ -98,13 +98,12 @@ async def test_event_order_matches_the_sse_contract(tmp_path: Path) -> None:
     events = [event async for event in analyzer.stream(make_analysis_request())]
 
     assert isinstance(events[0], AnalysisStarted)
-    assert isinstance(events[1], SourceStarted)
-    assert isinstance(events[2], SourceFinished)
-    assert isinstance(events[3], SourceStarted)
+    assert all(isinstance(event, SourceStarted) for event in events[1:4])
     finished = [
         index for index, event in enumerate(events) if isinstance(event, SourceFinished)
     ]
     assert len(finished) == 3
+    assert finished == [4, 5, 6]
     assert isinstance(events[finished[-1] + 1], ValuationReady)
     assert isinstance(events[-1], AnalysisDone)
 
