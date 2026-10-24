@@ -1,28 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Funnel_Display, Funnel_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const funnelSans = Funnel_Sans({
+  variable: "--font-funnel-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const funnelDisplay = Funnel_Display({
+  variable: "--font-funnel-display",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "LifeOS & ReCommerce AI",
-  description: "Tasa tu inventario de segunda mano con Visión IA y MCP Stealth, y conéctalo con tu día a día.",
+  title: "SmartLoot",
+  description: "Tasa tus objetos de segunda mano con una foto del móvil: su estado y cuánto valen en Wallapop, Vinted, Milanuncios y eBay.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="es" className={`${funnelSans.variable} ${funnelDisplay.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

@@ -2,18 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
-import { requestJson } from "@/lib/api";
+import { ApiError, requestJson } from "@/lib/api";
 import { auth, googleProvider } from "@/lib/firebase";
-import type { InventoryResponse, UserProfile } from "@/types/sdd";
+import type { InventoryItem, InventoryResponse, UserProfile } from "@/types/sdd";
 
-const BACKEND_DOWN = "No se puede conectar con el backend. Arráncalo con `npm run dev:api`.";
+export interface LoadError {
+  message: string;
+  sessionExpired: boolean;
+}
+
+const NOTICE_MS = 5000;
+
+function describeLoadError(cause: unknown): LoadError {
+  const status = cause instanceof ApiError ? cause.status : 0;
+  if (status === 401) return { message: "Tu sesión ha caducado. Sal y vuelve a entrar con Google.", sessionExpired: true };
+  if (status === 503) {
+    return { message: "El servidor no puede acceder a tus datos ahora mismo. Vuelve a intentarlo en unos segundos.", sessionExpired: false };
+  }
+  return { message: "No podemos conectar con SmartLoot. Comprueba la conexión y vuelve a intentarlo.", sessionExpired: false };
+}
 
 export function useDashboardState() {
   // undefined = todavía comprobando si hay sesión guardada; null = sin sesión.
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [inventory, setInventory] = useState<InventoryResponse | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LoadError | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -24,11 +39,17 @@ export function useDashboardState() {
     requestJson<UserProfile>("/api/auth", "POST")
       .then(() => requestJson<InventoryResponse>("/api/inventory"))
       .then((loaded) => !cancelled && setInventory(loaded))
-      .catch(() => !cancelled && setError(BACKEND_DOWN));
+      .catch((cause) => !cancelled && setError(describeLoadError(cause)));
     return () => {
       cancelled = true;
     };
   }, [user, reloadKey]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   async function login(): Promise<string | null> {
     try {
@@ -54,8 +75,58 @@ export function useDashboardState() {
   }
 
   // Vuelve a pedir el inventario (p. ej. tras añadir un producto con el móvil) para que los totales cuadren.
-  const reloadInventory = () => setReloadKey((key) => key + 1);
+  function reloadInventory() {
+    setError(null);
+    setReloadKey((key) => key + 1);
+  }
+
+  // Cambios optimistas: se ven al instante y luego se recarga lo que diga el servidor.
+  async function mutate(apply: (items: InventoryItem[]) => InventoryItem[], request: () => Promise<unknown>, done: string) {
+    setInventory((current) => current && { ...current, items: apply(current.items) });
+    try {
+      await request();
+      setNotice(done);
+    } catch {
+      setNotice("No se ha podido guardar el cambio. Vuelve a intentarlo.");
+    }
+    reloadInventory();
+  }
+
+  const updateItem = (item: InventoryItem, done: string) =>
+    mutate(
+      (items) => items.map((current) => (current.id === item.id ? item : current)),
+      () => requestJson("/api/inventory", "POST", item),
+      done,
+    );
+
+  const deleteItem = (item: InventoryItem) =>
+    mutate(
+      (items) => items.filter((current) => current.id !== item.id),
+      () => requestJson(`/api/inventory?id=${encodeURIComponent(item.id)}`, "DELETE"),
+      `${item.name} se ha eliminado de tu inventario.`,
+    );
+
+  async function resetDemo() {
+    try {
+      setInventory(await requestJson<InventoryResponse>("/api/store/reset", "POST"));
+      setNotice("Se han restaurado los productos de demo.");
+    } catch {
+      setNotice("No se han podido restaurar los productos de demo. Vuelve a intentarlo.");
+    }
+  }
 
   const loadingInventory = Boolean(user) && inventory?.profile.id !== user?.uid;
-  return { user, inventory, loadingInventory, error, login, logout, reloadInventory };
+  return {
+    user,
+    inventory,
+    loadingInventory,
+    error,
+    notice,
+    login,
+    logout,
+    reloadInventory,
+    updateItem,
+    deleteItem,
+    resetDemo,
+  };
 }

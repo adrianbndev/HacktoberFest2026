@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
+/* Solo modo claro: la demo se proyecta en una sala iluminada. Los `dark:` heredados
+   solo se activarían con la clase .dark, que no se pone en ningún sitio. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --paper: #ffffff;
+  --fog: #eef0f3;
+  --fog-2: #e2e5ea;
+  --line: #d7dbe1;
+  --ink: #101114;
+  --ink-2: #5b606b; /* 6.3:1 sobre blanco, 5.4:1 sobre niebla */
+  --accent: #4b3bff; /* 6.2:1 con blanco, en ambos sentidos */
+  --accent-hover: #3b2ae8;
+  --accent-soft: #eceaff;
+  --on-accent-2: #e2dfff; /* texto secundario sobre el acento, 4.9:1 */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-fog: var(--fog);
+  --color-fog-2: var(--fog-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent-2: var(--on-accent-2);
+  --font-sans: var(--font-funnel-sans);
+  --font-display: var(--font-funnel-display);
+  --radius-panel: 20px;
+  --radius-inner: 12px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  caret-color: var(--accent);
+  scrollbar-color: var(--line) transparent;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+summary {
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Una tasación nueva entra como una transferencia: ya visible, se asienta y pierde el tinte. */
+@keyframes row-arrive {
+  from {
+    transform: translateY(-6px);
+    background-color: var(--accent-soft);
+  }
+}
+.animate-row-arrive {
+  animation: row-arrive 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-row-arrive {
+    animation: none;
+  }
 }

@@ -1,29 +1,53 @@
-import { Target, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 import { formatEur } from "./format";
 
-interface PriceTrioDisplayProps {
+interface PriceRangeProps {
   priceMin: number;
   priceAvg: number;
   priceMax: number;
 }
 
-function Price({ icon: Icon, label, value, main }: { icon: LucideIcon; label: string; value: number; main?: boolean }) {
+// Horquilla de venta rápida a máximo con el precio justo marcado en su sitio real.
+export function RangeRuler({ priceMin, priceAvg, priceMax, onAccent = false }: PriceRangeProps & { onAccent?: boolean }) {
+  const position = priceMax > priceMin ? ((priceAvg - priceMin) / (priceMax - priceMin)) * 100 : 50;
+  const muted = onAccent ? "text-on-accent-2" : "text-ink-2";
   return (
-    <div className={`rounded-2xl p-3 ${main ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800"}`}>
-      <p className={`flex items-center gap-1 text-[11px] font-medium ${main ? "opacity-80" : "text-zinc-500 dark:text-zinc-400"}`}>
-        <Icon className="size-3.5" aria-hidden /> {label}
-      </p>
-      <p className={`mt-1 font-semibold tabular-nums ${main ? "text-xl" : "text-base"}`}>{formatEur(value)}</p>
+    <div>
+      <div aria-hidden className={`relative h-1.5 rounded-full ${onAccent ? "bg-white/25" : "bg-fog-2"}`}>
+        <span
+          className={`absolute inset-y-0 left-0 rounded-full ${onAccent ? "bg-white/55" : "bg-accent/30"}`}
+          style={{ width: `${position}%` }}
+        />
+        <span
+          className={`absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full ${
+            onAccent ? "bg-white" : "bg-accent"
+          }`}
+          style={{ left: `${position}%` }}
+        />
+      </div>
+      <dl className="mt-3 flex justify-between gap-4">
+        <div>
+          <dt className={`text-[13px] ${muted}`}>Venta rápida</dt>
+          <dd className="text-[15px] font-semibold tabular-nums">{formatEur(priceMin)}</dd>
+        </div>
+        <div className="text-right">
+          <dt className={`text-[13px] ${muted}`}>Máximo</dt>
+          <dd className="text-[15px] font-semibold tabular-nums">{formatEur(priceMax)}</dd>
+        </div>
+      </dl>
     </div>
   );
 }
 
-export function PriceTrioDisplay({ priceMin, priceAvg, priceMax }: PriceTrioDisplayProps) {
+export function PriceTrioDisplay(props: PriceRangeProps) {
   return (
-    <div className="grid grid-cols-[1fr_1.3fr_1fr] items-end gap-2">
-      <Price icon={TrendingDown} label="Venta rápida" value={priceMin} />
-      <Price icon={Target} label="Precio medio" value={priceAvg} main />
-      <Price icon={TrendingUp} label="Techo" value={priceMax} />
+    <div className="flex flex-col gap-3">
+      <p>
+        <span className="block text-[13px] text-ink-2">Precio justo</span>
+        <span className="font-display text-[2rem] font-semibold leading-tight tracking-[-0.03em] tabular-nums">
+          {formatEur(props.priceAvg)}
+        </span>
+      </p>
+      <RangeRuler {...props} />
     </div>
   );
 }

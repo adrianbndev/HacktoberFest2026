@@ -1,0 +1,510 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T14:51:36+00:00",
+  "title": "Design System: SmartLoot",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#262626",
+          "#454545",
+          "#666666",
+          "#898989",
+          "#aeaeae",
+          "#d1d1d1",
+          "#eeeeee"
+        ]
+      },
+      "fog": {
+        "role": "neutral",
+        "displayName": "Fog",
+        "canonical": "#eef0f3",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#252629",
+          "#434547",
+          "#646669",
+          "#87898c",
+          "#acaeb1",
+          "#cfd1d4",
+          "#edeff2"
+        ]
+      },
+      "fog-2": {
+        "role": "neutral",
+        "displayName": "Deep Fog",
+        "canonical": "#e2e5ea",
+        "tonalRamp": [
+          "#090b0e",
+          "#24272a",
+          "#434549",
+          "#64666a",
+          "#86898e",
+          "#abaeb3",
+          "#ced1d6",
+          "#eceff4"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d7dbe1",
+        "tonalRamp": [
+          "#090b0f",
+          "#24272b",
+          "#42454a",
+          "#63666b",
+          "#86898f",
+          "#aaaeb4",
+          "#cdd1d7",
+          "#ebeff5"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#101114",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#25262a",
+          "#444549",
+          "#65666a",
+          "#88898d",
+          "#acaeb2",
+          "#cfd1d5",
+          "#edeef3"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Slate",
+        "canonical": "#5b606b",
+        "tonalRamp": [
+          "#080b13",
+          "#222630",
+          "#40454f",
+          "#616671",
+          "#848995",
+          "#a8aeba",
+          "#cbd1de",
+          "#e9effc"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Electric Indigo",
+        "canonical": "#4b3bff",
+        "tonalRamp": [
+          "#060130",
+          "#1a0474",
+          "#3115bb",
+          "#4937fc",
+          "#6b78fc",
+          "#97a7ff",
+          "#c4cefd",
+          "#eaeefe"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Pressed Indigo",
+        "canonical": "#3b2ae8",
+        "tonalRamp": [
+          "#050032",
+          "#170a72",
+          "#2d0bc2",
+          "#433ef8",
+          "#677af9",
+          "#95a8fc",
+          "#c3cffc",
+          "#e9eeff"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Indigo Wash",
+        "canonical": "#eceaff",
+        "tonalRamp": [
+          "#0b0916",
+          "#262433",
+          "#454353",
+          "#656476",
+          "#88879a",
+          "#adabbf",
+          "#d0cee3",
+          "#eeecfe"
+        ]
+      },
+      "on-accent-2": {
+        "role": "primary",
+        "displayName": "Indigo Mist",
+        "canonical": "#e2dfff",
+        "tonalRamp": [
+          "#0b071c",
+          "#26233a",
+          "#44415b",
+          "#65627e",
+          "#8885a2",
+          "#adaac8",
+          "#d0cdec",
+          "#eeecfe"
+        ]
+      },
+      "wear-tint": {
+        "role": "semantic",
+        "displayName": "Wear Amber Tint",
+        "canonical": "oklch(98.7% 0.022 95.277)",
+        "tonalRamp": [
+          "#0e0b02",
+          "#2a261a",
+          "#494538",
+          "#6a6658",
+          "#8d897b",
+          "#b2ae9f",
+          "#d5d1c1",
+          "#f3efde"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      },
+      "wear-ink": {
+        "role": "semantic",
+        "displayName": "Wear Amber Ink",
+        "canonical": "oklch(47.3% 0.137 46.201)",
+        "tonalRamp": [
+          "#190500",
+          "#411903",
+          "#712e03",
+          "#a3470c",
+          "#cb6b3a",
+          "#f4905f",
+          "#fcc2a7",
+          "#feeae0"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      },
+      "wear-fill": {
+        "role": "semantic",
+        "displayName": "Wear Amber",
+        "canonical": "oklch(66.6% 0.179 58.318)",
+        "tonalRamp": [
+          "#160700",
+          "#3c1e03",
+          "#683602",
+          "#975209",
+          "#c6711e",
+          "#f9902b",
+          "#fcc49a",
+          "#feeadc"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      },
+      "parts-tint": {
+        "role": "semantic",
+        "displayName": "Parts Rose Tint",
+        "canonical": "oklch(96.9% 0.015 12.422)",
+        "tonalRamp": [
+          "#110909",
+          "#2d2424",
+          "#4d4243",
+          "#6e6364",
+          "#928687",
+          "#b7aaab",
+          "#dbcdce",
+          "#f8ebec"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      },
+      "parts-ink": {
+        "role": "semantic",
+        "displayName": "Parts Rose Ink",
+        "canonical": "oklch(45.5% 0.188 13.697)",
+        "tonalRamp": [
+          "#1e0005",
+          "#4d0216",
+          "#810d2d",
+          "#b81c45",
+          "#e34b67",
+          "#fc8492",
+          "#febdc2",
+          "#fee9ea"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      },
+      "parts-fill": {
+        "role": "semantic",
+        "displayName": "Parts Rose",
+        "canonical": "oklch(58.6% 0.253 17.585)",
+        "tonalRamp": [
+          "#1f0003",
+          "#4c0513",
+          "#840424",
+          "#bc1039",
+          "#f52952",
+          "#fa868d",
+          "#fdbebf",
+          "#ffe8e8"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger Rose",
+        "canonical": "oklch(51.4% 0.222 16.935)",
+        "tonalRamp": [
+          "#1e0004",
+          "#4d0213",
+          "#810e27",
+          "#bf0039",
+          "#f13457",
+          "#fc848c",
+          "#ffbebf",
+          "#fee9e9"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      },
+      "danger-hover": {
+        "role": "semantic",
+        "displayName": "Danger Rose Deep",
+        "canonical": "oklch(45.5% 0.188 13.697)",
+        "tonalRamp": [
+          "#1e0005",
+          "#4d0216",
+          "#810d2d",
+          "#b81c45",
+          "#e34b67",
+          "#fc8492",
+          "#febdc2",
+          "#fee9ea"
+        ],
+        "note": "Tailwind v4 amber/rose palette value as shipped (not a :root custom property)."
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The patrimony balance; same face at clamp(2.5rem,5.2vw,4rem) for the login hero."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Fair price on item cards (3rem on the login example)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel headings; 1.125rem in dialogs, 17px for item names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Explanations and empty states; 0.875rem slate for metadata."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Buttons, tabs, summaries, links and list amounts."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Ruler labels, captions; 600 in chips."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tab-lift",
+        "value": "0 1px 3px rgb(16 17 20 / 0.1)",
+        "purpose": "Active tab in the fog track."
+      },
+      {
+        "name": "pill-on-photo",
+        "value": "0 2px 8px rgb(16 17 20 / 0.15)",
+        "purpose": "Status pill over an item photo."
+      },
+      {
+        "name": "popover",
+        "value": "0 12px 32px -8px rgb(16 17 20 / 0.22), 0 2px 6px rgb(16 17 20 / 0.06)",
+        "purpose": "Menus, with a 1px hairline ring."
+      },
+      {
+        "name": "toast",
+        "value": "0 12px 32px -8px rgb(16 17 20 / 0.4)",
+        "purpose": "Ink status toast."
+      },
+      {
+        "name": "showcase",
+        "value": "0 32px 64px -24px rgb(16 17 20 / 0.45)",
+        "purpose": "Paper example card on the login accent aside."
+      },
+      {
+        "name": "dialog-backdrop",
+        "value": "rgb(16 17 20 / 0.5)",
+        "purpose": "Native <dialog> backdrop (background, not shadow)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "balance-roll",
+        "value": "900ms, ease-out-expo (1 - 2^(-10t))",
+        "purpose": "Patrimony figure rolls old to new; instant with reduced motion."
+      },
+      {
+        "name": "row-arrive",
+        "value": "1.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "New movement row settles from -6px and loses its indigo-wash tint; off with reduced motion."
+      },
+      {
+        "name": "press",
+        "value": "scale(1.02) hover / scale(0.98) active",
+        "purpose": "White on-accent primary button."
+      },
+      {
+        "name": "disclosure",
+        "value": "rotate(180deg)",
+        "purpose": "Chevron of open <details>."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single filled action on a paper screen, e.g. «Tasar un objeto» in Mi inventario.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\"/><circle cx=\"12\" cy=\"13\" r=\"3\"/></svg> Tasar un objeto</button>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-btn-primary{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:9999px;font:600 15px/1.4 inherit;cursor:pointer;transition:background-color .15s,transform .15s;height:48px;padding:0 24px;background:var(--accent);color:#fff} .ds-btn-primary:hover{background:var(--accent-hover)} .ds-btn-primary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "On-Accent Buttons",
+      "kind": "button",
+      "refersTo": "button-on-accent",
+      "description": "The action pair inside the balance field: white pill plus translucent companion.",
+      "html": "<div class=\"ds-field\"><button class=\"ds-btn-white\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\"/><circle cx=\"12\" cy=\"13\" r=\"3\"/></svg> Tasar un objeto</button><button class=\"ds-btn-glass\">Mi inventario →</button></div>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-field{display:flex;gap:12px;padding:24px;background:var(--accent);border-radius:20px} .ds-btn-white{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:9999px;font:600 15px/1.4 inherit;cursor:pointer;transition:background-color .15s,transform .15s;height:48px;padding:0 24px;background:#fff;color:var(--accent)} .ds-btn-white:hover{transform:scale(1.02)} .ds-btn-white:active{transform:scale(.98)} .ds-btn-glass{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:9999px;font:600 15px/1.4 inherit;cursor:pointer;transition:background-color .15s,transform .15s;height:48px;padding:0 24px;background:rgb(255 255 255/.12);color:#fff;box-shadow:inset 0 0 0 1px rgb(255 255 255/.35)} .ds-btn-glass:hover{background:rgb(255 255 255/.2)} .ds-field :focus-visible{outline:2px solid #fff;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary and Danger Buttons",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Fog pill for cancel/secondary; danger rose only to confirm destructive actions.",
+      "html": "<div class=\"ds-row\"><button class=\"ds-btn-sec\">Cancelar</button><button class=\"ds-btn-danger\">Restaurar</button></div>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-row{display:flex;gap:8px} .ds-btn-sec{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:9999px;font:600 15px/1.4 inherit;cursor:pointer;transition:background-color .15s,transform .15s;height:44px;padding:0 20px;background:var(--fog);color:var(--ink)} .ds-btn-sec:hover{background:var(--fog-2)} .ds-btn-danger{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:9999px;font:600 15px/1.4 inherit;cursor:pointer;transition:background-color .15s,transform .15s;height:44px;padding:0 20px;background:oklch(51.4% .222 16.935);color:#fff} .ds-btn-danger:hover{background:oklch(45.5% .188 13.697)} .ds-row :focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "Nav Tabs",
+      "kind": "nav",
+      "refersTo": "nav-tab-active",
+      "description": "Fog pill track; the active tab is a lifted paper pill with accent text.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-active\" href=\"#\" aria-current=\"page\">Inicio</a><a class=\"ds-tab\" href=\"#\">Mi inventario</a></nav>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-tabs{display:inline-flex;padding:4px;background:var(--fog);border-radius:9999px} .ds-tab{display:flex;align-items:center;height:40px;padding:0 20px;border-radius:9999px;font:600 15px/1 inherit;color:var(--ink-2);text-decoration:none;transition:color .15s} .ds-tab:hover{color:var(--ink)} .ds-tab.is-active{background:var(--paper);color:var(--accent);box-shadow:0 1px 3px rgb(16 17 20/.1)} .ds-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "Condition Chips",
+      "kind": "chip",
+      "refersTo": "chip-condition",
+      "description": "Five grade bars carry the level; only value-losing states turn amber or rose.",
+      "html": "<div class=\"ds-chips\"><span class=\"ds-chip\"><span class=\"ds-bars\"><i class=\"on\"></i><i class=\"on\"></i><i class=\"on\"></i><i class=\"on\"></i><i class=\"\"></i></span>Como nuevo</span><span class=\"ds-chip wear\"><span class=\"ds-bars\"><i class=\"on\"></i><i class=\"on\"></i><i class=\"\"></i><i class=\"\"></i><i class=\"\"></i></span>Desgaste visible</span><span class=\"ds-chip parts\"><span class=\"ds-bars\"><i class=\"on\"></i><i class=\"\"></i><i class=\"\"></i><i class=\"\"></i><i class=\"\"></i></span>Para piezas</span></div>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-chips{display:flex;gap:8px;flex-wrap:wrap} .ds-chip{display:inline-flex;align-items:center;gap:8px;padding:4px 12px 4px 10px;border-radius:9999px;font:600 13px/1.4 inherit;background:var(--fog-2);color:var(--ink);--fill:var(--ink)} .ds-chip.wear{background:oklch(98.7% .022 95.277);color:oklch(47.3% .137 46.201);--fill:oklch(66.6% .179 58.318)} .ds-chip.parts{background:oklch(96.9% .015 12.422);color:oklch(45.5% .188 13.697);--fill:oklch(58.6% .253 17.585)} .ds-bars{display:flex;gap:2px} .ds-bars i{width:4px;height:10px;border-radius:9999px;background:currentColor;opacity:.2} .ds-bars i.on{background:var(--fill);opacity:1}"
+    },
+    {
+      "name": "Balance Panel",
+      "kind": "card",
+      "refersTo": "balance-panel",
+      "description": "The account card: accent field, giant tabular balance, range ruler on accent.",
+      "html": "<section class=\"ds-balance\"><p class=\"ds-b-label\">Tu patrimonio</p><p class=\"ds-b-total\">754 €</p><p class=\"ds-b-sub\">Precio justo de tus 3 objetos, comparado con Wallapop, Vinted, Milanuncios y eBay.</p><div class=\"ds-ruler on\"><span class=\"fill\" style=\"width:42%\"></span><span class=\"mark\" style=\"left:42%\"></span></div><div class=\"ds-ends\"><div><small>Venta rápida</small><b>618 €</b></div><div><small>Máximo</small><b>935 €</b></div></div></section>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-balance{padding:32px;border-radius:20px;background:var(--accent);color:#fff} .ds-b-label{margin:0;font-weight:500;color:var(--on-accent-2)} .ds-b-total{margin:8px 0 0;font:600 clamp(3.5rem,8vw,6rem)/1 'Funnel Display',system-ui,sans-serif;letter-spacing:-.04em;font-variant-numeric:tabular-nums} .ds-b-sub{margin:16px 0 32px;color:var(--on-accent-2)} .ds-ruler{position:relative;height:6px;border-radius:9999px;background:rgb(255 255 255/.25)} .ds-ruler .fill{position:absolute;inset:0 auto 0 0;border-radius:9999px;background:rgb(255 255 255/.55)} .ds-ruler .mark{position:absolute;top:50%;width:3px;height:14px;border-radius:9999px;background:#fff;transform:translate(-50%,-50%)} .ds-ends{display:flex;justify-content:space-between;margin-top:12px} .ds-ends small{display:block;font-size:13px;color:var(--on-accent-2)} .ds-ends div:last-child{text-align:right} .ds-ends b{font-size:15px;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Movement Row",
+      "kind": "custom",
+      "refersTo": "movement-row",
+      "description": "A valuation as a bank movement: icon disc, name and meta, right-aligned amount over range.",
+      "html": "<div class=\"ds-panel\"><p class=\"ds-day\">22 oct</p><a class=\"ds-move is-new\" href=\"#\"><span class=\"ds-disc\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><line x1=\"6\" x2=\"10\" y1=\"12\" y2=\"12\"/><line x1=\"8\" x2=\"8\" y1=\"10\" y2=\"14\"/><line x1=\"15\" x2=\"15.01\" y1=\"13\" y2=\"13\"/><line x1=\"18\" x2=\"18.01\" y1=\"11\" y2=\"11\"/><rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\"/></svg></span><span class=\"ds-mid\"><b>Nintendo Switch OLED 64GB Blanca</b><small>15:36 · Como nuevo · Publicado</small></span><span class=\"ds-amt\"><b>+245 €</b><small>201 €–304 €</small></span></a></div>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-panel{padding:16px;border-radius:20px;background:var(--fog)} .ds-day{margin:0;padding:0 12px 4px;font-size:14px;font-weight:500;color:var(--ink-2)} .ds-move{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;color:var(--ink);text-decoration:none;transition:background-color .15s} .ds-move:hover{background:var(--paper)} .ds-move:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-disc{display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:9999px;background:var(--paper)} .ds-mid{flex:1;min-width:0} .ds-mid b{display:block;font-weight:600} .ds-mid small,.ds-amt small{display:block;font-size:14px;color:var(--ink-2)} .ds-amt{text-align:right;font-variant-numeric:tabular-nums} .ds-amt b{font-weight:600} .ds-move.is-new .ds-amt b{color:var(--accent)} .ds-move.is-new{animation:ds-arrive 1.4s cubic-bezier(.16,1,.3,1)} @keyframes ds-arrive{from{transform:translateY(-6px);background-color:var(--accent-soft)}} @media (prefers-reduced-motion:reduce){.ds-move.is-new{animation:none}}"
+    },
+    {
+      "name": "Item Price Block",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Fair price figure with the range ruler, as on each inventory card.",
+      "html": "<article class=\"ds-card\"><p class=\"ds-lbl\">Precio justo</p><p class=\"ds-fig\">245 €</p><div class=\"ds-ruler\"><span class=\"fill\" style=\"width:44%\"></span><span class=\"mark\" style=\"left:44%\"></span></div><div class=\"ds-ends\"><div><small>Venta rápida</small><b>201 €</b></div><div><small>Máximo</small><b>304 €</b></div></div></article>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-card{padding:20px;border-radius:20px;background:var(--fog);max-width:320px} .ds-lbl{margin:0;font-size:13px;color:var(--ink-2)} .ds-fig{margin:0 0 12px;font:600 2rem/1.25 'Funnel Display',system-ui,sans-serif;letter-spacing:-.03em;font-variant-numeric:tabular-nums} .ds-ruler{position:relative;height:6px;border-radius:9999px;background:var(--fog-2)} .ds-ruler .fill{position:absolute;inset:0 auto 0 0;border-radius:9999px;background:rgb(75 59 255/.3)} .ds-ruler .mark{position:absolute;top:50%;width:3px;height:14px;border-radius:9999px;background:var(--accent);transform:translate(-50%,-50%)} .ds-ends{display:flex;justify-content:space-between;margin-top:12px} .ds-ends small{display:block;font-size:13px;color:var(--ink-2)} .ds-ends div:last-child{text-align:right} .ds-ends b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Paper field with hairline border; border turns accent on focus.",
+      "html": "<label class=\"ds-field-l\">Nombre<input class=\"ds-input\" value=\"iPhone 13 128GB Medianoche\"></label>",
+      "css": ":host{--paper:#fff;--fog:#eef0f3;--fog-2:#e2e5ea;--line:#d7dbe1;--ink:#101114;--ink-2:#5b606b;--accent:#4b3bff;--accent-hover:#3b2ae8;--accent-soft:#eceaff;--on-accent-2:#e2dfff;font-family:'Funnel Sans',system-ui,sans-serif;color:var(--ink)} .ds-field-l{display:block;font-size:14px;font-weight:600;max-width:320px} .ds-input{display:block;width:100%;margin-top:6px;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font:400 15px inherit;transition:border-color .15s;box-sizing:border-box} .ds-input:focus{border-color:var(--accent)} .ds-input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Object Account",
+    "overview": "**Creative North Star: \"The Object Account\"**\n\nSmartLoot reads like a mobile banking app whose currency is the stuff in your house. Total patrimony is the balance; every valuation is a movement that comes in. The world is white paper with fog-grey surfaces, near-black ink and one electric indigo. The balance block is the \"card\" of the account: a solid accent field with white type. Outside it, the accent only marks the primary action, the active tab and money arriving.\n\nDensity is calm and legible from the back of a lit projection room: big tabular figures, 15px semibold controls, generous 20px panel corners, no borders where a tonal step will do. Euro amounts are always tabular and right-aligned in lists. Every price is shown as a range (venta rápida to máximo) with the fair price marked where it really falls, never as a lone number.\n\nThe system is light mode only, on purpose: the demo is projected in a lit room. Do not add a dark variant without a deliberate decision.",
+    "keyCharacteristics": [
+      "One accent (electric indigo) used as a field once per screen and as a signal elsewhere.",
+      "Tonal layering (paper / fog / fog-2) instead of borders and shadows.",
+      "Funnel Display for money and page titles, Funnel Sans for everything else.",
+      "Pills for every control and status; 20px outer, 12px inner radii.",
+      "Prices as rulers: a horquilla with a marker, not three equal cards."
+    ],
+    "rules": [
+      {
+        "name": "The One Field Rule",
+        "body": "The accent appears as a filled field once per screen (the balance block on Inicio, the example aside on login). Everywhere else it is a signal: one primary button, the active tab, an arriving amount.",
+        "section": "colors"
+      },
+      {
+        "name": "The Warm Means Value Lost Rule",
+        "body": "Amber and rose are reserved for condition states that subtract value and for destructive actions. Positive and neutral conditions stay ink on fog; the grade bars carry the level, not the color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Money Rule",
+        "body": "Every euro amount uses tabular numerals; in lists it is right-aligned with its range underneath in slate.",
+        "section": "typography"
+      },
+      {
+        "name": "The Display Is For Money Rule",
+        "body": "Funnel Display is used for amounts, page titles, the login hero and the wordmark; never for body copy, buttons or labels.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tone Before Shadow Rule",
+        "body": "A panel is separated by fog on paper (or paper on fog), never by a shadow or a border. Shadows are only for floating layers.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the accent (#4b3bff) to one filled field per screen plus signals: primary button, active tab, arriving amount, focus.",
+      "Do separate surfaces with tone: fog (#eef0f3) panels on paper, paper discs and buttons inside fog.",
+      "Do show every price as a horquilla: venta rápida to máximo with the fair price marked on a range ruler.",
+      "Do set all euro amounts in tabular figures and right-align them in lists.",
+      "Do use pills for controls and tags, 20px for outer containers and 12px for inner surfaces.",
+      "Do label placeholder content honestly (\"Foto de ejemplo\", \"Ejemplo\").",
+      "Do honor reduced motion for the balance roll and row arrival."
+    ],
+    "donts": [
+      "Don't introduce a second accent or a gradient; indigo is the only brand color.",
+      "Don't use amber or rose for anything except value-losing conditions and destructive actions.",
+      "Don't build a bento of equal stat tiles or a wall of photo cards on Inicio; photos live in Mi inventario.",
+      "Don't add borders or shadows to panels at rest; shadows are for floating layers only.",
+      "Don't add a dark theme; the product is light mode only for the projection room.",
+      "Don't set body copy, buttons or labels in Funnel Display."
+    ]
+  }
+}

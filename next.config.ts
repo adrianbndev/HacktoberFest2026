@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  devIndicators: false, // el jurado no debe ver el distintivo de desarrollo de Next en la demo
   partialPrefetching: true,
   turbopack: {
     rules: {

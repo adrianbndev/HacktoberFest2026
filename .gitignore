@@ -80,3 +80,9 @@ firebase-service-account.json
 # OS / editors
 .idea/
 .vscode/
+
+# Impeccable: capturas, caché del detector y registros locales (no son contexto del proyecto)
+.impeccable/review/
+.impeccable/hook.cache.json
+.impeccable/questions/
+.impeccable/live/

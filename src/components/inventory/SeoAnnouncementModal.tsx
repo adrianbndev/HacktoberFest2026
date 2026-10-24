@@ -1,15 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Check, ClipboardCopy, X } from "lucide-react";
 
 interface SeoAnnouncementModalProps {
+  itemName: string;
   seoTitle: string;
   seoDescription: string;
 }
 
-export function SeoAnnouncementModal({ seoTitle, seoDescription }: SeoAnnouncementModalProps) {
+export function SeoAnnouncementModal({ itemName, seoTitle, seoDescription }: SeoAnnouncementModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   const [copy, setCopy] = useState<"idle" | "done" | "failed">("idle");
 
   async function copyAnnouncement() {
@@ -29,38 +31,44 @@ export function SeoAnnouncementModal({ seoTitle, seoDescription }: SeoAnnounceme
           setCopy("idle");
           dialogRef.current?.showModal();
         }}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 py-2.5 text-sm font-medium transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-paper text-[15px] font-semibold transition-colors hover:bg-fog-2"
       >
-        <ClipboardCopy className="size-4" aria-hidden /> Copiar anuncio SEO para Wallapop
+        <ClipboardCopy className="size-4" aria-hidden /> Copiar anuncio
+        <span className="sr-only"> de {itemName}</span>
       </button>
 
       <dialog
         ref={dialogRef}
-        aria-labelledby="seo-title"
-        className="m-auto w-[min(92vw,32rem)] rounded-3xl bg-white p-6 text-zinc-900 backdrop:bg-black/50 dark:bg-zinc-900 dark:text-zinc-100"
+        aria-labelledby={titleId}
+        className="m-auto w-[min(92vw,34rem)] rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7"
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 id="seo-title" className="text-lg font-semibold">Anuncio listo para publicar</h2>
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 id={titleId} className="text-lg font-semibold">Anuncio listo para publicar</h2>
+            <p className="text-sm text-ink-2">{itemName}</p>
+          </div>
           <form method="dialog">
-            <button aria-label="Cerrar" className="rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <button aria-label="Cerrar" className="grid size-9 place-items-center rounded-full transition-colors hover:bg-fog">
               <X className="size-5" aria-hidden />
             </button>
           </form>
         </div>
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Título</p>
-        <p className="mb-4 mt-1 font-semibold">{seoTitle}</p>
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Descripción</p>
-        <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{seoDescription}</p>
+        <div className="rounded-inner bg-fog p-4">
+          <p className="text-[13px] text-ink-2">Título</p>
+          <p className="mt-0.5 font-semibold">{seoTitle}</p>
+          <p className="mt-4 text-[13px] text-ink-2">Descripción</p>
+          <p className="mt-0.5 whitespace-pre-line text-[15px] leading-relaxed">{seoDescription}</p>
+        </div>
         <button
           type="button"
           onClick={copyAnnouncement}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900"
+          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover"
         >
           {copy === "done" ? <Check className="size-4" aria-hidden /> : <ClipboardCopy className="size-4" aria-hidden />}
-          {copy === "done" ? "¡Copiado!" : "Copiar título y descripción"}
+          {copy === "done" ? "Copiado: pégalo en Wallapop" : "Copiar título y descripción"}
         </button>
         {copy === "failed" && (
-          <p role="alert" className="mt-2 text-center text-xs text-rose-600">
+          <p role="alert" className="mt-2 text-center text-sm text-rose-700">
             El navegador no permite copiar aquí: selecciona el texto y cópialo a mano.
           </p>
         )}
