@@ -76,12 +76,29 @@ function parseRoadmapProgress() {
   return levelStats;
 }
 
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  '.next',
+  '.git',
+  '.venv',
+  'venv',
+  'env',
+  '__pycache__',
+  '.mypy_cache',
+  '.pytest_cache',
+  '.ruff_cache',
+  'build',
+  'dist',
+  'artifacts',
+  'data',
+]);
+
 function walkFiles(dir, extFilter = ['.ts', '.tsx']) {
   if (!fs.existsSync(dir)) return [];
   const results = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory() && !['node_modules', '.next', '.git'].includes(entry.name)) {
+    if (entry.isDirectory() && !IGNORED_DIRS.has(entry.name)) {
       results.push(...walkFiles(full, extFilter));
     } else if (entry.isFile() && extFilter.includes(path.extname(entry.name))) {
       results.push(full);
