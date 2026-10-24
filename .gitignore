@@ -48,3 +48,22 @@ __pycache__/
 
 # datos de la demo (se regeneran desde la semilla con POST /api/store/reset)
 /data/
+# Scratchpad de tarea actual (local)
+user-taks-prompt.md
+
+# Entornos y variables secretas
+.env
+.env.local
+.env.*.local
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Next.js / Node
+node_modules/
+.next/
+out/

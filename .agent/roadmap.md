@@ -36,13 +36,13 @@
 - [ ] Recepción instantánea de la foto en la pantalla del PC y disparo automático del análisis sin intervención manual.
 
 ### 1.3 Reconocimiento por Visión IA + Salud/Estado + SEO (`Track B - Adri`)
-- [ ] Endpoint `/api/vision/analyze` que recibe la imagen capturada.
-- [ ] Identificación precisa de: **Nombre exacto, Categoría, Marca y Modelo**.
-- [ ] Diagnóstico de **Estado / Salud del Producto**:
+- [x] Endpoint `/api/vision/analyze` que recibe la imagen capturada.
+- [x] Identificación precisa de: **Nombre exacto, Categoría, Marca y Modelo**.
+- [x] Diagnóstico de **Estado / Salud del Producto**:
   - `conditionScore` numérico de $0$ a $100\%$.
   - `conditionLabel` categorizado (`Nuevo`, `Como nuevo`, `Buen estado`, `Desgaste visible`, `Para piezas`).
   - Justificación visual breve del estado detectado.
-- [ ] Generación automática de **Título SEO** y **Descripción persuasiva** lista para copiar y publicar en Wallapop.
+- [x] Generación automática de **Título SEO** y **Descripción persuasiva** lista para copiar y publicar en Wallapop.
 
 ### 1.4 Motor MCP "Human-Like" (Anti-Bot) y las 3 Medidas de Precio (`Track C - Matías`)
 - [ ] Implementar motor MCP Stealth (`backend/app/mcp/stealth_engine.py`, `backend/mcp_server.py` y `/api/market/valuate`) siguiendo [`.agent/mcp/stealth-market-mcp.md`](mcp/stealth-market-mcp.md).
