@@ -2,7 +2,7 @@
 
 * **Nivel SDD:** 🟢 Nivel 1.4
 * **Responsable:** **Track C (Matías)**
-* **Estado Actual:** `🚧 IN_PROGRESS` (Fase 1 — fast valuation core)
+* **Estado Actual:** `🚧 IN_PROGRESS` (Fases 1–2; el gate del Nivel 1 sigue abierto)
 * **SLA de Latencia:** $\le 2800\text{ ms}$ (incluyendo *jitter* humano de $650\text{ ms} - 1200\text{ ms}$; $200-600\text{ ms}$ en `/valuate`)
 
 ---
@@ -47,7 +47,17 @@
 | `backend/app/mcp/connectors.py` | Conectores asíncronos `httpx` + `BeautifulSoup4` por plataforma | $\le 160$ |
 | `backend/app/mcp/stealth_engine.py` | Orquestador paralelo multi-web con `asyncio.gather` y fallback automático | $\le 150$ |
 | `backend/mcp_server.py` | Servidor MCP en Python (`FastMCP`) exponiendo `search_secondhand_market` y `simulate_market_tick` | $\le 140$ |
-| `backend/app/routers/market.py` | Endpoint FastAPI `POST /api/market/valuate` (y `/refresh` en Nivel 2) | $\le 70$ |
+| `backend/app/mcp/deep_analysis.py` | Orquestador del análisis profundo: eventos, cuota por plataforma, confianza y caché | $\le 230$ |
+| `backend/app/mcp/analysis_query.py` | Limpieza de marca/modelo genéricos y deep links (solo `/analyze`) | $\le 90$ |
+| `backend/app/mcp/deep_recommend.py` | Ventana LLM opcional con clamp y omisión segura | $\le 90$ |
+| `backend/app/models/market_health.py` | `browser`, `cache` y `analysisEnabled` del health | $\le 60$ |
+| `backend/app/mcp/deep_sources.py` | Ejecución por fuente con aislamiento de bloqueos/timeouts | $\le 130$ |
+| `backend/app/mcp/deep_support.py` | Selección de comparables, avisos y clamp (puro) | $\le 130$ |
+| `backend/app/mcp/deep_cache.py` | Serialización y persistencia del resultado en SQLite | $\le 60$ |
+| `backend/app/mcp/browser/session.py` | `BrowserSessionManager`: MCP lazy, lock único, una pestaña, reinicio | $\le 230$ |
+| `backend/app/mcp/browser/sources/*.py` | Extractores eBay/Wallapop/Milanuncios + parsers de fixtures | $\le 180$ |
+| `backend/app/mcp/cache.py` | Caché SQLite TTL 15 min (solo stdlib) | $\le 120$ |
+| `backend/app/routers/market_analysis.py` | `POST /api/market/analyze` y `/analyze/stream` (SSE) | $\le 80$ |
 
 ---
 
@@ -58,7 +68,12 @@
 - [x] Jitter humano configurable (`human_jitter`, 650-1200 ms por defecto según `stealth-market-mcp.md` §2.1; `max_sec=0` instantáneo para tests unitarios).
 - [x] Retorno de `comparableListings` con muestras de `wallapop`, `milanuncios` y `ebay` (Vinted diferido a Fase 2, ver ADR-002).
 - [x] Endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$ (SLA interna $< 2.8\text{ s}$ con conectores mockeados).
-- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): fuera del alcance de la Fase 1 (ver ADR-002).
+- [x] `POST /api/market/analyze` con datos reales de navegador, estados por fuente, IQR único, cuota por plataforma (máx. 4) y confianza determinista.
+- [x] `POST /api/market/analyze/stream` (SSE): orden `analysis_started → source_started → source_result → valuation → recommendation? → done`, heartbeat cada 15 s y cancelación al desconectar.
+- [x] Caché SQLite TTL 900 s (`MARKET_CACHE_PATH`), clave query + condición + fuentes, sin `description` ni PII; `cached=true` solo en hit real.
+- [x] Gestor de navegador MCP compartido: `chrome-devtools-mcp@1.10.1 --browserUrl $CDP_URL`, lock único, una pestaña, timeout, reinicio y cierre.
+- [x] Fuentes eBay, Wallapop y Milanuncios con detección de captcha/anti-bot (`blocked`); Vinted diferido.
+- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): fuera del alcance de la Fase 2 (ver ADR-003).
 
 ---
 
@@ -89,6 +104,32 @@
 ### Diferido (no bloqueante)
 
 * Conector Vinted.
-* `backend/mcp_server.py` (FastMCP) y `POST /api/market/analyze` + SSE + caché SQLite + motor de navegador completo (Fase 2).
+* `backend/mcp_server.py` (FastMCP CLI), Vinted y `/api/market/refresh` (Nivel 2). La Fase 2 (`/analyze`, SSE, caché y motor de navegador) ya está implementada, pero el **gate del Nivel 1 permanece abierto** hasta la verificación end-to-end con la UI.
 * Espejo de campos opcionales en `src/types/sdd.ts` (MOD-00 / Track A).
 * Validación con una API key real de DeepSeek (no disponible en este entorno).
+
+
+## 6. Estado de implementación — Fase 2 (Browser Deep Analysis)
+
+* **Estado:** `🚧 IN_PROGRESS` — motor, API, SSE y caché implementados y cubiertos por tests herméticos; el gate del Nivel 1 sigue abierto (no se marca el Nivel 1 como completo).
+
+### Implementado
+
+* `backend/app/mcp/browser/session.py` + `mcp_client.py`: cliente stdio MCP tipado, gestor perezoso con lock único, una pestaña, health probe, timeouts y reinicio ante caída. `scripts/mcp_client.py` es ahora un shim; `app/` no importa `scripts/`.
+* `backend/app/mcp/browser/sources/`: eBay (BIN/usado, 60 por página, página 2 si <20, limpieza del sufijo de accesibilidad), Wallapop (scroll y precios `1.234 €`/`1.234,56 €`) y Milanuncios (detección PerimeterX). Parsers probados con fixtures HTML guardadas.
+* `backend/app/mcp/deep_analysis.py` + `deep_sources.py` + `deep_support.py`: estados por fuente, dedupe/relevancia/filtros, **IQR único**, cuota 4 por fuente y relleno a 12, `platforms` coherentes, confianza y recomendación opcional (sin plantilla).
+* `backend/app/mcp/cache.py` + `deep_cache.py`: SQLite WAL, TTL 15 min, clave sin PII, `asyncio.to_thread`; nunca falla la petición por un error de caché.
+* `backend/app/routers/market_analysis.py` + `mcp/sse.py`: `/analyze`, `/analyze/stream`, headers SSE, heartbeat y cancelación; `/api/market/health` amplía `browser`, `cache` y `analysisEnabled`.
+* `docker-compose.yml`, `.env.example`, `backend/Dockerfile`: volumen `market-cache`, variables `MARKET_*` y dependencia opcional `market-browser` (`service_healthy`, `required: false`).
+* `src/types/market-analysis.ts` + `src/lib/market-analysis.ts`: contrato aditivo y cliente POST+SSE; `src/types/sdd.ts` intacto.
+* Documentación: [`docs/market-analysis.md`](../../docs/market-analysis.md), [`docs/backlog.md`](../../docs/backlog.md), [ADR-003](../decisions/003-browser-deep-analysis.md).
+
+### Evidencia
+
+* `pytest -q`: **301 tests** verdes y herméticos (sin CDP ni red); `ruff check app tests`, `mypy app`, `npm run typecheck` y `docker compose config` limpios.
+* Tests de contrato para `/analyze` (200/503/422), SSE (orden de eventos, headers, heartbeat, cache hit rápido y cancelación), caché (hit/miss/expiración/aislamiento) y fuentes (fixtures + bloqueo).
+* Fingerprint y smoke en vivo se registran en `docs/market-analysis.md`; las cifras dependen de la red del evento y nunca se sustituyen por datos sintéticos.
+
+### Diferido (no bloqueante)
+
+* Vinted, `backend/mcp_server.py` (FastMCP CLI), `/api/market/refresh` (Nivel 2), cableado de la UI (Track A), SSE con varias pestañas y CI multi-arch.
