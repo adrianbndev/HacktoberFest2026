@@ -15,6 +15,7 @@ from app.vision.catalog_data import (
     CatalogItemTemplate,
     synthesize_template_from_hint,
 )
+from app.vision.dynamic_fields import build_dynamic_fields
 from app.vision.protocol import (
     ImageVisualMetrics,
     build_seo_description,
@@ -119,6 +120,13 @@ class DeterministicVisionProvider:
                 condition_score=score,
                 condition_label=label,
                 condition_reasoning=reasoning,
+            ),
+            dynamic_fields=build_dynamic_fields(
+                category=template.category,
+                name=product_name,
+                brand=template.brand,
+                model=template.model,
+                color_name_es=metrics.color_name_es,
             ),
             source="deterministic_fallback",
             model_used="pillow-deterministic-v1",
