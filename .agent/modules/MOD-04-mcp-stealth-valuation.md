@@ -55,6 +55,6 @@
 
 - [x] Tests unitarios sobre `pricing_math.py` (equivalente Python de `pricing-math.ts`) verificando que para cualquier combinación de precios y `conditionScore` $\in [0, 100]$ se cumple $0 < P_{\min} < P_{\text{avg}} < P_{\max}$ (`backend/tests/test_pricing_math.py`, property-based con Hypothesis).
 - [x] Verificación de que un `conditionScore = 95` ("Nuevo") devuelve un $P_{\text{avg}}$ superior a un `conditionScore = 50` ("Desgaste visible") para el mismo artículo (test de monotonicidad).
-- [ ] Jitter humano configurable (activo por defecto entre $800\text{ ms}$ y $2200\text{ ms}$, y modo instantáneo para tests unitarios).
+- [x] Jitter humano configurable (`human_jitter`, 650-1200 ms por defecto según `stealth-market-mcp.md` §2.1; `max_sec=0` instantáneo para tests unitarios).
 - [ ] Retorno de `comparableListings` con muestras de `wallapop`, `vinted`, `milanuncios` y `ebay`.
 - [ ] Servidor MCP operable por CLI y endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$.
