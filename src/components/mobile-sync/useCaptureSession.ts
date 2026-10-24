@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { requestJson } from "@/lib/api";
-import { MarketAnalysisError, streamMarketAnalysis } from "@/lib/market-analysis";
+import { MarketAnalysisError } from "@/lib/market-analysis";
 import { compressImageFileToDataUrl } from "@/lib/mobile-sync/image-compressor";
 import { formatDynamicFieldsSummary } from "@/lib/vision/category-fields";
-import { buildInventoryItem, upsertSourceResult } from "./capture-item";
+import {
+  buildPendingInventoryItem,
+  createInventoryItemId,
+  runMarketValuationWithFallback,
+  upsertSourceResult,
+} from "./capture-item";
 import { useCaptureSessionFeed } from "./useCaptureSessionFeed";
-import type {
-  MarketAnalysisRecommendation,
-  MarketSourceResult,
-} from "@/types/market-analysis";
+import type { MarketAnalysisRecommendation, MarketSourceResult } from "@/types/market-analysis";
 import type {
   CaptureSessionCreated,
   CaptureSessionStatus,
@@ -20,7 +22,6 @@ import type {
   VisionAnalysisResult,
   VisionAnalyzeRequest,
 } from "@/types/sdd";
-import { visionToMarketAnalysis } from "./vision-to-market";
 
 const PC_BUSY_EVENT = "lifeos:pc-busy";
 const REVIEW_BUSY_REASON =
@@ -33,6 +34,9 @@ export type CaptureStep = "waiting" | "connected" | "vision" | "review" | "marke
 export interface UseCaptureSessionOptions {
   onOpenModal?: () => void;
   externalBusyReason?: string | null;
+  onValuationStarted?: (pendingItem: InventoryItem) => void;
+  onValuationProgress?: (itemId: string, sources: MarketSourceResult[]) => void;
+  onValuationFailed?: (itemId: string) => void;
 }
 
 export function setLaptopBusyReason(reason: string | null) {
@@ -129,7 +133,7 @@ export function useCaptureSession(
 
   async function onPolledPhoto(sessionId: string, photoDataUrl: string) {
     if (activeExternalBusyReason || step === "vision" || step === "review" || step === "market") return;
-    if (lastPhotoRef.current === photoDataUrl) return; // SSE y polling pueden entregar la misma foto
+    if (lastPhotoRef.current === photoDataUrl) return;
     lastPhotoRef.current = photoDataUrl;
     options?.onOpenModal?.();
     await analyzePhotoWithModel(sessionId, photoDataUrl);
@@ -147,50 +151,58 @@ export function useCaptureSession(
   async function confirmVisionAndValuate(adjustedVision: VisionAnalysisResult, extraNotes = "") {
     if (!session || !photo) return;
     const runId = ++runIdRef.current;
-    abortMarketAnalysis();
+    const capturedPhoto = photo;
+    const sessionId = session.sessionId;
+    const itemId = createInventoryItemId();
+    const dynamicSummary = formatDynamicFieldsSummary(adjustedVision.dynamicFields ?? [], extraNotes);
+    const pendingItem = buildPendingInventoryItem(userId, capturedPhoto, adjustedVision, dynamicSummary, itemId);
     const controller = new AbortController();
     marketAbortRef.current = controller;
     setVisionDraft(adjustedVision);
     resetMarketState();
     setStep("market");
-    await putSessionState(session.sessionId, "mobile_connected", MARKET_BUSY_REASON);
+    options?.onValuationStarted?.(pendingItem);
+    await putSessionState(sessionId, "mobile_connected", MARKET_BUSY_REASON);
+
+    let liveSources: MarketSourceResult[] = [];
     try {
-      const dynamicSummary = formatDynamicFieldsSummary(adjustedVision.dynamicFields ?? [], extraNotes);
-      const analysis = await streamMarketAnalysis(visionToMarketAnalysis(adjustedVision), {
-        signal: controller.signal,
+      const newItem = await runMarketValuationWithFallback({
+        userId, photoUrl: capturedPhoto, vision: adjustedVision, details: dynamicSummary, itemId, signal: controller.signal,
         onEvent: (event) => {
-          if (runIdRef.current !== runId) return;
           if (event.type === "source_result") {
-            setMarketSources((prev) => upsertSourceResult(prev, event.data));
-          } else if (event.type === "recommendation") {
+            liveSources = upsertSourceResult(liveSources, event.data);
+            options?.onValuationProgress?.(itemId, liveSources);
+            if (runIdRef.current === runId) setMarketSources(liveSources);
+          } else if (event.type === "recommendation" && runIdRef.current === runId) {
             setMarketRecommendation(event.data);
           } else if (event.type === "done") {
-            setMarketSources(event.data.sources);
-            setMarketRecommendation(event.data.recommendation ?? null);
-            setMarketWarnings(event.data.warnings);
+            liveSources = event.data.sources;
+            options?.onValuationProgress?.(itemId, liveSources);
+            if (runIdRef.current === runId) {
+              setMarketSources(event.data.sources);
+              setMarketRecommendation(event.data.recommendation ?? null);
+              setMarketWarnings(event.data.warnings);
+            }
           }
         },
       });
-      if (controller.signal.aborted || runIdRef.current !== runId) return;
-      setMarketSources(analysis.sources);
-      setMarketRecommendation(analysis.recommendation ?? null);
-      setMarketWarnings(analysis.warnings);
-      const newItem = buildInventoryItem(userId, photo, adjustedVision, analysis, dynamicSummary);
+      if (controller.signal.aborted) return;
       await requestJson("/api/inventory", "POST", newItem);
-      if (runIdRef.current !== runId) return;
-      await putSessionState(session.sessionId, "completed", activeExternalBusyReason ?? null);
-      setItem(newItem);
-      setStep("done");
+      await putSessionState(sessionId, "completed", activeExternalBusyReason ?? null);
       onItemCreated(newItem);
+      if (runIdRef.current === runId) {
+        setItem(newItem);
+        setStep("done");
+      }
     } catch (error) {
-      if (controller.signal.aborted || runIdRef.current !== runId) return;
-      setMarketError(
-        error instanceof MarketAnalysisError
-          ? error.message
-          : "No hemos podido guardar el producto con los precios del análisis.",
-      );
-      setStep("error");
-      await putSessionState(session.sessionId, "error", null);
+      if (controller.signal.aborted) return;
+      options?.onValuationFailed?.(itemId);
+      if (runIdRef.current === runId) {
+        const msg = error instanceof MarketAnalysisError ? error.message : "No hemos podido guardar el producto con los precios del análisis.";
+        setMarketError(msg);
+        setStep("error");
+      }
+      await putSessionState(sessionId, "error", null);
     } finally {
       if (marketAbortRef.current === controller) marketAbortRef.current = null;
     }
@@ -206,31 +218,23 @@ export function useCaptureSession(
     }
   }
 
-  function clearCurrentCapture(nextStatus: CaptureSessionStatus) {
+  function clearCurrentCapture(nextStatus: CaptureSessionStatus, keepMarketTask = false) {
     runIdRef.current += 1;
     lastPhotoRef.current = null;
-    abortMarketAnalysis();
+    if (keepMarketTask) marketAbortRef.current = null;
+    else abortMarketAnalysis();
     resetMarketState();
     setPhoto(null);
     setVisionDraft(null);
     setItem(null);
     setStep((prev) => (prev === "waiting" ? "waiting" : "connected"));
-    if (session) void putSessionState(session.sessionId, nextStatus, activeExternalBusyReason ?? null);
+    if (session && !keepMarketTask) void putSessionState(session.sessionId, nextStatus, activeExternalBusyReason ?? null);
   }
 
   return {
-    session,
-    step,
-    photo,
-    visionDraft,
-    item,
-    marketSources,
-    marketRecommendation,
-    marketWarnings,
-    marketError,
-    simulateCapture,
-    confirmVisionAndValuate,
-    resetToCapture: () => clearCurrentCapture("mobile_connected"),
-    handleModalClose: () => clearCurrentCapture(step === "done" ? "completed" : "mobile_connected"),
+    session, step, photo, visionDraft, item, marketSources, marketRecommendation, marketWarnings, marketError,
+    simulateCapture, confirmVisionAndValuate,
+    resetToCapture: () => clearCurrentCapture("mobile_connected", false),
+    handleModalClose: () => clearCurrentCapture(step === "done" ? "completed" : "mobile_connected", step === "market"),
   };
 }

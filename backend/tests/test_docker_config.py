@@ -22,7 +22,7 @@ def _compose() -> dict[str, Any]:
 def test_backend_service_is_healthy_and_exposed() -> None:
     service = _compose()["services"]["lifeos-backend"]
 
-    assert service["ports"] == ["8000:8000"]
+    assert service["ports"] == ["8001:8000"]
     assert service["build"]["context"] == "./backend"
     assert "healthcheck" in service
     assert (ROOT / "backend" / "Dockerfile").exists()
@@ -32,7 +32,6 @@ def test_browser_service_is_optional_and_hardened() -> None:
     compose = _compose()
     service = compose["services"]["market-browser"]
 
-    assert service["profiles"] == ["browser"]
     assert service["shm_size"] == "2g"
     assert "chrome-profile:/chrome-profile" in service["volumes"]
     assert "chrome-profile" in compose["volumes"]

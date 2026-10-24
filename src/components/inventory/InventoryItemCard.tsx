@@ -1,5 +1,8 @@
+"use client";
+
 import { createElement } from "react";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink, Loader2 } from "lucide-react";
+import { useDashboard } from "@/components/dashboard/DashboardShell";
 import type { InventoryItem } from "@/types/sdd";
 import { PLATFORM_LABEL, STATUS_LABEL, categoryIcon, formatEur, formatPlatforms, formatShortDay, platformReferences } from "./format";
 import { DEMO_PHOTO_CREDITS } from "./demo-photo-credits";
@@ -7,8 +10,12 @@ import { ConditionChip } from "./HealthScoreBadge";
 import { ItemActions } from "./ItemActions";
 import { PriceTrioDisplay } from "./PriceTrioDisplay";
 import { SeoAnnouncementModal } from "./SeoAnnouncementModal";
+import { ValuatingPlatformRefsSkeleton, ValuatingPriceSkeleton } from "./ValuatingPriceSkeleton";
 
 export function InventoryItemCard({ item }: { item: InventoryItem }) {
+  const { pendingValuations } = useDashboard();
+  const pendingValuation = pendingValuations[item.id];
+  const isValuating = Boolean(pendingValuation);
   const sold = item.status === "sold";
   // Los productos de demo (seed_data.py) traen un dibujo SVG, no una foto: se muestran como ejemplo.
   const examplePhoto = item.photoUrl.startsWith("data:image/svg+xml");
@@ -16,6 +23,7 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
   return (
     <article
       id={item.id}
+      aria-busy={isValuating}
       className="flex scroll-mt-6 flex-col overflow-hidden rounded-panel bg-fog target:ring-2 target:ring-accent target:ring-offset-2"
     >
       <div className="relative aspect-[4/3] bg-fog-2">
@@ -52,6 +60,12 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
         >
           {STATUS_LABEL[item.status]}
         </span>
+        {isValuating && (
+          <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-paper/95 px-3 py-1 text-[12px] font-semibold text-accent shadow-[0_2px_8px_rgb(16_17_20/0.15)]">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            Tasando…
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-5 p-5">
@@ -65,7 +79,11 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
           </div>
         </div>
 
-        <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
+        {isValuating ? (
+          <ValuatingPriceSkeleton sources={pendingValuation?.sources} />
+        ) : (
+          <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
+        )}
 
         <details className="group border-t border-line pt-4">
           <summary className="flex items-center justify-between gap-2 text-[15px] font-semibold">
@@ -74,7 +92,9 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
           </summary>
           <div className="mt-3 flex flex-col gap-4 text-sm leading-relaxed">
             <p className="text-ink-2">
-              Tasado el {formatShortDay(item.lastUpdatedAt)} con precios de referencia de {formatPlatforms(item)}.
+              {isValuating
+                ? "Consultando precios reales en eBay, Wallapop y Milanuncios para comparar…"
+                : `Tasado el ${formatShortDay(item.lastUpdatedAt)} con precios de referencia de ${formatPlatforms(item)}.`}
             </p>
             <div>
               <p className="font-semibold">Estado: {item.conditionScore}/100</p>
@@ -86,37 +106,41 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
                 <p className="whitespace-pre-line text-ink-2">{item.details}</p>
               </div>
             )}
-            {item.comparableListings.length > 0 && (
-              <div>
-                <p className="font-semibold">Referencia por plataforma</p>
-                <ul className="mt-1">
-                  {platformReferences(item).map((listing) => (
-                    <li key={listing.platform} className="flex items-center justify-between gap-3 py-1">
-                      <span className="text-ink-2">
-                        {PLATFORM_LABEL[listing.platform]} · <span className="tabular-nums">{formatEur(listing.price)}</span>
-                      </span>
-                      <a
-                        href={listing.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 font-semibold text-accent hover:underline"
-                      >
-                        Buscar <ExternalLink className="size-3.5" aria-hidden />
-                        <span className="sr-only">
-                          {item.name} en {PLATFORM_LABEL[listing.platform]} (se abre en una pestaña nueva)
+            {isValuating ? (
+              <ValuatingPlatformRefsSkeleton />
+            ) : (
+              item.comparableListings.length > 0 && (
+                <div>
+                  <p className="font-semibold">Referencia por plataforma</p>
+                  <ul className="mt-1">
+                    {platformReferences(item).map((listing) => (
+                      <li key={listing.platform} className="flex items-center justify-between gap-3 py-1">
+                        <span className="text-ink-2">
+                          {PLATFORM_LABEL[listing.platform]} · <span className="tabular-nums">{formatEur(listing.price)}</span>
                         </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                        <a
+                          href={listing.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 font-semibold text-accent hover:underline"
+                        >
+                          Buscar <ExternalLink className="size-3.5" aria-hidden />
+                          <span className="sr-only">
+                            {item.name} en {PLATFORM_LABEL[listing.platform]} (se abre en una pestaña nueva)
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
             )}
           </div>
         </details>
 
         <div className="mt-auto flex gap-2">
           <SeoAnnouncementModal itemName={item.name} seoTitle={item.seoTitle} seoDescription={item.seoDescription} />
-          <ItemActions item={item} />
+          {!isValuating && <ItemActions item={item} />}
         </div>
       </div>
     </article>

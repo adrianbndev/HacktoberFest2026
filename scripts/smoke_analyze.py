@@ -19,7 +19,7 @@ import time
 from typing import Any
 from urllib import error, request
 
-DEFAULT_BASE_URL = "http://127.0.0.1:8000"
+DEFAULT_BASE_URL = "http://127.0.0.1:8001"
 DEFAULT_SOURCES = "ebay,wallapop,milanuncios"
 
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2, ScanSearch, Smartphone, X } from "lucide-react";
+import type { MarketSourceResult } from "@/types/market-analysis";
 import type { InventoryItem, TeamMemberId } from "@/types/sdd";
 import { CaptureDonePanel, CaptureErrorPanel, CaptureWaitingPanel } from "./CapturePanels";
 import { DynamicProductForm } from "./DynamicProductForm";
@@ -16,6 +17,9 @@ export interface MobileSyncModalProps {
   onOpen?: () => void;
   onClose: () => void;
   onItemCreated: (newItem: InventoryItem) => void;
+  onValuationStarted?: (pendingItem: InventoryItem) => void;
+  onValuationProgress?: (itemId: string, sources: MarketSourceResult[]) => void;
+  onValuationFailed?: (itemId: string) => void;
   busyReason?: string | null;
 }
 
@@ -25,10 +29,23 @@ function defaultBaseUrl(mobileUrl: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" ? new URL(mobileUrl).origin : origin;
 }
 
-export function MobileSyncModal({ userId, isOpen, onOpen, onClose, onItemCreated, busyReason }: MobileSyncModalProps) {
+export function MobileSyncModal({
+  userId,
+  isOpen,
+  onOpen,
+  onClose,
+  onItemCreated,
+  onValuationStarted,
+  onValuationProgress,
+  onValuationFailed,
+  busyReason,
+}: MobileSyncModalProps) {
   const capture = useCaptureSession(userId, onItemCreated, {
     onOpenModal: onOpen,
     externalBusyReason: busyReason,
+    onValuationStarted,
+    onValuationProgress,
+    onValuationFailed,
   });
 
   if (!isOpen) return null;
@@ -159,11 +176,23 @@ function MobileSyncDialog({
             )}
 
             {step === "market" && (
-              <MarketProgress
-                sources={marketSources}
-                recommendation={marketRecommendation}
-                warnings={marketWarnings}
-              />
+              <>
+                <MarketProgress
+                  sources={marketSources}
+                  recommendation={marketRecommendation}
+                  warnings={marketWarnings}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-inner bg-fog px-4 py-3 text-sm text-ink-2">
+                  <span>
+                    Puedes cerrar esta ventana: la tarjeta del producto ya está en tu inventario y seguirá buscando precios en segundo plano.
+                  </span>
+                  <form method="dialog" className="shrink-0">
+                    <button className="flex h-10 items-center justify-center gap-2 rounded-full bg-paper px-4 text-sm font-semibold text-ink ring-1 ring-line transition-colors hover:bg-fog-2">
+                      Cerrar y ver en el inventario
+                    </button>
+                  </form>
+                </div>
+              </>
             )}
 
             {step === "done" && item && (
