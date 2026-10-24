@@ -24,8 +24,9 @@ from app.vision.protocol import (
 )
 
 PREFERRED_MAC_VISION_MODELS: tuple[str, ...] = (
-    "llama3.2-vision:11b",
-    "llama3.2-vision",
+    "qwen2.5vl:7b",
+    "qwen2.5vl",
+    "gemma3:12b",
     "minicpm-v:8b",
     "minicpm-v",
     "llava:13b",
@@ -82,11 +83,12 @@ class OllamaVisionProvider:
             or "http://127.0.0.1:11434"
         ).rstrip("/")
         self.base_url = raw_url if raw_url.startswith("http") else f"http://{raw_url}"
-        self.configured_model = model_name or os.getenv("VISION_OLLAMA_MODEL") or "llama3.2-vision"
+        self.configured_model = model_name or os.getenv("VISION_OLLAMA_MODEL") or "qwen2.5vl:7b"
         self.request_timeout_sec = request_timeout_sec
         self._resolved_model: str | None = None
         self._last_check_ts: float = 0.0
         self._cached_health: dict[str, Any] | None = None
+        self.last_error: str | None = None
 
     def reset_circuit_breaker(self) -> None:
         self._last_check_ts = 0.0
@@ -174,9 +176,18 @@ class OllamaVisionProvider:
             "options": {"temperature": 0.1, "num_predict": 320},
         }
 
-        raw = await asyncio.to_thread(
-            _http_json_request, f"{self.base_url}/api/chat", payload, self.request_timeout_sec
-        )
+        try:
+            raw = await asyncio.to_thread(
+                _http_json_request, f"{self.base_url}/api/chat", payload, self.request_timeout_sec
+            )
+            self.last_error = None
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace") if hasattr(exc, "read") else str(exc)
+            self.last_error = f"HTTP {exc.code} from Ollama ({model_to_use}): {body}"
+            raise RuntimeError(self.last_error) from exc
+        except Exception as exc:
+            self.last_error = f"Ollama error ({model_to_use}): {exc}"
+            raise
         extracted = _VLMFormExtractionSchema.model_validate_json(raw.get("message", {}).get("content", "{}"))
         score = clamp_condition_score(extracted.condition_score)
         label = map_score_to_condition_label(score)

@@ -10,10 +10,20 @@ import sys
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-# Ensure backend root is in sys.path when invoked directly as a standalone script
+# Ensure backend root is in sys.path and load .env automatically when invoked directly
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = _BACKEND_ROOT.parent
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
+
+_ENV_FILE = _REPO_ROOT / ".env"
+if _ENV_FILE.is_file():
+    import os
+    for _line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        _clean = _line.strip()
+        if _clean and not _clean.startswith("#") and "=" in _clean:
+            _k, _v = _clean.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
 
 from app.vision.image_processor import decode_image_source, prepare_and_inspect_image  # noqa: E402
 from app.vision.ollama_provider import OllamaVisionProvider  # noqa: E402
@@ -79,8 +89,14 @@ async def _run_cli(args: argparse.Namespace) -> int:
         f"   • Payload JPEG optimizado: {len(metrics.optimized_jpeg_b64) // 1024} KB"
     )
 
-    orchestrator = ResilientVisionOrchestrator(timeout_sec=args.timeout)
+    orchestrator = ResilientVisionOrchestrator(
+        providers=[ollama_provider],
+        timeout_sec=args.timeout,
+    )
     result = await orchestrator.analyze_photo(photo_source=source, user_hint=default_hint)
+
+    if ollama_provider.last_error:
+        print(f"\n⚠️  Aviso del nodo Ollama (se activó fallback local): {ollama_provider.last_error}")
 
     print("\n✅ Resultado Estructurado para Pre-rellenar el Formulario (VisionAnalysisResult):")
     print(json.dumps(result.model_dump(by_alias=True), indent=2, ensure_ascii=False))

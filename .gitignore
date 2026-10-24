@@ -70,3 +70,6 @@ out/
 
 # Clave privada de la cuenta de servicio de Firebase (nunca al repo)
 firebase-service-account.json
+
+# Local
+.local/
