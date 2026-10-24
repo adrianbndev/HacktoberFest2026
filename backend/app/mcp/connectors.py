@@ -206,17 +206,26 @@ class MilanunciosConnector(_HtmlConnector):
     def parse(self, html: str) -> list[MarketListingSample]:
         soup = BeautifulSoup(html, "lxml")
         listings: list[MarketListingSample] = []
-        for card in soup.select("article"):
-            title_el = card.select_one("h2, .mt-SerpCard-title")
-            price_el = card.select_one(".mt-SerpCard-prices, .mt-SerpCard-prices-price")
-            link_el = card.select_one("a[href]")
+        cards = soup.select("article[data-testid='AD_CARD'], article")
+        for card in cards:
+            title_el = card.select_one(
+                ".ma-AdCardListingV2-TitleLink, h2, .mt-SerpCard-title"
+            )
+            price_el = card.select_one(
+                ".ma-AdPrice-value, .mt-SerpCard-prices, .mt-SerpCard-prices-price"
+            )
             if title_el is None or price_el is None:
                 continue
+            link_el = (
+                title_el
+                if isinstance(title_el, Tag) and title_el.get("href")
+                else card.select_one("a[href]")
+            )
             sample = build_listing_sample(
                 title=title_el.get_text(" ", strip=True),
                 price=parse_price_eur(price_el.get_text(" ", strip=True)),
                 platform=self.platform,
-                href=_href(link_el),
+                href=_href(link_el) if isinstance(link_el, Tag) else None,
                 base_url=self.base_url,
             )
             if sample is not None:

@@ -137,10 +137,11 @@ the demo architecture.
 
 ## Verification evidence (Phase 1)
 
-- 137 backend tests, `ruff check app tests`, `mypy app` green.
+- 143 backend tests, `ruff check app tests`, `mypy app` green.
 - `docker compose config` valid; `lifeos-backend` and `market-browser` healthy.
-- `/api/market/health` → 200; `/api/market/valuate` → 200 with fallback when all
-  sources fail, and a structured `503` when fallback is disabled (API tests).
+- `/api/market/health` → 200; `/api/market/valuate` → 200 with `source=live_mcp`
+  (Milanuncios) and 200 with fallback when all sources fail, plus a structured
+  `503` when fallback is disabled (API tests).
 - Browser spike (arm64): `webdriver=false`, `es-ES`, `Europe/Madrid`, no
   `__puppeteer`/`__playwright`; Wallapop 40 listings; eBay 60 on the first run
   and its anti-bot error page on a later run.

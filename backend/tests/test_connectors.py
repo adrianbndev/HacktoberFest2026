@@ -130,3 +130,17 @@ async def test_short_queries_are_rejected_without_a_request() -> None:
         result = await EbayConnector(client=client).search(" ")
 
     assert result.failure_reason == "empty_query"
+
+
+async def test_milanuncios_parses_current_ad_card_markup() -> None:
+    async with _client(_static(_fixture("milanuncios_search_v2.html"))) as client:
+        result = await MilanunciosConnector(client=client).search("iPhone 13 128GB")
+
+    assert result.ok is True
+    assert [listing.price for listing in result.listings] == [299, 250]
+    assert result.listings[0].title == "iPhone 13 128gb"
+    assert result.listings[0].url == (
+        "https://www.milanuncios.com/iphone/iphone-13-128gb-580489426.htm"
+    )
+    assert result.listings[1].url.startswith("https://www.milanuncios.com/iphone/")
+    assert result.listings[1].condition == "Buen estado"

@@ -13,5 +13,6 @@ Classified per the phase brief (§8). **No blocking items remain in Phase 1.**
 | 7 | `backend/mcp_server.py` (FastMCP CLI exposure) | Not part of the Phase 1 file scope; the library is already MCP-ready | Phase 2 | No |
 | 8 | Clean eBay accessibility suffix in browser-spike titles | eBay appends "Se abre en una nueva ventana o pestaña"; harmless for the spike, should be stripped before using browser samples in Phase 2 | Phase 2 | No |
 | 9 | WebGL vendor/renderer under Xvfb | Software rendering returns `null`; evaluate `--use-gl=angle --use-angle=swiftshader` or llvmpipe if Phase 2 needs a realistic GPU fingerprint | Phase 2 | No |
-| 10 | Live DeepSeek validation | No production API key was available in this environment; transport is covered with an injected fake, and the deterministic template covers failures | Before demo if a key is added | No |
+| 10 | DeepSeek live validation | Validated with the provided key; `deepseek-v4-pro` takes ~12–23 s, hence the opt-in recommendation window | Done | No |
 | 11 | Split dev dependencies out of the runtime image | `requirements.txt` includes pytest/ruff/mypy so the documented `pip install -r requirements.txt && pytest` works out of the box; the image is heavier than strictly needed | Post-hackathon | No |
+| 12 | Wallapop fast connector | Its search HTML is a JS shell (0 server-rendered items); only the Phase 2 browser engine currently gets its 40 listings | Phase 2 | No |

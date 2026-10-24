@@ -79,9 +79,9 @@
 
 ### Evidencia
 
-* `pytest -q`: **137 tests** verdes; `ruff check app tests` y `mypy app` limpios.
+* `pytest -q`: **143 tests** verdes; `ruff check app tests` y `mypy app` limpios.
 * `docker compose config` válido; `lifeos-backend` y `market-browser` en estado `healthy`.
-* `POST /api/market/valuate` medido en Docker: **1.8–2.3 s** con todas las fuentes bloqueadas y fallback determinista; SLA interna ≤ 2.8 s con conectores mockeados.
+* `POST /api/market/valuate` medido en Docker: **1.79 s** con anuncios reales de Milanuncios (`source=live_mcp`) y **1.8–2.3 s** con fallback determinista cuando eBay/Wallapop bloquean; SLA interna ≤ 2.8 s con conectores mockeados.
 * `503` estructurado verificado por tests de API cuando `MARKET_ALLOW_FALLBACK=false`.
 * Recomendación real con `deepseek-v4-pro` verificada (≈23 s con thinking/max; ventana opt-in fuera del SLA de 2,8 s del mercado).
 * Spike de navegador (arm64, Chromium 156/Xvfb): `webdriver=false`, `es-ES`, `Europe/Madrid`, sin `__puppeteer`/`__playwright`; Wallapop 40 anuncios; eBay 60 en la primera pasada y página anti-bot después.

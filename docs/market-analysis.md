@@ -182,9 +182,9 @@ Never `500` for the valuation paths.
 | Recommendation (opt-in) | separate window | `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` (default 25 s); not part of the 2.8 s market SLA |
 | **Total** | **≤ 2.8 s** | measured with mocks in tests |
 
-Measured in Docker against the real network (all sources blocked): **1.8–2.3 s**
-including the deterministic fallback. Live sources are also bounded by the same
-deadline.
+Measured in Docker: **1.79 s** with live Milanuncios listings, and **1.8–2.3 s**
+when every source was blocked and the deterministic fallback ran. Live sources
+are bounded by the same deadline.
 
 The 0.65–1.2 s jitter default is reserved for `/refresh` (Level 2), not this
 interactive endpoint.
@@ -296,6 +296,18 @@ This is an additive compatibility fix, documented in ADR-002.
 
 Always run the fingerprint check on the architecture used for the demo.
 
+## Live source status (2026-10-24)
+
+| Source | Fast `/valuate` path | Browser path |
+|---|---|---|
+| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | n/a |
+| eBay | HTTP 403 from this network | 60 listings on the first run, then its anti-bot error page |
+| Wallapop | HTML is a JS shell (0 server-rendered items) | 40 listings via the browser |
+
+This is why `source="live_mcp"` is achieved with Milanuncios while eBay and
+Wallapop keep the response valid through warnings; Wallapop requires the Phase 2
+browser engine.
+
 ## Browser spike (non-blocking)
 
 ```bash
@@ -371,7 +383,7 @@ interface MarketValuationResult {
 
 ```bash
 cd backend
-pytest -q          # 137 tests
+pytest -q          # 143 tests
 ruff check app tests
 mypy app
 docker compose config
