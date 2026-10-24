@@ -62,13 +62,22 @@ class RecommendationOutcome:
     warnings: tuple[str, ...] = ()
 
 
+class RecommendationUnavailableError(RuntimeError):
+    """The LLM failed and the caller explicitly disabled the deterministic template."""
+
+
 class DeepSeekRecommender:
     """Domain-facing helper over the DeepSeek JSON transport."""
 
     def __init__(
-        self, settings: Settings, *, completion: CompletionCallable | None = None
+        self,
+        settings: Settings,
+        *,
+        completion: CompletionCallable | None = None,
+        allow_template: bool = True,
     ) -> None:
         self._chat = DeepSeekChat(settings, completion=completion)
+        self._allow_template = allow_template
 
     async def parse_query(self, raw_query: str, *, budget_sec: float | None = None) -> ParsedQuery:
         system = (
@@ -109,6 +118,8 @@ class DeepSeekRecommender:
             budget_sec=budget_sec,
         )
         if payload is None:
+            if not self._allow_template:
+                raise RecommendationUnavailableError("recommendation_unavailable")
             return _template_outcome(request, valuation)
         return _clamp_outcome(payload, valuation)
 

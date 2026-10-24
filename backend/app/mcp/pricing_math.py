@@ -68,24 +68,37 @@ def percentile(values: Sequence[float], pct: float) -> float:
     return ordered[lower_index] + (ordered[upper_index] - ordered[lower_index]) * fraction
 
 
+def iqr_fences(
+    prices: Iterable[float], *, min_price: float = MIN_VALID_PRICE_EUR
+) -> tuple[float, float]:
+    """Return the IQR fences without dropping rows.
+
+    The deep analysis needs to filter listings once and reuse the exact same
+    fences for the triplet, so it can run IQR a single time (brief §5.1).
+    """
+    valid = sorted(price for price in _finite(prices) if price > min_price)
+    if len(valid) < 4:
+        return (min_price, math.inf)
+    q1 = percentile(valid, 25.0)
+    q3 = percentile(valid, 75.0)
+    iqr = q3 - q1
+    return (q1 - IQR_MULTIPLIER * iqr, q3 + IQR_MULTIPLIER * iqr)
+
+
 def filter_outliers_iqr(
     prices: Iterable[float], *, min_price: float = MIN_VALID_PRICE_EUR
 ) -> list[float]:
     """Drop non-finite/symbolic prices and IQR outliers, returning sorted values."""
     valid = sorted(price for price in _finite(prices) if price > min_price)
-    if len(valid) < 4:
-        return valid
-    q1 = percentile(valid, 25.0)
-    q3 = percentile(valid, 75.0)
-    iqr = q3 - q1
-    lower_fence = q1 - IQR_MULTIPLIER * iqr
-    upper_fence = q3 + IQR_MULTIPLIER * iqr
+    lower_fence, upper_fence = iqr_fences(valid, min_price=min_price)
     return [price for price in valid if lower_fence <= price <= upper_fence]
 
 
-def compute_price_triplet(prices: Iterable[float], condition_score: float) -> PriceTriplet:
-    """Compute ``P_min < P_avg < P_max`` exactly as specified in MOD-04 §2."""
-    cleaned = filter_outliers_iqr(prices)
+def compute_price_triplet_from_clean(
+    prices: Iterable[float], condition_score: float
+) -> PriceTriplet:
+    """Compute the triplet from an already IQR-filtered sample."""
+    cleaned = sorted(price for price in _finite(prices) if price > MIN_VALID_PRICE_EUR)
     if not cleaned:
         raise ValueError("cannot compute prices from an empty usable sample")
 
@@ -105,6 +118,13 @@ def compute_price_triplet(prices: Iterable[float], condition_score: float) -> Pr
         price_max=price_max,
         base_price=base_price,
         health_weight=weight,
+    )
+
+
+def compute_price_triplet(prices: Iterable[float], condition_score: float) -> PriceTriplet:
+    """Compute ``P_min < P_avg < P_max`` exactly as specified in MOD-04 §2."""
+    return compute_price_triplet_from_clean(
+        filter_outliers_iqr(prices), condition_score
     )
 
 
@@ -137,3 +157,36 @@ def triplet_from_base(base_price: float, condition_score: float) -> tuple[int, i
     """(P_min, P_avg, P_max) sin muestra de mercado: P_avg ponderado por salud, -18 % y +24 %."""
     avg = max(3, round(base_price * health_weight(condition_score)))
     return min(avg - 1, round(avg * 0.82)), avg, max(avg + 1, round(avg * 1.24))
+
+
+CONFIDENCE_SAMPLE_TARGET = 25.0
+
+
+def confidence_score(
+    prices: Sequence[float],
+    *,
+    platform_count: int,
+    ok_sources: int,
+    requested_sources: int,
+    sample_target: float = CONFIDENCE_SAMPLE_TARGET,
+) -> float:
+    """Deterministic 0..1 confidence for a deep-analysis sample.
+
+    Blends sample size, platform coverage, price agreement and source
+    reliability. The formula is pure so the API contract is reproducible.
+    """
+    valid = _finite(prices)
+    if not valid:
+        return 0.0
+    sample_factor = min(1.0, len(valid) / max(1.0, sample_target))
+    coverage = min(1.0, max(0, platform_count) / 3.0)
+    mean = statistics.fmean(valid)
+    dispersion = statistics.pstdev(valid) / mean if mean > 0 and len(valid) > 1 else 1.0
+    agreement = max(0.0, 1.0 - min(1.0, dispersion * 2.0))
+    reliability = (
+        min(1, max(0, ok_sources)) / requested_sources if requested_sources > 0 else 0.0
+    )
+    raw = (
+        0.45 * sample_factor + 0.35 * coverage + 0.20 * agreement
+    ) * (0.70 + 0.30 * reliability)
+    return round(max(0.0, min(1.0, raw)), 2)

@@ -6,7 +6,7 @@ import re
 import unicodedata
 from collections.abc import Iterable, Iterator
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 
 from app.models.sdd import MarketListingSample, MarketPlatform
 
@@ -77,6 +77,21 @@ GENERIC_BRAND_VALUES = frozenset(
     {"sin marca", "generica", "n/a", "na", "-", "unknown", "no aplica"}
 )
 GENERIC_MODEL_VALUES = frozenset({"generico", "generica", "n/a", "-"})
+
+PLATFORM_SEARCH_URLS: dict[MarketPlatform, str] = {
+    "wallapop": "https://es.wallapop.com/app/search?keywords={query}",
+    "vinted": "https://www.vinted.es/catalog?search_text={query}",
+    "milanuncios": "https://www.milanuncios.com/anuncios/?s={query}",
+    "ebay": "https://www.ebay.es/sch/i.html?_nkw={query}",
+}
+
+
+def build_platform_search_url(platform: MarketPlatform, query: str) -> str | None:
+    """Functional platform search deep link (never a dead listing URL)."""
+    template = PLATFORM_SEARCH_URLS.get(platform)
+    if template is None:
+        return None
+    return template.format(query=quote(normalize_query(query), safe=""))
 
 
 def strip_accents(text: str) -> str:

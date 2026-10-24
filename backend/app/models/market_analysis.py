@@ -124,6 +124,9 @@ class MarketAnalysisResult(CamelModel):
     query: str = Field(..., min_length=2, max_length=200)
     sources: list[MarketSourceResult] = Field(..., min_length=1)
     valuation: MarketAnalysisValuation
+    comparable_listings: list[MarketListingSample] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_LISTINGS
+    )
     recommendation: ValuationRecommendation | None = None
     warnings: list[str] = Field(default_factory=list)
     cached: bool = False
@@ -141,6 +144,11 @@ class MarketAnalysisResult(CamelModel):
         missing = set(self.valuation.platforms) - declared
         if missing:
             raise ValueError(f"valuation platforms not declared as sources: {sorted(missing)}")
+        undeclared_listings = {item.platform for item in self.comparable_listings} - declared
+        if undeclared_listings:
+            raise ValueError(
+                f"comparable listings use undeclared sources: {sorted(undeclared_listings)}"
+            )
         return self
 
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from time import monotonic
-from typing import Any
+from typing import Any, Protocol
 
 from app.mcp.browser.session import BrowserPage
 from app.mcp.normalize import (
@@ -26,6 +26,14 @@ EBAY_ACCESSIBILITY_SUFFIX = "se abre en una nueva ventana o pestaña"
 SKIPPED_TITLES = frozenset({"shop on ebay"})
 BLOCKED_ERROR = "blocked_or_antibot_page"
 PAYLOAD_ERROR = "unexpected_payload"
+
+
+class BrowserSourceProtocol(Protocol):
+    """What the deep engine needs from a source (fakeable in tests)."""
+
+    platform: MarketPlatform
+
+    async def collect(self, page: BrowserPage, query: str) -> SourceOutcome: ...
 
 
 @dataclass(frozen=True, slots=True)

@@ -6,8 +6,11 @@ import pytest
 from app.mcp.pricing_math import (
     clamp,
     compute_price_triplet,
+    compute_price_triplet_from_clean,
+    confidence_score,
     enforce_price_triplet_invariant,
     filter_outliers_iqr,
+    iqr_fences,
     percentile,
     w_health,
 )
@@ -162,3 +165,30 @@ def test_triplet_uses_the_rounded_average_for_min_and_max(
     triplet = compute_price_triplet([base] * 10, score)
 
     assert (triplet.price_min, triplet.price_avg, triplet.price_max) == expected
+
+
+def test_iqr_fences_are_the_same_filter_used_by_the_fast_path() -> None:
+    prices = [10, 11, 12, 13, 14, 15, 1_000]
+
+    lower, upper = iqr_fences(prices)
+
+    assert [p for p in prices if lower <= p <= upper] == filter_outliers_iqr(prices)
+
+
+def test_compute_from_clean_does_not_filter_again() -> None:
+    prices = [10, 11, 12, 13, 14, 15, 1_000]
+    clean = filter_outliers_iqr(prices)
+
+    assert compute_price_triplet_from_clean(clean, 70) == compute_price_triplet(prices, 70)
+
+
+def test_confidence_blends_sample_size_coverage_and_reliability() -> None:
+    low = confidence_score(
+        [100, 100], platform_count=1, ok_sources=1, requested_sources=3
+    )
+    high = confidence_score(
+        [100] * 20, platform_count=3, ok_sources=3, requested_sources=3
+    )
+
+    assert 0.0 <= low < high <= 1.0
+    assert confidence_score([], platform_count=0, ok_sources=0, requested_sources=0) == 0.0

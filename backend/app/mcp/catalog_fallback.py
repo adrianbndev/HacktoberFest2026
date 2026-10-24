@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from urllib.parse import quote
 
-from app.mcp.normalize import normalize_query, strip_accents
+from app.mcp.normalize import build_platform_search_url, normalize_query, strip_accents
 from app.mcp.pricing_math import compute_price_triplet
 from app.models.sdd import MarketListingSample, MarketPlatform, MarketValuationResult
 
@@ -16,11 +15,6 @@ FALLBACK_WARNING = (
 MAX_LISTINGS = 12
 SAMPLE_MULTIPLIERS = (0.82, 0.86, 0.91, 0.95, 0.98, 1.00, 1.03, 1.07, 1.12, 1.17, 1.23)
 FALLBACK_PLATFORMS: tuple[MarketPlatform, ...] = ("wallapop", "milanuncios", "ebay")
-PLATFORM_SEARCH_URLS: dict[MarketPlatform, str] = {
-    "wallapop": "https://es.wallapop.com/app/search?keywords={query}",
-    "milanuncios": "https://www.milanuncios.com/anuncios/?s={query}",
-    "ebay": "https://www.ebay.es/sch/i.html?_nkw={query}",
-}
 CATEGORY_BASE_PRICES: dict[str, float] = {
     "moviles": 320.0,
     "consolas": 240.0,
@@ -95,10 +89,7 @@ def estimate_base_price(query: str, category: str | None = None) -> float:
 
 def build_deep_link(platform: MarketPlatform, query: str) -> str | None:
     """Functional search URL for a platform (fallback listings are never dead links)."""
-    template = PLATFORM_SEARCH_URLS.get(platform)
-    if template is None:
-        return None
-    return template.format(query=quote(normalize_query(query), safe=""))
+    return build_platform_search_url(platform, query)
 
 
 def build_fallback_result(
