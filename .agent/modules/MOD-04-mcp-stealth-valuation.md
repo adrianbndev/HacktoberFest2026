@@ -126,7 +126,7 @@
 
 ### Evidencia
 
-* `pytest -q`: **301 tests** verdes y herméticos (sin CDP ni red); `ruff check app tests`, `mypy app`, `npm run typecheck` y `docker compose config` limpios.
+* `pytest -q`: **302 tests** verdes y herméticos (sin CDP ni red); `ruff check app tests`, `mypy app`, `npm run typecheck` y `docker compose config` limpios.
 * Tests de contrato para `/analyze` (200/503/422), SSE (orden de eventos, headers, heartbeat, cache hit rápido y cancelación), caché (hit/miss/expiración/aislamiento) y fuentes (fixtures + bloqueo).
 * Fingerprint y smoke en vivo se registran en `docs/market-analysis.md`; las cifras dependen de la red del evento y nunca se sustituyen por datos sintéticos.
 

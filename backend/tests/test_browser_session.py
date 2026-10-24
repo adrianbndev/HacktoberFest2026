@@ -78,7 +78,10 @@ class FakeFactory:
 
 def _manager(factory: FakeFactory, *, timeout_sec: float = 1.0) -> BrowserSessionManager:
     return BrowserSessionManager(
-        make_settings(), client_factory=factory, timeout_sec=timeout_sec
+        make_settings(),
+        client_factory=factory,
+        cdp_probe=lambda url, timeout: None,
+        timeout_sec=timeout_sec,
     )
 
 

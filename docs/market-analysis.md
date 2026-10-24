@@ -91,7 +91,10 @@ curl -s http://127.0.0.1:8000/api/market/health
 ```
 
 `browser.connected` reflects the process-wide MCP client: `false` means it has
-not been used yet (or the last probe failed). `analysisEnabled` mirrors
+not been used yet (or the last probe failed). Before spawning the MCP, the
+analyzer performs a TCP reachability probe against `CDP_URL`; a missing browser
+fails fast with `503 browser_unavailable` (the MCP is never allowed to launch
+its own Chrome). `analysisEnabled` mirrors
 `MARKET_ANALYSIS_ENABLED`; when `false`, `/analyze` returns `503`.
 
 ### Valuate
@@ -602,7 +605,7 @@ interface MarketValuationResult {
 
 ```bash
 cd backend
-pytest -q          # 301 tests (hermetic; no CDP, no network)
+pytest -q          # 302 tests (hermetic; no CDP, no network)
 ruff check app tests
 mypy app
 docker compose config

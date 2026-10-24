@@ -9,7 +9,6 @@ in a worker thread so the FastAPI event loop stays responsive.
 from __future__ import annotations
 
 import asyncio
-import re
 import shlex
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
@@ -17,15 +16,14 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from app.config import Settings
-from app.mcp.browser.mcp_client import MCPClient, MCPError, parse_tool_payload
-
-PAGE_ID_PATTERN = re.compile(r"^\s*(\d+):", re.MULTILINE)
-DEFAULT_PAGE_ID = 1
-MAX_ERROR_LENGTH = 300
-BROWSER_ENV = {"CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1"}
-SCROLL_FUNCTION = (
-    "() => { window.scrollTo(0, document.body.scrollHeight); return true; }"
+from app.mcp.browser.cdp import (
+    BROWSER_ENV,
+    SCROLL_FUNCTION,
+    parse_page_id,
+    probe_cdp,
+    sanitize,
 )
+from app.mcp.browser.mcp_client import MCPClient, MCPError, parse_tool_payload
 
 
 class BrowserUnavailableError(RuntimeError):
@@ -43,6 +41,7 @@ class McpClientProtocol(Protocol):
 
 
 ClientFactory = Callable[[Sequence[str]], McpClientProtocol]
+CdpProbe = Callable[[str, float], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +90,7 @@ class BrowserSessionManager:
         settings: Settings,
         *,
         client_factory: ClientFactory | None = None,
+        cdp_probe: CdpProbe | None = None,
         timeout_sec: float | None = None,
     ) -> None:
         self._settings = settings
@@ -98,6 +98,7 @@ class BrowserSessionManager:
             timeout_sec if timeout_sec is not None else settings.market_browser_timeout_sec
         )
         self._client_factory: ClientFactory = client_factory or self._spawn_client
+        self._cdp_probe: CdpProbe = cdp_probe or probe_cdp
         self._lock = asyncio.Lock()
         self._client: McpClientProtocol | None = None
         self._page_id: int | None = None
@@ -141,7 +142,7 @@ class BrowserSessionManager:
                     await self._call(client, "list_pages", {})
                     self._last_error = None
                 except (BrowserUnavailableError, MCPError, OSError, TimeoutError) as exc:
-                    self._last_error = _sanitize(str(exc))
+                    self._last_error = sanitize(str(exc))
                     await self._discard_client()
         return BrowserHealth(
             connected=self.connected, url=self.url, last_error=self._last_error
@@ -165,7 +166,7 @@ class BrowserSessionManager:
                 return await self._call(client, tool, arguments)
             except (MCPError, OSError, TimeoutError) as exc:
                 last_error = exc
-                self._last_error = _sanitize(str(exc))
+                self._last_error = sanitize(str(exc))
                 await self._discard_client()
                 if attempt >= retries:
                     break
@@ -182,18 +183,30 @@ class BrowserSessionManager:
     async def _ensure_client(self) -> McpClientProtocol:
         if self._client is not None:
             return self._client
+        await self._probe_cdp()
         client = self._client_factory(self.command)
         try:
             await asyncio.wait_for(
                 asyncio.to_thread(client.initialize), timeout=self._timeout_sec
             )
         except (MCPError, OSError, TimeoutError) as exc:
-            self._last_error = _sanitize(str(exc))
+            self._last_error = sanitize(str(exc))
             await asyncio.to_thread(client.close)
             raise BrowserUnavailableError(self._last_error) from exc
         self._client = client
         self._last_error = None
         return client
+
+    async def _probe_cdp(self) -> None:
+        """Fail fast when Chrome/CDP is not reachable; never let the MCP launch it."""
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(self._cdp_probe, self.url, self._timeout_sec),
+                timeout=min(self._timeout_sec, 3.0) + 1.0,
+            )
+        except Exception as exc:
+            self._last_error = sanitize(f"cdp_unreachable: {exc}")
+            raise BrowserUnavailableError(self._last_error) from exc
 
     async def _ensure_page(self) -> BrowserPage:
         client = await self._ensure_client()
@@ -221,14 +234,3 @@ class BrowserSessionManager:
 
     def _spawn_client(self, command: Sequence[str]) -> McpClientProtocol:
         return MCPClient(command, timeout_sec=self._timeout_sec + 5, env=BROWSER_ENV)
-
-
-def parse_page_id(text: str) -> int:
-    """Extract the first `N: url` page id from `list_pages` output."""
-    match = PAGE_ID_PATTERN.search(text)
-    return int(match.group(1)) if match is not None else DEFAULT_PAGE_ID
-
-
-def _sanitize(message: str) -> str:
-    cleaned = " ".join(message.split())
-    return cleaned[:MAX_ERROR_LENGTH] or "browser_unavailable"
