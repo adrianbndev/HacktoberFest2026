@@ -25,7 +25,7 @@ from app.vision.protocol import (
 )
 
 ensure_dotenv_loaded()
-DEFAULT_VISION_TIMEOUT_SEC = float(os.getenv("VISION_TIMEOUT_SEC", "15.0"))
+DEFAULT_VISION_TIMEOUT_SEC = float(os.getenv("VISION_TIMEOUT_SEC", "35.0"))
 
 
 class ResilientVisionOrchestrator:

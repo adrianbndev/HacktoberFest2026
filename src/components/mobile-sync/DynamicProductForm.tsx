@@ -41,11 +41,15 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
 
   function handleCategoryChange(nextCategory: string) {
     setCategory(nextCategory);
-    setDynamicFields((prev) => buildDynamicFieldsForCategory(nextCategory, name, prev));
+    setDynamicFields((prev) => buildDynamicFieldsForCategory(nextCategory, "", prev));
   }
 
   function updateDynamicField(key: string, nextValue: string) {
     setDynamicFields((prev) => prev.map((f) => (f.key === key ? { ...f, value: nextValue } : f)));
+  }
+
+  function removeDynamicField(key: string) {
+    setDynamicFields((prev) => prev.filter((f) => f.key !== key));
   }
 
   function addCustomField() {
@@ -121,8 +125,20 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
 
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           {dynamicFields.map((field) => (
-            <label key={field.key} className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-              {field.label}
+            <div key={field.key} className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+              <div className="flex items-center justify-between gap-1">
+                <span>{field.label}</span>
+                {dynamicFields.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeDynamicField(field.key)}
+                    title="Quitar este campo"
+                    className="rounded px-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
               {field.fieldType === "select" && field.options && field.options.length > 0 ? (
                 <select value={field.value} onChange={(e) => updateDynamicField(field.key, e.target.value)} className={inputCls}>
                   {field.options.map((opt) => (
@@ -138,7 +154,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
                   className={inputCls}
                 />
               )}
-            </label>
+            </div>
           ))}
         </div>
 
