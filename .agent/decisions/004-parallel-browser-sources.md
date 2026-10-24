@@ -10,8 +10,9 @@
 
 Phase 2 runs eBay, Wallapop and Milanuncios sequentially on one locked page
 (`BrowserSessionManager`). Measured live latency is dominated by Milanuncios
-(18–22 s, up to 6 result pages) while eBay/Wallapop finish in 4–5 s, so the deep
-path costs the sum of the three sources and can exhaust the shared deadline.
+(≈11 s with 3 result pages, ≈21 s with 6) while eBay/Wallapop finish in 4–5 s,
+so the deep path costs the sum of the three sources and can exhaust the shared
+deadline.
 
 `chrome-devtools-mcp@1.10.1` serializes tool calls **per process** (global tool
 mutex), and `BrowserSessionManager` adds a process-wide `asyncio.Lock`. Parallel
@@ -29,20 +30,25 @@ Script: `scripts/pool_spike.py` (committed). Result:
 
 ### Plan A measurements
 
+Measured with the new 3-page Milanuncios default
+(`MARKET_MILANUNCIOS_MAX_PAGES=3`):
+
 | Run | Processes / pages | Wall | Sum of sources | Max source |
 |---|---|---|---|---|
-| Sequential baseline | 1 / 1 | 31 132 ms | 31 021 ms | 22 231 ms (Milanuncios) |
-| Parallel | 3 / 3 | **20 860 ms** | 28 451 ms | 20 859 ms (Milanuncios) |
+| Sequential baseline | 1 / 1 | 20 618 ms | 20 500 ms | 11 067 ms (Milanuncios) |
+| Parallel | 3 / 3 | **11 970 ms** | 22 774 ms | 11 969 ms (Milanuncios) |
 
-- `wall / max(source) = 1.00`, `wall / sum(sources) = 0.73`: the three pages
+- `wall / max(source) = 1.00`, `wall / sum(sources) = 0.53`: the three pages
   really run concurrently and the wall time tracks the slowest source.
-- Parallel speed-up vs this sequential baseline: **1.49×**. The theoretical cap
+- Parallel speed-up vs this sequential baseline: **1.72×**. The theoretical cap
   is bounded by Milanuncios; eBay and Wallapop are fully hidden.
-- Per source (parallel): eBay 2 369 ms (`blocked`, anti-bot interstitial on that
-  run), Wallapop 5 223 ms (`ok`, 40 listings), Milanuncios 20 859 ms (`ok`, 16
-  listings). The blocked eBay run is reported, never replaced.
+- Per source (parallel): eBay 5 279 ms (`ok`, 60 listings), Wallapop 5 526 ms
+  (`ok`, 40 listings), Milanuncios 11 969 ms (`ok`, 7 usable listings).
+- An earlier run with the old 6-page Milanuncios depth measured 31 132 ms
+  sequential vs 20 860 ms parallel (1.49×); the lower page depth is what makes
+  the parallel path fit the demo budget.
 - Focus test: `select_page(bringToFront=true)` on the Milanuncios page while all
-  three were working took 1 361 ms inside its own MCP process and did **not**
+  three were working took 2 170 ms inside its own MCP process and did **not**
   block or delay the other pages (they kept their expected latencies). A second
   `select_page(bringToFront=false)` also succeeded. No focus stealing that
   changes results.
@@ -50,8 +56,8 @@ Script: `scripts/pool_spike.py` (committed). Result:
   `HeadlessChrome=false`, `__puppeteer`/`__playwright` `undefined`,
   `window.chrome=object`, `es-ES`, `Europe/Madrid`, `hardwareConcurrency=8`.
   All pages reported `visibilityState="visible"` under Xvfb.
-- Resources: container CPU **10.21 %**, memory **1.464 GiB / 7.808 GiB**
-  (18.75 %), **18** Chromium processes, **2 523 MB** summed Chromium RSS, 253
+- Resources: container CPU **16.46 %**, memory **1.271 GiB / 7.808 GiB**
+  (16.27 %), **18** Chromium processes, **2 276 MB** summed Chromium RSS, 257
   container PIDs during the parallel run.
 
 ### Decision
@@ -59,6 +65,30 @@ Script: `scripts/pool_spike.py` (committed). Result:
 **Plan A is accepted.** Three MCP processes, each with its own `new_page`, attach
 to the single `market-browser` Chrome. Plan B (three Chrome containers, one CDP
 each) is documented as the fallback but is not implemented.
+
+### Milanuncios page depth (3 vs 6)
+
+Milanuncios was fetching up to 6 result pages unconditionally. The depth is now
+`MARKET_MILANUNCIOS_MAX_PAGES` (default **3**, max 6). The spike forced every
+configured page (raising `min_results`) to measure the real page cost:
+
+| Pages | Latency | Raw listings | Usable listings |
+|---|---|---|---|
+| 3 | **10 696 ms** | 8 | **8** |
+| 6 | 21 491 ms | 16 | 15 |
+
+- 3 pages already reach the 8 usable samples needed for a stable demo, so the
+  conditional 4-page run was not needed.
+- 6 pages add **+10 795 ms** for **+7 usable samples** (~1.54 s per extra usable
+  listing). That is a completeness mode, not the interactive default.
+- In production the source still stops early once it has 14 raw cards, so the
+  6-page numbers are an upper bound; the default 3-page run is the measured
+  demo latency.
+- Trade-off: 3 pages keep the deep path near 12 s parallel / 20 s sequential;
+  6 pages raise it to ~21 s parallel / ~31 s sequential. Both are inside the
+  60 s deadline, but only 3 pages fit a snappy demo.
+- `/api/market/analyze` request/response contracts are unchanged; this is a
+  configuration knob only.
 
 Because background pages reported `visible` and the measured latencies did not
 degrade, the spike did not prove throttling. The entrypoint still gains
@@ -111,6 +141,7 @@ order.
 |---|---|---|
 | `MARKET_SOURCE_CONCURRENCY` | `3` | simultaneous source collections (1–3) |
 | `MARKET_BROWSER_POOL_SIZE` | `3` | MCP processes/pages in the pool (1–3) |
+| `MARKET_MILANUNCIOS_MAX_PAGES` | `3` | Milanuncios result pages (1–6); 6 = completeness |
 
 The pool size must be ≥ concurrency; a smaller pool serializes the excess
 sources instead of failing. Anti-throttling flags live in
@@ -137,7 +168,7 @@ sources instead of failing. Anti-throttling flags live in
   container limit. `shm_size: 2g` is retained.
 - More concurrent pages increase the anti-bot surface; the fingerprint was clean
   in the spike, and blocking is reported rather than bypassed.
-- Milanuncios remains the critical path (≈20 s); parallel sources cannot reduce
-  below its own latency.
+- Milanuncios remains the critical path (≈11 s with 3 pages, ≈21 s with 6);
+  parallel sources cannot reduce below its own latency.
 - Pool restarts and shutdown are covered by fake-MCP tests; live behavior still
   depends on the venue network and is re-checked with the spike/smoke scripts.

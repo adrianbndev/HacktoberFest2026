@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from app.mcp.browser.sources.base import BLOCKED_ERROR, PAYLOAD_ERROR, SourceOutcome
@@ -13,7 +13,9 @@ from app.mcp.browser.sources.milanuncios import (
     looks_like_perimeterx,
 )
 from app.mcp.browser.sources.wallapop import WallapopSource
+from app.mcp.deep_sources import default_sources
 from bs4 import BeautifulSoup
+from tests.support import make_settings
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -137,7 +139,32 @@ def test_search_urls_match_the_frozen_browser_contract() -> None:
     assert milanuncios[0] == "https://www.milanuncios.com/anuncios/?s=Silla+de+madera"
     assert milanuncios[1].endswith("&pagina=2")
     assert milanuncios[2].endswith("&pagina=3")
-    assert len(milanuncios) == 6
+    assert len(milanuncios) == 3
+
+
+@pytest.mark.parametrize("pages", [1, 3, 4, 6])
+def test_milanuncios_page_depth_is_configurable(pages: int) -> None:
+    urls = MilanunciosSource(max_pages=pages).search_urls("Silla de madera")
+
+    assert len(urls) == pages
+    assert urls[0] == "https://www.milanuncios.com/anuncios/?s=Silla+de+madera"
+    if pages > 1:
+        assert urls[-1].endswith(f"&pagina={pages}")
+
+
+def test_default_sources_reads_the_configured_page_depth() -> None:
+    sources = default_sources(make_settings(market_milanuncios_max_pages=4))
+
+    milanuncios = cast(MilanunciosSource, sources["milanuncios"])
+    assert milanuncios.max_pages == 4
+    assert len(milanuncios.search_urls("Silla de madera")) == 4
+
+
+def test_milanuncios_rejects_an_out_of_range_page_depth() -> None:
+    with pytest.raises(ValueError):
+        MilanunciosSource(max_pages=0)
+    with pytest.raises(ValueError):
+        MilanunciosSource(max_pages=7)
 
 
 # --------------------------------------------------------------------------- collection
@@ -177,7 +204,7 @@ async def test_ebay_stops_at_page_one_with_enough_results() -> None:
 
 
 async def test_milanuncios_paginates_until_it_has_enough_cards() -> None:
-    source = MilanunciosSource()
+    source = MilanunciosSource(max_pages=6)
     page = FakePage(
         [
             _payload([_raw_item(f"Silla {index}", "30 €", f"/silla/{index}") for index in range(5)]),

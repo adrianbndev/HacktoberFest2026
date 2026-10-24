@@ -33,6 +33,7 @@ from app.mcp.browser.sources.base import BaseBrowserSource
 from app.mcp.browser.sources.ebay import EbaySource
 from app.mcp.browser.sources.milanuncios import MilanunciosSource
 from app.mcp.browser.sources.wallapop import WallapopSource
+from app.mcp.normalize import dedupe_listings, filter_usable_listings
 
 DEFAULT_BROWSER_URL = "http://127.0.0.1:9222"
 DEFAULT_MCP_COMMAND = "npx -y chrome-devtools-mcp@1.10.1"
@@ -121,6 +122,8 @@ class SpikeResult:
     sequential: dict[str, Any] = field(default_factory=dict)
     parallel: dict[str, Any] = field(default_factory=dict)
     focus: dict[str, Any] = field(default_factory=dict)
+    milanuncios_depth: list[dict[str, Any]] = field(default_factory=list)
+    milanuncios_tradeoff: dict[str, Any] = field(default_factory=dict)
     fingerprint: list[dict[str, Any]] = field(default_factory=list)
     resources: dict[str, Any] = field(default_factory=dict)
     decision: dict[str, Any] = field(default_factory=dict)
@@ -135,6 +138,8 @@ class SpikeResult:
             "sequential": self.sequential,
             "parallel": self.parallel,
             "focus": self.focus,
+            "milanunciosDepth": self.milanuncios_depth,
+            "milanunciosTradeoff": self.milanuncios_tradeoff,
             "fingerprint": self.fingerprint,
             "resources": self.resources,
             "decision": self.decision,
@@ -307,6 +312,80 @@ async def _run_parallel(
     return result, slots, focus
 
 
+async def _run_milanuncios_depth(
+    command: list[str], query: str, page_counts: list[int]
+) -> list[dict[str, Any]]:
+    """Measure Milanuncios latency/usable samples for each configured depth.
+
+    `min_results` is raised so the source actually fetches every configured page;
+    production stops early at 14 raw cards, so these numbers are an upper bound.
+    """
+    client = await asyncio.to_thread(_spawn, command)
+    page_id = await asyncio.to_thread(_new_page, client, f"{SLOT_TOKEN}-depth")
+    page = DirectPage(client=client, page_id=page_id)
+    results: list[dict[str, Any]] = []
+    try:
+        for count in list(page_counts):
+            source = MilanunciosSource(max_pages=count)
+            source.min_results = 10**9
+            outcome = await source.collect(page, query)
+            usable = filter_usable_listings(
+                dedupe_listings(outcome.listings), max_price_eur=100_000
+            )
+            results.append(
+                {
+                    "configuredPages": count,
+                    "pagesFetched": count,
+                    "status": outcome.status,
+                    "latencyMs": outcome.latency_ms,
+                    "rawListings": len(outcome.listings),
+                    "usableListings": len(usable),
+                    "prices": [listing.price for listing in usable],
+                }
+            )
+            if count == 3 and len(usable) < 8 and 4 not in page_counts:
+                page_counts.append(4)
+    finally:
+        await asyncio.to_thread(_close_page, client, page_id)
+        await asyncio.to_thread(client.close)
+    return results
+
+
+def _depth_tradeoff(results: list[dict[str, Any]]) -> dict[str, Any]:
+    by_pages = {item["configuredPages"]: item for item in results}
+    three = by_pages.get(3)
+    six = by_pages.get(6)
+    four = by_pages.get(4)
+    if three is None:
+        return {"recommendedPages": 3, "reason": "3-page measurement missing"}
+    if three["usableListings"] >= 8:
+        recommended = 3
+        reason = "3 pages already reach the 8 usable samples needed for a stable demo."
+    elif four is not None and four["usableListings"] >= 8:
+        recommended = 4
+        reason = "3 pages stay below 8 usable samples; 4 pages cross the threshold."
+    elif four is not None:
+        recommended = 4
+        reason = "4 pages improve the sample but still stay below 8 usable samples."
+    else:
+        recommended = 3
+        reason = "3 pages stay below 8 usable samples and 4 pages were not measured."
+    return {
+        "recommendedPages": recommended,
+        "usableThreshold": 8,
+        "threePages": three,
+        "fourPages": four,
+        "sixPages": six,
+        "extraLatency6Vs3Ms": (
+            six["latencyMs"] - three["latencyMs"] if six is not None else None
+        ),
+        "extraUsable6Vs3": (
+            six["usableListings"] - three["usableListings"] if six is not None else None
+        ),
+        "reason": reason,
+    }
+
+
 def _measurement_dict(item: SourceMeasurement) -> dict[str, Any]:
     return {
         "platform": item.platform,
@@ -422,6 +501,11 @@ async def main() -> int:
     parser.add_argument("--query", default="iPhone 13 128GB")
     parser.add_argument("--browser-url", default=DEFAULT_BROWSER_URL)
     parser.add_argument("--mcp-command", default=DEFAULT_MCP_COMMAND)
+    parser.add_argument(
+        "--milanuncios-pages",
+        default="3,6",
+        help="Comma-separated Milanuncios page depths to measure (default 3,6)",
+    )
     parser.add_argument("--container", default=CONTAINER_NAME)
     parser.add_argument(
         "--output", default="artifacts/pool-spike.json", type=Path
@@ -435,7 +519,12 @@ async def main() -> int:
     result = SpikeResult(
         browser_url=args.browser_url, query=args.query, mcp_command=args.mcp_command
     )
+    page_counts = [int(value) for value in args.milanuncios_pages.split(",") if value]
     result.sequential = await _run_sequential(command, args.query)
+    result.milanuncios_depth = await _run_milanuncios_depth(
+        command, args.query, page_counts
+    )
+    result.milanuncios_tradeoff = _depth_tradeoff(result.milanuncios_depth)
     result.parallel, slots, result.focus = await _run_parallel(
         command, args.query, focus_probe=True
     )

@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     market_source_timeout_sec: float = Field(default=25.0, gt=0.0, le=60.0)
     market_browser_timeout_sec: float = Field(default=45.0, gt=0.0, le=120.0)
     market_platform_quota: int = Field(default=4, ge=1, le=12)
+    # Milanuncios is the slowest source (~3-4 s per result page). The demo uses
+    # 3 pages for latency; 6 maximizes usable samples when completeness matters.
+    market_milanuncios_max_pages: int = Field(default=3, ge=1, le=6)
     market_cache_path: str = "/app/data/market_cache.sqlite"
     market_cache_ttl_sec: int = Field(default=900, ge=0, le=86_400)
     cdp_url: str = "http://market-browser:9222"

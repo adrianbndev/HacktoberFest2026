@@ -133,9 +133,11 @@ class BrowserSourceRunner:
         )
 
 
-def default_sources() -> dict[MarketPlatform, BrowserSourceProtocol]:
+def default_sources(settings: Settings) -> dict[MarketPlatform, BrowserSourceProtocol]:
     return {
         "ebay": EbaySource(),
         "wallapop": WallapopSource(),
-        "milanuncios": MilanunciosSource(),
+        "milanuncios": MilanunciosSource(
+            max_pages=settings.market_milanuncios_max_pages
+        ),
     }

@@ -74,7 +74,7 @@ class DeepMarketAnalyzer:
         self._runner = BrowserSourceRunner(
             settings,
             self.browser,
-            sources if sources is not None else default_sources(),
+            sources if sources is not None else default_sources(settings),
         )
         self._recommender: RecommenderProtocol = recommender or DeepSeekRecommender(
             settings, allow_template=False

@@ -275,11 +275,29 @@ curl -N -X POST http://127.0.0.1:8000/api/market/analyze/stream \
 |---|---|---|---|
 | eBay | `ebay.es/sch/i.html` with `LH_BIN=1`, `LH_ItemCondition=3000`, `_ipg=60` | `li.s-item, li.s-card`, strips the accessibility suffix, skips "Shop on eBay", optional page 2 if < 20 | ≥ 20 |
 | Wallapop | `es.wallapop.com/app/search?keywords=…&order_by=newest` | scrolls 4 times, extracts `a[href*='/item/']`, parses `1.234 €` and `1.234,56 €` | ≥ 20 |
-| Milanuncios | `milanuncios.com/anuncios/?s=…` | `article` cards; PerimeterX/captcha/access-denied → `blocked` | ≥ 10 |
+| Milanuncios | `milanuncios.com/anuncios/?s=…&pagina=N` | `article` cards; PerimeterX/captcha/access-denied → `blocked`; depth `MARKET_MILANUNCIOS_MAX_PAGES` (1–6, default 3) | ≥ 8 with 3 pages |
 
 Parser unit tests use saved HTML fixtures under `backend/tests/fixtures/`
 (`*_browser.html`, `milanuncios_blocked.html`). Fixtures are test-only and are
 never imported by the runtime deep path. Vinted is deferred (backlog).
+
+### Milanuncios page depth
+
+`MARKET_MILANUNCIOS_MAX_PAGES` (1–6, default **3**) bounds how many result pages
+the browser source visits. Measured on 2026-10-24 (`iPhone 13 128GB`, forced
+depth, headful Chromium under Xvfb):
+
+| Pages | Latency | Raw listings | Usable listings |
+|---|---|---|---|
+| 3 | **10.7 s** | 8 | **8** |
+| 6 | 21.5 s | 16 | 15 |
+
+Three pages reach the 8 usable samples a demo needs; six pages cost **+10.8 s**
+for **+7 usable samples** (~1.5 s per extra usable listing). Use `3` for the
+demo and `6` only for completeness runs. In normal operation the source stops
+early once it has 14 raw cards, so 6 pages is an upper bound. This is a
+configuration knob only: the `/analyze` request/response contract does not
+change.
 
 ## Contract
 
@@ -421,6 +439,7 @@ up; the deadline is shared, and a source that would exceed it is reported as
 | `MARKET_SOURCE_TIMEOUT_SEC` | `25` | per-source browser timeout |
 | `MARKET_BROWSER_TIMEOUT_SEC` | `45` | MCP tool-call timeout |
 | `MARKET_PLATFORM_QUOTA` | `4` | max listings per source in the final 12 |
+| `MARKET_MILANUNCIOS_MAX_PAGES` | `3` | Milanuncios result pages (1–6); 6 = completeness |
 | `MARKET_CACHE_PATH` | `/app/data/market_cache.sqlite` | SQLite cache (`./data/...` works locally too) |
 | `MARKET_CACHE_TTL_SEC` | `900` | cache TTL; `0` disables hits |
 | `CDP_URL` | `http://market-browser:9222` | Chrome DevTools endpoint |
