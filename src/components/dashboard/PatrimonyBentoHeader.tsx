@@ -1,10 +1,11 @@
-import { MapPin, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { MapPin, Smartphone, Target, TrendingDown, TrendingUp } from "lucide-react";
 import type { InventoryTotals, UserProfile } from "@/types/sdd";
 import { formatEur } from "@/components/inventory/format";
 
 interface PatrimonyBentoHeaderProps {
   profile?: UserProfile;
   totals?: InventoryTotals;
+  onAddWithMobile: () => void;
 }
 
 const card = "rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900";
@@ -14,7 +15,7 @@ function Amount({ value, className }: { value?: number; className: string }) {
   return <span className={`block font-semibold tabular-nums tracking-tight ${className}`}>{formatEur(value)}</span>;
 }
 
-export function PatrimonyBentoHeader({ profile, totals }: PatrimonyBentoHeaderProps) {
+export function PatrimonyBentoHeader({ profile, totals, onAddWithMobile }: PatrimonyBentoHeaderProps) {
   return (
     <section aria-label="Valoración de tu inventario" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className={`${card} flex flex-col justify-between gap-6 sm:col-span-2 lg:row-span-2`}>
@@ -22,9 +23,18 @@ export function PatrimonyBentoHeader({ profile, totals }: PatrimonyBentoHeaderPr
           <Target className="size-4" aria-hidden /> Valor real de mercado · ΣP<sub>avg</sub>
         </div>
         <Amount value={totals?.totalAvg} className="text-5xl sm:text-6xl" />
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          {totals ? `${totals.itemCount} artículos tasados con Visión IA y MCP Stealth` : "Calculando…"}
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {totals ? `${totals.itemCount} artículos tasados con Visión IA y MCP Stealth` : "Calculando…"}
+          </p>
+          <button
+            type="button"
+            onClick={onAddWithMobile}
+            className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98] dark:bg-white dark:text-zinc-900"
+          >
+            <Smartphone className="size-4" aria-hidden /> Añadir producto con el móvil
+          </button>
+        </div>
       </div>
 
       <div className={card}>

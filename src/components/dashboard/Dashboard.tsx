@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { ServerCrash } from "lucide-react";
 import { InventoryGrid } from "@/components/inventory/InventoryGrid";
+import { MobileSyncModal } from "@/components/mobile-sync/MobileSyncModal";
 import { PatrimonyBentoHeader } from "./PatrimonyBentoHeader";
 import { TopNavProfileSwitcher } from "./TopNavProfileSwitcher";
 import { useDashboardState } from "./useDashboardState";
 
 export function Dashboard() {
-  const { session, userId, inventory, loadingInventory, error, switchUser } = useDashboardState();
+  const { session, userId, inventory, loadingInventory, error, switchUser, reloadInventory } = useDashboardState();
+  const [mobileSyncOpen, setMobileSyncOpen] = useState(false);
   const current = loadingInventory ? undefined : inventory ?? undefined;
 
   return (
@@ -20,8 +23,20 @@ export function Dashboard() {
         </div>
       ) : (
         <>
-          <PatrimonyBentoHeader profile={current?.profile} totals={current?.totals} />
+          <PatrimonyBentoHeader
+            profile={current?.profile}
+            totals={current?.totals}
+            onAddWithMobile={() => setMobileSyncOpen(true)}
+          />
           <InventoryGrid items={inventory?.items} loading={loadingInventory} />
+          {userId && (
+            <MobileSyncModal
+              userId={userId}
+              isOpen={mobileSyncOpen}
+              onClose={() => setMobileSyncOpen(false)}
+              onItemCreated={reloadInventory}
+            />
+          )}
         </>
       )}
     </main>

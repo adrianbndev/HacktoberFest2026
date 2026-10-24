@@ -2,7 +2,7 @@
 // Espejo 1:1 de backend/app/models/sdd.py: si cambias uno, cambia el otro en el mismo commit.
 
 // ---------- 1. Usuario y perfil ----------
-export type TeamMemberId = 'ales' | 'adri' | 'matias' | 'jurado';
+export type TeamMemberId = 'ales' | 'adri' | 'matias';
 
 export interface UserProfile {
   id: TeamMemberId;
@@ -78,6 +78,13 @@ export interface MobileCaptureSession {
   resultItem?: InventoryItem;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CaptureSessionRequest { userId: TeamMemberId }            // POST /api/capture-session (body)
+export interface CaptureSessionCreated { sessionId: string; mobileUrl: string; lanIps: string[] }
+export interface CaptureSessionUpdate {                                     // PUT /api/capture-session/{id}
+  status: CaptureSessionStatus;
+  photoDataUrl?: string;          // data:image/... comprimida en el móvil (<= 800 px, JPEG 0.75)
 }
 
 // ---------- 4. Notificaciones de mercado ----------

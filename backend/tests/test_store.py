@@ -8,7 +8,7 @@ from app.store.seed_data import build_seed_state
 
 def test_seed_cumple_invariantes() -> None:
     state = build_seed_state()
-    assert set(state.profiles) == {"ales", "adri", "matias", "jurado"}
+    assert set(state.profiles) == {"ales", "adri", "matias"}
     for user in state.profiles:
         items = [item for item in state.inventory if item.user_id == user]
         assert len(items) >= 3
@@ -41,7 +41,7 @@ def test_archivo_corrupto_se_aparta_y_arranca_la_semilla(tmp_path) -> None:
     path.write_text("{roto", encoding="utf-8")
     repo = AppStoreRepository(path)
     assert path.with_suffix(".json.corrupt").read_text(encoding="utf-8") == "{roto"
-    assert len(repo.snapshot().profiles) == 4
+    assert len(repo.snapshot().profiles) == 3
 
 
 def test_api_de_punta_a_punta(tmp_path) -> None:

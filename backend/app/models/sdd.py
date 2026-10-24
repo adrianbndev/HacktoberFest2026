@@ -69,6 +69,22 @@ class MobileCaptureSession(CamelModel):
     updated_at: str
 
 
+class CaptureSessionRequest(CamelModel):
+    user_id: TeamMemberId
+
+
+class CaptureSessionCreated(CamelModel):
+    session_id: str
+    mobile_url: str
+    lan_ips: list[str]
+
+
+class CaptureSessionUpdate(CamelModel):
+    status: CaptureSessionStatus
+    # Solo imágenes en data URL y con tope de tamaño: llega desde el móvil sin autenticar.
+    photo_data_url: str | None = Field(default=None, max_length=2_000_000, pattern=r"^data:image/")
+
+
 # ---------- 4. Notificaciones de mercado ----------
 class MarketNotification(CamelModel):
     id: str

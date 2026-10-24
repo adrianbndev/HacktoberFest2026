@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, BeforeValidator, ConfigDict, model_validator
 from pydantic.alias_generators import to_camel
 
-TeamMemberId = Literal["ales", "adri", "matias", "jurado"]
+TeamMemberId = Literal["ales", "adri", "matias"]
 ConditionLabel = Literal["Nuevo", "Como nuevo", "Buen estado", "Desgaste visible", "Para piezas"]
 MarketPlatform = Literal["wallapop", "vinted", "milanuncios", "ebay"]
 CaptureSessionStatus = Literal[

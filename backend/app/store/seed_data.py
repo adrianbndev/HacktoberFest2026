@@ -1,4 +1,4 @@
-"""Datos semilla de la demo: 4 perfiles con 3 artículos cada uno e histórico de 3 escaneos (MOD-00 §3)."""
+"""Datos semilla de la demo: 3 perfiles con 3 artículos cada uno e histórico de 3 escaneos (MOD-00 §3)."""
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
@@ -19,7 +19,6 @@ PROFILES = [
     ("ales", "Ales", "Frontend & UX · Track A", "Madrid", ["TypeScript", "React", "Next.js"], "#8b5cf6"),
     ("adri", "Adri", "Visión IA & Sync Móvil · Track B", "Barcelona", ["Python", "TypeScript", "AI/Vision"], "#06b6d4"),
     ("matias", "Matías", "MCP Stealth & LifeOS · Track C", "Valencia", ["Rust", "TypeScript", "Node.js"], "#f59e0b"),
-    ("jurado", "Jurado", "Jurado Hacktoberfest 2026", "Madrid", ["TypeScript", "Python", "Go"], "#10b981"),
 ]
 
 # (usuario, emoji, color, nombre, categoría, marca, modelo, salud, etiqueta, diagnóstico, título SEO,
@@ -52,15 +51,6 @@ ITEMS = [
     ("matias", "🕹️", "#f8fafc", "PlayStation 5 Slim Digital 1TB", "Consolas y Videojuegos", "Sony",
      "PS5 Slim CFI-2016", 84, "Como nuevo", "Carcasa impecable y DualSense sin drift; con caja.",
      "PS5 Slim Digital 1TB como nueva + DualSense", 335, 3, "in_stock"),
-    ("jurado", "🧥", "#2563eb", "Chaqueta vaquera Levi's Trucker vintage talla M", "Ropa vintage", "Levi's",
-     "Trucker 70500", 68, "Buen estado", "Lavado desgastado de origen y costuras firmes; sin roturas.",
-     "Chaqueta vaquera Levi's Trucker vintage talla M", 48, 6, "listed"),
-    ("jurado", "🎵", "#e2e8f0", "AirPods Pro 2 USB-C", "Audio", "Apple", "AirPods Pro 2 A3047", 93, "Nuevo",
-     "Precintados con ticket de compra y garantía Apple vigente.",
-     "AirPods Pro 2 USB-C precintados con garantía", 175, -3, "in_stock"),
-    ("jurado", "📚", "#78716c", "Kindle Paperwhite 11ª gen 16GB", "Libros y E-readers", "Amazon",
-     "Paperwhite M2L3EK", 35, "Para piezas", "Pantalla con líneas fijas tras un golpe; enciende y carga.",
-     "Kindle Paperwhite 11ª gen para piezas o reparar", 105, 0, "in_stock"),
 ]
 
 
@@ -122,7 +112,7 @@ def build_seed_state() -> AppStoreState:
     }
     cities = {user: profile.city for user, profile in profiles.items()}
     return AppStoreState(
-        active_user_id="jurado", profiles=profiles,
+        active_user_id="ales", profiles=profiles,
         inventory=[_item(index, row, now, cities) for index, row in enumerate(ITEMS)],
         capture_sessions={}, notifications=[], calendar_events=[], last_updated_at=_iso(now),
     )
