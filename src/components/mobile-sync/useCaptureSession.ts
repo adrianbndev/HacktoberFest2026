@@ -1,23 +1,22 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { requestJson } from "@/lib/api";
 import { compressImageFileToDataUrl } from "@/lib/mobile-sync/image-compressor";
 import { formatDynamicFieldsSummary } from "@/lib/vision/category-fields";
+import { useCaptureSessionFeed } from "./useCaptureSessionFeed";
 import type {
   CaptureSessionCreated,
   CaptureSessionStatus,
   CaptureSessionUpdate,
   InventoryItem,
   MarketValuationResult,
-  MobileCaptureSession,
   TeamMemberId,
   ValuationRequest,
   VisionAnalysisResult,
   VisionAnalyzeRequest,
 } from "@/types/sdd";
 
-const POLL_INTERVAL_MS = 1200; // .agent/rules/hackathon-guardrails.md §1.4
 const PC_BUSY_EVENT = "lifeos:pc-busy";
 const REVIEW_BUSY_REASON =
   "Se está terminando de añadir el producto anterior en el portátil (revisando los datos). Guárdalo o cierra la ventana en el PC para sacar otra foto.";
@@ -91,6 +90,7 @@ export function useCaptureSession(
   const [item, setItem] = useState<InventoryItem | null>(null);
   const [eventBusyReason, setEventBusyReason] = useState<string | null>(null);
   const runIdRef = useRef(0);
+  const lastPhotoRef = useRef<string | null>(null);
   const prevExternalBusyRef = useRef<string | null>(null);
   const activeExternalBusyReason = options?.externalBusyReason ?? eventBusyReason;
 
@@ -138,34 +138,22 @@ export function useCaptureSession(
     }
   }
 
-  const onPolledPhoto = useEffectEvent(async (sessionId: string, photoDataUrl: string) => {
+  async function onPolledPhoto(sessionId: string, photoDataUrl: string) {
     if (activeExternalBusyReason || step === "vision" || step === "review" || step === "market") return;
+    if (lastPhotoRef.current === photoDataUrl) return; // SSE y polling pueden entregar la misma foto
+    lastPhotoRef.current = photoDataUrl;
     options?.onOpenModal?.();
     await analyzePhotoWithModel(sessionId, photoDataUrl);
-  });
+  }
 
-  useEffect(() => {
-    if (!session) return;
-    let busy = false;
-    async function pollSession() {
-      if (busy || !session) return;
-      const current = await requestJson<MobileCaptureSession>(`/api/capture-session/${session.sessionId}`).catch(
-        () => null,
-      );
-      if (!current) return;
-      if (current.status === "mobile_connected" || current.status === "completed") {
-        setStep((prev) => (prev === "waiting" ? "connected" : prev));
-      }
-      if (current.status === "photo_uploaded" && current.photoDataUrl) {
-        busy = true;
-        await onPolledPhoto(session.sessionId, current.photoDataUrl);
-        busy = false;
-      }
+  useCaptureSessionFeed(session?.sessionId, (current) => {
+    if (current.status === "mobile_connected" || current.status === "completed") {
+      setStep((prev) => (prev === "waiting" ? "connected" : prev));
     }
-    void pollSession();
-    const timer = window.setInterval(pollSession, POLL_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [session]);
+    if (current.status === "photo_uploaded" && current.photoDataUrl) {
+      void onPolledPhoto(current.sessionId, current.photoDataUrl);
+    }
+  });
 
   async function confirmVisionAndValuate(adjustedVision: VisionAnalysisResult, extraNotes = "") {
     if (!session || !photo) return;
@@ -211,6 +199,7 @@ export function useCaptureSession(
 
   function clearCurrentCapture(nextStatus: CaptureSessionStatus) {
     runIdRef.current += 1;
+    lastPhotoRef.current = null;
     setPhoto(null);
     setVisionDraft(null);
     setItem(null);
