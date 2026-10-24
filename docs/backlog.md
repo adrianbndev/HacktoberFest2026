@@ -56,6 +56,43 @@ Level 1 gate stays open until the end-to-end UI verification.
    be re-checked on the demo network and are reported by
    `scripts/smoke_analyze.py`.
 
+## Phase 2 verification follow-ups
+
+1. **`includeRecommendation` is not in the cache key.** A cached response with
+   a recommendation can be returned to a later request with
+   `includeRecommendation=false` within the TTL. Add the flag to the key or drop
+   `recommendation` when reading a hit for a no-recommendation request.
+2. **Recommendation derived from `description` is cached cross-caller.** The
+   cached text can be replayed to other callers with the same key. Redact and
+   delimit `description`, and namespace the cache per caller once auth exists.
+3. **MCP crash retry reuses the stale `pageId`.** Route the retry through
+   `_ensure_page()`/`new_page` instead of re-issuing the old page id.
+4. **No guaranteed page recreation after `stop()`/`close_page`.** An empty
+   `list_pages` falls back to `DEFAULT_PAGE_ID=1` without `new_page`; verify live
+   and recreate a tab when needed.
+5. **SSE disconnect stops the process-wide browser singleton.** A disconnect can
+   close the browser used by another concurrent client. Decouple stop per
+   request, or use a lock/refcount.
+6. **`/analyze` and `/analyze/stream` are public.** Anyone can hold the browser
+   lock and spend DeepSeek budget. Add auth/rate limiting before public exposure.
+7. **`/health` exposes sanitized `lastError` and the cache path.** Decide whether
+   these internals should be hidden from unauthenticated callers.
+8. **Per-source `sampleSize` can exceed `len(listings)`.** Listings are capped at
+   40 while the count is not; align the field with what is serialized.
+9. **`sources=["vinted"]` validates but degrades to an opaque error.** Return
+   `422` for unsupported sources or document the current behavior.
+10. **Dependency-direction deviation.** `browser/sources/base.py` imports
+    `browser/session.py`; use a `BrowserPage` Protocol if the brief's letter must
+    be respected.
+11. **Marketplace prompt-injection surface.** Listing titles and `description`
+    reach the LLM. Keep the clamp/validation and consider explicit delimiters.
+12. **Test coverage gaps.** `FakeAnalyzer` over-mocks the analyzer; there is no
+    test for the frontend `parseSseFrame` nor for a real HTTP disconnect.
+13. **`error: null` is omitted for `ok` sources** by `exclude_none`; harmless
+    shape difference for clients.
+14. **Router catch-all still maps programmer errors to `503`.** Log a redacted
+    reason and return a distinct code for genuine bugs.
+
 ## Phase 1 verification follow-ups still open
 
 These affect the frozen fast path only and are intentionally not changed here:
