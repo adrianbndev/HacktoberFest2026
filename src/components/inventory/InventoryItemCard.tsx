@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { InventoryItem } from "@/types/sdd";
 import { PLATFORM_LABEL, STATUS_LABEL, categoryIcon, formatEur, formatPlatforms, formatShortDay } from "./format";
+import { DEMO_PHOTO_CREDITS } from "./demo-photo-credits";
 import { ConditionChip } from "./HealthScoreBadge";
 import { ItemActions } from "./ItemActions";
 import { PriceTrioDisplay } from "./PriceTrioDisplay";
@@ -11,6 +12,7 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
   const sold = item.status === "sold";
   // Los productos de demo (seed_data.py) traen un dibujo SVG, no una foto: se muestran como ejemplo.
   const examplePhoto = item.photoUrl.startsWith("data:image/svg+xml");
+  const credit = DEMO_PHOTO_CREDITS[item.id];
   return (
     <article
       id={item.id}
@@ -31,6 +33,17 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
             alt={item.name}
             className={`absolute inset-0 size-full object-cover ${sold ? "grayscale" : ""}`}
           />
+        )}
+        {credit && !examplePhoto && (
+          <a
+            href={credit.source}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-2 right-2 rounded-full bg-paper/85 px-2 py-0.5 text-[12px] text-ink-2 transition-colors hover:text-ink"
+          >
+            Foto: {credit.author} · {credit.license}
+            <span className="sr-only"> (se abre en una pestaña nueva)</span>
+          </a>
         )}
         <span
           className={`absolute left-3 top-3 rounded-full px-3 py-1 text-[13px] font-semibold shadow-[0_2px_8px_rgb(16_17_20/0.15)] ${

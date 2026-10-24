@@ -17,6 +17,8 @@ def test_productos_demo_cumplen_invariantes() -> None:
         assert len(item.price_history) == 3 and item.price_history[-1].price_avg == item.price_avg
         assert all(0 < p.price_min < p.price_avg < p.price_max for p in item.price_history)
         assert all(listing.url for listing in item.comparable_listings)
+        # Foto libre embebida (demo_photos/): JPEG en data URL, muy por debajo de 1 MiB por documento de Firestore.
+        assert item.photo_url.startswith("data:image/jpeg;base64,") and len(item.photo_url) < 200_000
     assert {item.price_trend for item in items} == {"up", "down", "stable"}
 
 

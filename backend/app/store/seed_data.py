@@ -1,5 +1,8 @@
 """Datos de demo: perfil inicial desde la cuenta de Google y 3 productos con histórico de 3 escaneos (MOD-00 §3)."""
+import base64
 from datetime import UTC, datetime, timedelta
+from functools import cache
+from pathlib import Path
 from urllib.parse import quote
 
 from app.mcp.pricing_math import triplet_from_base
@@ -15,19 +18,20 @@ SEARCH_URLS = {
 LISTING_PRICE_FACTORS = {"wallapop": 0.95, "vinted": 0.9, "milanuncios": 1.0, "ebay": 1.1}
 DEFAULT_CITY = "Madrid"
 DEFAULT_FAVORITE_LANGUAGES = ["TypeScript", "Python"]
+PHOTOS_DIR = Path(__file__).parent / "demo_photos"  # fotos libres de Wikimedia Commons (ver CREDITS.md)
 
-# (emoji, color, nombre, categoría, marca, modelo, salud, etiqueta, diagnóstico, título SEO,
+# (foto, nombre, categoría, marca, modelo, salud, etiqueta, diagnóstico, título SEO,
 #  P_base en €, variación % entre escaneos, estado). Una subida, una bajada y uno estable para el Nivel 2.
 DEMO_ITEMS = [
-    ("🎮", "#ef4444", "Nintendo Switch OLED 64GB Blanca", "Consolas y Videojuegos", "Nintendo",
+    ("switch-oled.jpg", "Nintendo Switch OLED 64GB Blanca", "Consolas y Videojuegos", "Nintendo",
      "Switch OLED HEG-001", 88, "Como nuevo", "Pantalla sin arañazos y Joy-Con sin drift; leve marca de uso en el dock.",
      "Nintendo Switch OLED Blanca 64GB como nueva + dock", 225, 4, "listed"),
-    ("📱", "#334155", "iPhone 13 128GB Medianoche", "Móviles y Telefonía", "Apple", "iPhone 13 A2633",
+    ("iphone-13.jpg", "iPhone 13 128GB Blanco estrella", "Móviles y Telefonía", "Apple", "iPhone 13 A2633",
      76, "Buen estado", "Batería al 86 % y pequeños roces en el marco; pantalla intacta.",
-     "iPhone 13 128GB Medianoche libre · batería 86 %", 340, -3, "in_stock"),
-    ("🎧", "#0f172a", "Sony WH-1000XM4 Negros", "Audio", "Sony", "WH-1000XM4", 82, "Como nuevo",
+     "iPhone 13 128GB Blanco estrella libre · batería 86 %", 340, -3, "in_stock"),
+    ("sony-wh-1000xm3.jpg", "Sony WH-1000XM3 Negros", "Audio y Sonido", "Sony", "WH-1000XM3", 82, "Como nuevo",
      "Almohadillas en buen estado y funda original; sin golpes visibles.",
-     "Sony WH-1000XM4 cancelación de ruido + funda", 150, 0, "in_stock"),
+     "Sony WH-1000XM3 cancelación de ruido + funda", 110, 0, "in_stock"),
 ]
 
 
@@ -50,6 +54,12 @@ def _svg_data_url(label: str, color: str) -> str:
     return "data:image/svg+xml;charset=utf-8," + quote(svg)
 
 
+@cache
+def _photo_data_url(filename: str) -> str:
+    """Foto JPEG embebida como data URL (≤ 800 px, < 60 KB): cabe en el documento de Firestore."""
+    return "data:image/jpeg;base64," + base64.b64encode((PHOTOS_DIR / filename).read_bytes()).decode()
+
+
 def new_profile(uid: str, name: str, email: str | None, picture: str | None) -> UserProfile:
     """Perfil del primer acceso a partir de la cuenta de Google; ciudad y lenguajes se podrán editar."""
     return UserProfile(
@@ -60,7 +70,7 @@ def new_profile(uid: str, name: str, email: str | None, picture: str | None) -> 
 
 
 def _item(index: int, row: tuple, uid: str, city: str, now: datetime) -> InventoryItem:
-    emoji, color, name, category, brand, model, score, label, reasoning, seo_title, base, drift, status = row
+    photo, name, category, brand, model, score, label, reasoning, seo_title, base, drift, status = row
     history = []
     for days_ago in (2, 1, 0):
         price_min, price_avg, price_max = triplet_from_base(base * (1 - days_ago * drift / 100), score)
@@ -72,7 +82,7 @@ def _item(index: int, row: tuple, uid: str, city: str, now: datetime) -> Invento
     delta_eur = current.price_avg - previous.price_avg
     query = quote(" ".join(name.split()[:4]))
     return InventoryItem(
-        id=f"demo-{index + 1}", user_id=uid, photo_url=_svg_data_url(emoji, color),
+        id=f"demo-{index + 1}", user_id=uid, photo_url=_photo_data_url(photo),
         name=name, category=category, brand=brand, model=model,
         condition_score=score, condition_label=label, condition_reasoning=reasoning,
         seo_title=seo_title,
