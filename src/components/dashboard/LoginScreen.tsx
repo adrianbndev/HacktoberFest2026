@@ -57,7 +57,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       <aside aria-label="Ejemplo de tasación" className="hidden items-center justify-center bg-accent p-14 lg:flex">
         <div className="w-full max-w-sm rounded-panel bg-paper p-7 shadow-[0_32px_64px_-24px_rgb(16_17_20/0.45)]">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[17px] font-semibold">{EXAMPLE.name}</p>
+            <p className="text-base font-semibold">{EXAMPLE.name}</p>
             <span className="rounded-full bg-fog px-2.5 py-1 text-[13px] font-semibold text-ink-2">Ejemplo</span>
           </div>
           <div className="mt-3">

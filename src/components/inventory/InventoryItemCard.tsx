@@ -39,7 +39,7 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
             href={credit.source}
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute bottom-2 right-2 rounded-full bg-paper/85 px-2 py-0.5 text-[12px] text-ink-2 transition-colors hover:text-ink"
+            className="absolute bottom-2 right-2 rounded-full bg-paper/85 px-2 py-0.5 text-[13px] text-ink-2 transition-colors hover:text-ink"
           >
             Foto: {credit.author} · {credit.license}
             <span className="sr-only"> (se abre en una pestaña nueva)</span>
@@ -56,7 +56,7 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
 
       <div className="flex flex-1 flex-col gap-5 p-5">
         <div>
-          <h3 className="text-[17px] font-semibold leading-snug">{item.name}</h3>
+          <h3 className="text-base font-semibold leading-snug">{item.name}</h3>
           <p className="mt-0.5 truncate text-sm text-ink-2">
             {item.brand} · {item.model}
           </p>

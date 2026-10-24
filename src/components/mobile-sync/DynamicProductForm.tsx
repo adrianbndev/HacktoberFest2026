@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Plus, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Check, Loader2, Plus, RotateCcw, ScanSearch, SlidersHorizontal, X } from "lucide-react";
+import { ConditionChip } from "@/components/inventory/HealthScoreBadge";
 import {
   PRODUCT_CATEGORIES,
   buildDynamicFieldsForCategory,
@@ -16,8 +17,10 @@ export interface DynamicProductFormProps {
   onRetake: () => void;
 }
 
-const inputCls =
-  "mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-zinc-300";
+const FIELD = "mt-1.5 w-full rounded-inner border border-line bg-paper px-3.5 text-[15px] text-ink transition-colors focus:border-accent";
+const inputCls = `${FIELD} h-11`;
+const textareaCls = `${FIELD} py-2.5 leading-relaxed`;
+const labelCls = "text-[13px] font-medium text-ink-2";
 
 export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onRetake }: DynamicProductFormProps) {
   const [name, setName] = useState(initialAnalysis.name);
@@ -84,22 +87,24 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-        <span className="flex items-center gap-1.5">
-          <Sparkles className="size-4 shrink-0" aria-hidden />
-          Datos extraídos por {initialAnalysis.modelUsed ?? "Visión IA"} · Revisa y edita antes de continuar
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-inner bg-fog px-4 py-3 text-sm text-ink-2">
+        <span className="flex items-center gap-2">
+          <ScanSearch className="size-4.5 shrink-0 text-accent" aria-hidden />
+          Datos reconocidos por {initialAnalysis.modelUsed ?? "la IA"}. Revísalos antes de tasar.
         </span>
-        {initialAnalysis.latencyMs && <span className="opacity-75">{(initialAnalysis.latencyMs / 1000).toFixed(1)}s</span>}
+        {initialAnalysis.latencyMs && (
+          <span className="tabular-nums">{(initialAnalysis.latencyMs / 1000).toFixed(1)} s</span>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-medium text-zinc-600 sm:col-span-2 dark:text-zinc-300">
-          Nombre del producto detectado
+        <label className={`${labelCls} sm:col-span-2`}>
+          Nombre del objeto
           <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
         </label>
 
-        <label className="text-xs font-medium text-zinc-600 sm:col-span-2 dark:text-zinc-300">
-          Categoría (cambia los campos dinámicos según el tipo de objeto)
+        <label className={`${labelCls} sm:col-span-2`}>
+          Categoría (cambia los datos que te pedimos)
           <select value={category} onChange={(e) => handleCategoryChange(e.target.value)} className={inputCls}>
             {categories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -107,35 +112,36 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           </select>
         </label>
 
-        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+        <label className={labelCls}>
           Marca
           <input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} />
         </label>
 
-        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-          Modelo / Referencia
+        <label className={labelCls}>
+          Modelo o referencia
           <input value={model} onChange={(e) => setModel(e.target.value)} className={inputCls} />
         </label>
       </div>
 
-      <fieldset className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
-        <legend className="flex items-center gap-1.5 px-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
-          <SlidersHorizontal className="size-3.5" aria-hidden /> Campos específicos · {category}
+      <fieldset className="rounded-panel bg-fog p-4">
+        <legend className="float-left mb-3 flex w-full items-center gap-2 text-[15px] font-semibold">
+          <SlidersHorizontal className="size-4" aria-hidden /> Datos de {category}
         </legend>
 
-        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+        <div className="clear-both grid gap-3 sm:grid-cols-2">
           {dynamicFields.map((field) => (
-            <div key={field.key} className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+            <div key={field.key} className={labelCls}>
               <div className="flex items-center justify-between gap-1">
                 <span>{field.label}</span>
                 {dynamicFields.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeDynamicField(field.key)}
+                    aria-label={`Quitar ${field.label}`}
                     title="Quitar este campo"
-                    className="rounded px-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+                    className="grid size-6 place-items-center rounded-full transition-colors hover:bg-fog-2 hover:text-ink"
                   >
-                    ×
+                    <X className="size-3.5" aria-hidden />
                   </button>
                 )}
               </div>
@@ -162,24 +168,25 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           <input
             value={newFieldLabel}
             onChange={(e) => setNewFieldLabel(e.target.value)}
-            placeholder="Añadir otro campo (ej. N.º serie, ITV, Garantía)…"
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+            placeholder="Añadir otro dato (n.º de serie, garantía…)"
+            aria-label="Nombre del dato que quieres añadir"
+            className="h-10 min-w-0 flex-1 rounded-inner border border-line bg-paper px-3 text-sm transition-colors focus:border-accent"
           />
           <button
             type="button"
             onClick={addCustomField}
             disabled={!newFieldLabel.trim()}
-            className="flex items-center gap-1 rounded-xl border border-zinc-300 px-2.5 py-1.5 text-xs font-medium transition hover:bg-zinc-100 disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="flex h-10 items-center gap-1 rounded-full bg-paper px-4 text-sm font-semibold ring-1 ring-line transition-colors hover:bg-fog-2 disabled:opacity-40"
           >
-            <Plus className="size-3.5" aria-hidden /> Añadir
+            <Plus className="size-4" aria-hidden /> Añadir
           </button>
         </div>
       </fieldset>
 
-      <div className="rounded-2xl border border-zinc-200 p-3.5 dark:border-zinc-800">
-        <div className="flex items-center justify-between text-xs font-semibold">
-          <span>Estado / Salud del producto: {conditionScore}%</span>
-          <span className="rounded-full bg-zinc-900 px-2.5 py-0.5 text-white dark:bg-white dark:text-zinc-900">{conditionLabel}</span>
+      <div className="rounded-panel bg-fog p-4">
+        <div className="flex items-center justify-between gap-3 text-[15px] font-semibold">
+          <span className="tabular-nums">Estado: {conditionScore}/100</span>
+          <ConditionChip label={conditionLabel} />
         </div>
         <input
           type="range"
@@ -187,30 +194,29 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           max={100}
           value={conditionScore}
           onChange={(e) => setConditionScore(Number(e.target.value))}
-          className="mt-2 w-full accent-zinc-900 dark:accent-white"
+          aria-label="Estado del objeto, de 0 a 100"
+          className="mt-3 w-full accent-accent"
         />
-        <label className="mt-2 block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-          Observaciones del estado físico
+        <label className={`mt-2 block ${labelCls}`}>
+          Qué se ve en la foto
           <input value={conditionReasoning} onChange={(e) => setConditionReasoning(e.target.value)} className={inputCls} />
         </label>
       </div>
 
-      <details className="rounded-2xl border border-zinc-200 px-3.5 py-2.5 text-xs dark:border-zinc-800">
-        <summary className="cursor-pointer font-medium text-zinc-700 dark:text-zinc-300">
-          Opciones avanzadas: Anuncio SEO y notas adicionales
-        </summary>
-        <div className="mt-3 flex flex-col gap-2.5">
-          <label className="font-medium text-zinc-600 dark:text-zinc-300">
-            Título SEO sugerido
+      <details className="rounded-panel bg-fog px-4 py-3">
+        <summary className="text-[15px] font-semibold">Anuncio y notas (opcional)</summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <label className={labelCls}>
+            Título del anuncio
             <input value={seoTitle} maxLength={65} onChange={(e) => setSeoTitle(e.target.value)} className={inputCls} />
           </label>
-          <label className="font-medium text-zinc-600 dark:text-zinc-300">
-            Descripción SEO
-            <textarea rows={2} value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} className={inputCls} />
+          <label className={labelCls}>
+            Descripción del anuncio
+            <textarea rows={3} value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} className={textareaCls} />
           </label>
-          <label className="font-medium text-zinc-600 dark:text-zinc-300">
-            Notas extra del vendedor
-            <input value={extraNotes} onChange={(e) => setExtraNotes(e.target.value)} placeholder="Defectos no visibles, extras…" className={inputCls} />
+          <label className={labelCls}>
+            Tus notas
+            <input value={extraNotes} onChange={(e) => setExtraNotes(e.target.value)} placeholder="Defectos que no se ven, extras…" className={inputCls} />
           </label>
         </div>
       </details>
@@ -220,17 +226,17 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           type="button"
           onClick={onRetake}
           disabled={submitting}
-          className="flex items-center justify-center gap-1.5 rounded-2xl border border-zinc-200 px-4 py-3 text-xs font-semibold transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          className="flex h-12 items-center justify-center gap-1.5 rounded-full bg-fog px-5 text-[15px] font-semibold transition-colors hover:bg-fog-2 disabled:opacity-50"
         >
           <RotateCcw className="size-4" aria-hidden /> Otra foto
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 dark:bg-white dark:text-zinc-900"
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {submitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
-          {submitting ? "Tasando producto…" : "Confirmar datos y continuar"}
+          {submitting ? "Tasando…" : "Confirmar y tasar"}
         </button>
       </div>
     </form>

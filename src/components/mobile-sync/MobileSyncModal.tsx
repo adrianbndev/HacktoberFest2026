@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Check, FlaskConical, Loader2, RotateCcw, Smartphone, Sparkles, TriangleAlert, X } from "lucide-react";
+import { Check, CircleCheck, Loader2, RotateCcw, ScanSearch, Smartphone, TriangleAlert, Upload, X } from "lucide-react";
 import { HealthScoreBadge } from "@/components/inventory/HealthScoreBadge";
 import { PriceTrioDisplay } from "@/components/inventory/PriceTrioDisplay";
 import type { InventoryItem, TeamMemberId } from "@/types/sdd";
@@ -17,6 +17,9 @@ export interface MobileSyncModalProps {
   onItemCreated: (newItem: InventoryItem) => void;
   busyReason?: string | null;
 }
+
+const SECONDARY_BUTTON =
+  "flex h-11 items-center justify-center gap-2 rounded-full bg-fog px-5 text-[15px] font-semibold transition-colors hover:bg-fog-2 disabled:opacity-50";
 
 // Si el PC usa localhost, el QR apunta a la IP de la red local que detecta el backend.
 function defaultBaseUrl(mobileUrl: string) {
@@ -66,15 +69,15 @@ function MobileSyncDialog({
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="mobile-sync-title"
-      className="m-auto max-h-[92dvh] w-[min(95vw,38rem)] overflow-y-auto rounded-3xl bg-white p-6 text-zinc-900 backdrop:bg-black/60 dark:bg-zinc-900 dark:text-zinc-100"
+      className="m-auto max-h-[92dvh] w-[min(95vw,38rem)] overflow-y-auto rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7"
     >
       <div className="mb-5 flex items-start justify-between gap-4">
-        <h2 id="mobile-sync-title" className="flex items-center gap-2 text-lg font-semibold">
+        <h2 id="mobile-sync-title" className="flex items-center gap-2.5 text-lg font-semibold">
           <Smartphone className="size-5" aria-hidden />
-          {step === "review" ? "Revisar datos del producto" : "Añadir producto con el móvil"}
+          {step === "review" ? "Revisa los datos del objeto" : "Tasar un objeto con el móvil"}
         </h2>
         <form method="dialog">
-          <button aria-label="Cerrar" className="rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <button aria-label="Cerrar" className="grid size-9 place-items-center rounded-full transition-colors hover:bg-fog">
             <X className="size-5" aria-hidden />
           </button>
         </form>
@@ -82,48 +85,41 @@ function MobileSyncDialog({
 
       {step === "error" ? (
         <div className="flex flex-col gap-3">
-          <p
-            role="alert"
-            className="flex items-center gap-3 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-          >
+          <p role="alert" className="flex items-center gap-3 rounded-inner bg-rose-50 p-4 text-[15px] text-rose-800">
             <TriangleAlert className="size-5 shrink-0" aria-hidden />
-            No se pudo completar el análisis de la imagen. Inténtalo de nuevo con otra foto.
+            No hemos podido analizar la foto. Prueba con otra, con buena luz y el objeto entero a la vista.
           </p>
-          <button
-            type="button"
-            onClick={resetToCapture}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 py-2.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-          >
-            <RotateCcw className="size-4" aria-hidden /> Volver a intentar
+          <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
+            <RotateCcw className="size-4" aria-hidden /> Volver a intentarlo
           </button>
         </div>
       ) : waiting ? (
-        <div className="flex flex-col items-center gap-4">
-          <div className="grid size-56 place-items-center rounded-3xl bg-white p-3 ring-1 ring-zinc-200">
+        <div className="flex flex-col items-center gap-5">
+          <div className="grid size-56 place-items-center rounded-panel bg-paper p-3 ring-1 ring-line">
             {session ? (
-              <QRCodeSVG value={mobileUrl} size={200} marginSize={1} bgColor="#ffffff" fgColor="#18181b" />
+              <QRCodeSVG value={mobileUrl} size={200} marginSize={1} bgColor="#ffffff" fgColor="#101114" />
             ) : (
-              <Loader2 className="size-8 animate-spin text-zinc-400" aria-label="Creando sesión" />
+              <Loader2 className="size-8 animate-spin text-ink-2" aria-label="Creando sesión" />
             )}
           </div>
-          <p role="status" className="text-center text-sm font-medium">
-            {step === "connected" ? "📱 ¡Móvil conectado! Esperando foto…" : "Escanea el QR con la cámara del móvil"}
+          <p role="status" className={`text-center text-[15px] font-semibold ${step === "connected" ? "text-accent" : ""}`}>
+            {step === "connected" ? "Móvil conectado: haz la foto cuando quieras" : "Escanea el código con la cámara del móvil"}
           </p>
-          <label className="w-full text-xs text-zinc-500 dark:text-zinc-400">
-            Dirección para el móvil (cámbiala si usas un túnel o el hotspot)
+          <label className="w-full text-[13px] font-medium text-ink-2">
+            Dirección que abre el móvil (cámbiala si usas un túnel o el hotspot)
             <input
               value={baseUrl}
               onChange={(event) => setCustomBaseUrl(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-zinc-200 bg-transparent px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:text-zinc-100"
+              className="mt-1.5 h-11 w-full rounded-inner border border-line bg-paper px-3.5 text-[15px] text-ink transition-colors focus:border-accent"
             />
           </label>
           <button
             type="button"
             disabled={!session}
             onClick={() => fileRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 py-2.5 text-sm font-medium transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className={`${SECONDARY_BUTTON} w-full`}
           >
-            <FlaskConical className="size-4" aria-hidden /> Subir o simular foto desde este dispositivo
+            <Upload className="size-4" aria-hidden /> Subir una foto desde este ordenador
           </button>
           <input
             ref={fileRef}
@@ -138,9 +134,9 @@ function MobileSyncDialog({
           />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {photo && (
-            <div className="relative overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+            <div className="relative overflow-hidden rounded-inner bg-fog">
               {/* eslint-disable-next-line @next/next/no-img-element -- foto recibida en data URL */}
               <img
                 src={photo}
@@ -148,10 +144,10 @@ function MobileSyncDialog({
                 className={`${step === "review" ? "max-h-48" : "aspect-[4/3]"} w-full object-cover`}
               />
               {step === "vision" && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
-                  <div className="flex items-center gap-2.5 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold text-zinc-900 shadow-lg">
-                    <Loader2 className="size-4 animate-spin text-emerald-600" aria-hidden />
-                    Analizando imagen con el modelo IA…
+                <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
+                  <div className="flex items-center gap-2.5 rounded-full bg-paper px-4 py-2 text-[13px] font-semibold text-ink shadow-[0_8px_24px_-8px_rgb(16_17_20/0.4)]">
+                    <Loader2 className="size-4 animate-spin text-accent" aria-hidden />
+                    Analizando la foto…
                   </div>
                 </div>
               )}
@@ -159,17 +155,13 @@ function MobileSyncDialog({
           )}
 
           {step === "vision" && (
-            <div
-              role="status"
-              aria-live="polite"
-              className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50"
-            >
-              <div className="flex items-center gap-2.5 text-sm font-semibold">
-                <Sparkles className="size-4 animate-pulse text-emerald-600 dark:text-emerald-400" aria-hidden />
-                Procesando fotografía en el modelo de Visión IA…
-              </div>
-              <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-                Estamos identificando el producto, su estado físico y generando los campos dinámicos específicos según su categoría (ej. móvil, vehículo, consola, mobiliario…).
+            <div role="status" aria-live="polite" className="flex flex-col gap-1.5 rounded-inner bg-fog p-4">
+              <p className="flex items-center gap-2.5 text-[15px] font-semibold">
+                <ScanSearch className="size-5 text-accent" aria-hidden />
+                Reconociendo el objeto y su estado…
+              </p>
+              <p className="text-sm leading-relaxed text-ink-2">
+                Identificamos qué es, en qué estado está y qué datos pedirte según su tipo (móvil, consola, mueble…).
               </p>
             </div>
           )}
@@ -185,11 +177,13 @@ function MobileSyncDialog({
 
           {step === "done" && item && (
             <>
+              <p role="status" className="flex items-center gap-2 text-[15px] font-semibold">
+                <CircleCheck className="size-5 text-accent" aria-hidden /> Guardado en tu inventario
+              </p>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.category}</p>
                 <p className="text-lg font-semibold">{item.name}</p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {item.brand} · {item.model}
+                <p className="text-sm text-ink-2">
+                  {item.brand} · {item.model} · {item.category}
                 </p>
               </div>
               <HealthScoreBadge
@@ -198,22 +192,18 @@ function MobileSyncDialog({
                 reasoning={item.conditionReasoning}
               />
               {item.details && (
-                <div className="whitespace-pre-line rounded-2xl bg-zinc-100 p-3.5 text-xs leading-relaxed text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                <div className="whitespace-pre-line rounded-inner bg-fog p-3.5 text-sm leading-relaxed text-ink-2">
                   {item.details}
                 </div>
               )}
               <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
               <div className="flex gap-2.5">
-                <button
-                  type="button"
-                  onClick={resetToCapture}
-                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-zinc-200 px-4 py-3 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-                >
-                  <RotateCcw className="size-4" aria-hidden /> Subir otro
+                <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
+                  <RotateCcw className="size-4" aria-hidden /> Tasar otro
                 </button>
                 <form method="dialog" className="flex-1">
-                  <button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900">
-                    <Check className="size-4" aria-hidden /> Guardado en Mi Inventario
+                  <button className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover">
+                    <Check className="size-4" aria-hidden /> Hecho
                   </button>
                 </form>
               </div>

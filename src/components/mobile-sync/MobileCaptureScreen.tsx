@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { Camera, CheckCircle2, Clock, Loader2, RotateCcw, Sparkles, TriangleAlert } from "lucide-react";
+import { Camera, CircleCheck, Clock, Loader2, RotateCcw, TriangleAlert } from "lucide-react";
+import { Brand } from "@/components/dashboard/Brand";
 import { requestJson } from "@/lib/api";
 import { compressImageFileToDataUrl } from "@/lib/mobile-sync/image-compressor";
 import type { CaptureSessionUpdate, MobileCaptureSession } from "@/types/sdd";
@@ -10,6 +11,8 @@ import type { CaptureSessionUpdate, MobileCaptureSession } from "@/types/sdd";
 type Phase = "connecting" | "ready" | "sending" | "analyzing" | "busy" | "completed" | "expired" | "failed";
 
 const POLL_INTERVAL_MS = 1200;
+const PRIMARY_BUTTON =
+  "mt-auto flex h-16 items-center justify-center gap-3 rounded-full bg-accent text-lg font-semibold text-white transition-transform active:scale-[0.98]";
 
 export function MobileCaptureScreen() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -83,60 +86,53 @@ export function MobileCaptureScreen() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 p-6">
-      <header>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">LifeOS · ReCommerce AI</p>
-        <h1 className="text-2xl font-semibold">Añadir producto</h1>
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 bg-paper p-6 text-ink">
+      <header className="flex flex-col gap-8">
+        <Brand />
+        <h1 className="font-display text-3xl font-semibold tracking-[-0.03em]">Tasar un objeto</h1>
       </header>
 
       {preview && (
-        <div className="relative overflow-hidden rounded-3xl">
+        <div className="relative overflow-hidden rounded-panel bg-fog">
           {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local en data URL */}
           <img src={preview} alt="Foto enviada" className="aspect-square w-full object-cover" />
           {(phase === "sending" || phase === "analyzing") && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
-              <div className="flex items-center gap-2.5 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold text-zinc-900 shadow-lg">
-                <Loader2 className="size-4 animate-spin text-emerald-600" aria-hidden />
-                {phase === "sending" ? "Subiendo foto…" : "Analizando con IA…"}
+            <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
+              <div className="flex items-center gap-2.5 rounded-full bg-paper px-4 py-2 text-[13px] font-semibold text-ink shadow-[0_8px_24px_-8px_rgb(16_17_20/0.4)]">
+                <Loader2 className="size-4 animate-spin text-accent" aria-hidden />
+                {phase === "sending" ? "Subiendo la foto…" : "Analizando la foto…"}
               </div>
             </div>
           )}
         </div>
       )}
 
-      {phase === "connecting" && <Status icon={Loader2} spin text="Conectando con el PC…" />}
+      {phase === "connecting" && <Status icon={Loader2} spin text="Conectando con el ordenador…" />}
       {phase === "expired" && (
-        <Status icon={TriangleAlert} text="Este código QR ya no es válido. Genera uno nuevo en el PC." />
+        <Status icon={TriangleAlert} text="Este código QR ya no vale. Genera uno nuevo en el ordenador." />
       )}
-      {phase === "sending" && <Status icon={Loader2} spin text="Enviando fotografía comprimida al PC…" />}
+      {phase === "sending" && <Status icon={Loader2} spin text="Enviando la foto al ordenador…" />}
       {phase === "analyzing" && (
-        <Status
-          icon={Sparkles}
-          spin
-          text="Analizando la foto con el modelo de Visión IA para rellenar los campos dinámicos en la web…"
-        />
+        <Status icon={Loader2} spin text="Analizando la foto. Sigue en el ordenador para revisar los datos." />
       )}
 
       {phase === "busy" && (
         <>
-          <div
-            role="alert"
-            className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-200"
-          >
+          <div role="alert" className="flex flex-col gap-1.5 rounded-inner bg-amber-50 p-4 text-amber-900">
             <p className="flex items-center gap-2 font-semibold">
-              <TriangleAlert className="size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-              No se puede sacar una foto ahora mismo
+              <TriangleAlert className="size-5 shrink-0 text-amber-700" aria-hidden />
+              Ahora no se puede hacer otra foto
             </p>
-            <p className="text-xs leading-relaxed opacity-90">
-              {busyReason ?? "El portátil está ocupado con otro producto. Termina la acción en el PC para continuar."}
+            <p className="text-sm leading-relaxed">
+              {busyReason ?? "El ordenador está ocupado con otro objeto. Termina en el ordenador para continuar."}
             </p>
           </div>
           <button
             type="button"
             disabled
-            className="mt-auto flex items-center justify-center gap-2 rounded-3xl border border-zinc-200 bg-zinc-100 py-4 text-sm font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
+            className="mt-auto flex h-14 items-center justify-center gap-2 rounded-full bg-fog text-[15px] font-semibold text-ink-2"
           >
-            <Clock className="size-5" aria-hidden /> Esperando a que el portátil quede libre…
+            <Clock className="size-5" aria-hidden /> Esperando a que el ordenador quede libre…
           </button>
         </>
       )}
@@ -144,31 +140,23 @@ export function MobileCaptureScreen() {
       {phase === "completed" && (
         <>
           <Status
-            icon={CheckCircle2}
-            text="¡Producto guardado en tu inventario! Si sacas otra foto ahora, se abrirá automáticamente el formulario en el portátil."
+            icon={CircleCheck}
+            text="Guardado en tu inventario. Si haces otra foto, el ordenador abrirá la revisión solo."
           />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="mt-auto flex items-center justify-center gap-2 rounded-3xl bg-zinc-900 py-5 text-base font-semibold text-white transition active:scale-[0.98] dark:bg-white dark:text-zinc-900"
-          >
+          <button type="button" onClick={() => inputRef.current?.click()} className={PRIMARY_BUTTON}>
             <RotateCcw className="size-5" aria-hidden /> Hacer otra foto
           </button>
         </>
       )}
-      {phase === "failed" && <Status icon={TriangleAlert} text="No se pudo procesar la foto. Prueba otra vez." />}
+      {phase === "failed" && <Status icon={TriangleAlert} text="No se ha podido procesar la foto. Prueba otra vez." />}
 
       {(phase === "ready" || phase === "failed") && (
         <>
-          <p className="text-zinc-600 dark:text-zinc-300">
-            Haz una foto al producto con buena luz. El modelo de IA detectará el tipo de objeto y abrirá sus campos dinámicos automáticamente en el portátil.
+          <p className="text-base leading-relaxed text-ink-2">
+            Haz una foto al objeto con buena luz. En el ordenador verás qué es, en qué estado está y cuánto vale.
           </p>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="mt-auto flex items-center justify-center gap-3 rounded-3xl bg-zinc-900 py-6 text-lg font-semibold text-white active:scale-[0.98] dark:bg-white dark:text-zinc-900"
-          >
-            <Camera className="size-7" aria-hidden /> Hacer foto al producto
+          <button type="button" onClick={() => inputRef.current?.click()} className={PRIMARY_BUTTON}>
+            <Camera className="size-6" aria-hidden /> Hacer foto al objeto
           </button>
         </>
       )}
@@ -191,8 +179,8 @@ export function MobileCaptureScreen() {
 
 function Status({ icon: Icon, text, spin }: { icon: typeof Camera; text: string; spin?: boolean }) {
   return (
-    <p role="status" className="flex items-center gap-3 rounded-2xl bg-zinc-100 p-4 text-sm dark:bg-zinc-900">
-      <Icon className={`size-6 shrink-0 ${spin ? "animate-spin" : ""}`} aria-hidden /> {text}
+    <p role="status" className="flex items-center gap-3 rounded-inner bg-fog p-4 text-[15px]">
+      <Icon className={`size-6 shrink-0 text-ink-2 ${spin ? "animate-spin" : ""}`} aria-hidden /> {text}
     </p>
   );
 }
