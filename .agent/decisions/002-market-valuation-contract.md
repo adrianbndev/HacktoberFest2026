@@ -53,6 +53,14 @@ The live path uses `httpx` + BeautifulSoup with three connectors in parallel,
 A headful browser cold start is 4–9 s, so it cannot be on this path. The browser
 engine is Phase 2 and is exposed through a separate endpoint.
 
+The optional recommendation runs in its own opt-in window
+(`DEEPSEEK_RECOMMENDATION_BUDGET_SEC`, default 25 s). `deepseek-v4-pro` with
+thinking/max reasoning measured **~12–23 s** per real recommendation, so it
+cannot fit inside the 2.8 s market SLA. Calls without `includeRecommendation`
+keep the 2.8 s budget; the frontend can request the text separately when the
+demo can wait. `DEEPSEEK_REASONING_MODEL=deepseek-flash` is available as a
+faster (~4 s), lower-quality escape hatch.
+
 **Consequences:** `/valuate` stays within budget with mocked connectors (tests)
 and measured 1.8–2.3 s in Docker when every live source was blocked and the
 fallback ran. A small amount of residual latency is spent in the optional
@@ -68,6 +76,8 @@ recommendation, which shares the remaining budget.
   model, then the deterministic template is used.
 - Every payload passes Pydantic validation. `suggestedPrice` is clamped to
   `[priceMin, priceMax]` and adds `CLAMP_WARNING` when changed.
+- The transport timeout is 30 s per attempt with SDK retries disabled; our own
+  loop retries once per model and then falls back to the deterministic template.
 - Without an API key the template runs immediately; the request still succeeds.
 
 **Consequences:** the recommendation is never a single point of failure.

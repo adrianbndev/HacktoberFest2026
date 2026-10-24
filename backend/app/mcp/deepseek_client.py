@@ -124,6 +124,7 @@ class DeepSeekChat:
                 api_key=api_key,
                 base_url=self._settings.deepseek_base_url,
                 timeout=self._settings.deepseek_timeout_sec,
+                max_retries=0,
             )
         try:
             response = await self._client.chat.completions.create(**kwargs)

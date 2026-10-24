@@ -40,7 +40,7 @@ def main() -> int:
     parser.add_argument("--condition-label", default="Como nuevo")
     parser.add_argument("--description", default="Caja original, batería 89%, sin arañazos")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
-    parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--timeout", type=float, default=60.0)
     parser.add_argument("--include-recommendation", action="store_true")
     args = parser.parse_args()
 

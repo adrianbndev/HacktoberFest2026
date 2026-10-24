@@ -179,7 +179,7 @@ Never `500` for the valuation paths.
 | Jitter in `/valuate` | 0.2–0.6 s | `human_jitter`, disabled with `0` |
 | Connectors (parallel) | 1.6 s | hard `asyncio.wait_for` per source |
 | Filtering + pricing | < 5 ms | pure functions |
-| Recommendation | remaining budget | capped by `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` |
+| Recommendation (opt-in) | separate window | `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` (default 25 s); not part of the 2.8 s market SLA |
 | **Total** | **≤ 2.8 s** | measured with mocks in tests |
 
 Measured in Docker against the real network (all sources blocked): **1.8–2.3 s**
@@ -214,6 +214,13 @@ interactive endpoint.
 - `deepseek-reasoner` is legacy and is not referenced anywhere in the code.
 - Without `DEEPSEEK_API_KEY` the template recommendation is returned immediately
   (text only, never market data).
+- `deepseek-v4-pro` with `reasoning_effort="max"` takes **~12–23 s** for a real
+  recommendation. That is why `includeRecommendation=true` is an **opt-in**
+  window outside the 2.8 s market SLA. The default `/valuate` call (no
+  recommendation) stays under 2.8 s. For a snappy demo, either omit
+  `includeRecommendation` or set `DEEPSEEK_REASONING_MODEL=deepseek-flash` in
+  `.env` (≈4 s, lower quality). `DEEPSEEK_RECOMMENDATION_BUDGET_SEC=0` forces
+  the deterministic template.
 
 ## Environment variables
 
@@ -231,8 +238,8 @@ interactive endpoint.
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | OpenAI-compatible endpoint |
 | `DEEPSEEK_REASONING_MODEL` | `deepseek-v4-pro` | recommendation model |
 | `DEEPSEEK_FAST_MODEL` | `deepseek-flash` | parsing / fallback model |
-| `DEEPSEEK_TIMEOUT_SEC` | `4.0` | transport timeout |
-| `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` | `1.2` | recommendation slice |
+| `DEEPSEEK_TIMEOUT_SEC` | `30.0` | transport timeout per attempt |
+| `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` | `25.0` | opt-in recommendation window (`0` disables the LLM) |
 | `CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS` | `1` | MCP telemetry off |
 
 Copy `.env.example` to the repo-root `.env` for local overrides (this repository

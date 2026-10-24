@@ -114,12 +114,13 @@ async def test_missing_listing_urls_are_filled_with_deep_links() -> None:
 
 async def test_recommendation_is_only_generated_when_requested() -> None:
     recommender = FakeRecommender()
+    settings = make_settings()
 
     without = await MarketAnalyzer(
-        make_settings(), connectors=default_connectors(), recommender=recommender
+        settings, connectors=default_connectors(), recommender=recommender
     ).valuate(make_request())
     with_recommendation = await MarketAnalyzer(
-        make_settings(), connectors=default_connectors(), recommender=recommender
+        settings, connectors=default_connectors(), recommender=recommender
     ).valuate(make_request(include_recommendation=True))
 
     assert without.recommendation is None
@@ -129,7 +130,7 @@ async def test_recommendation_is_only_generated_when_requested() -> None:
     assert with_recommendation.price_min <= recommendation.suggested_price <= (
         with_recommendation.price_max
     )
-    assert recommender.last_budget is not None and recommender.last_budget > 0
+    assert recommender.last_budget == settings.deepseek_recommendation_budget_sec
 
 
 async def test_recommendation_failure_keeps_the_valuation() -> None:
@@ -187,3 +188,32 @@ async def test_payload_has_no_null_nan_or_zero_prices() -> None:
         assert payload[key] > 0
     assert payload["recommendation"]["suggestedPrice"] > 0
     assert "null" not in str(payload).lower()
+
+
+async def test_recommendation_budget_is_not_clipped_by_the_market_deadline() -> None:
+    recommender = FakeRecommender()
+    settings = make_settings(
+        market_deadline_sec=0.3,
+        market_connector_timeout_sec=0.1,
+        deepseek_recommendation_budget_sec=25.0,
+    )
+
+    result = await MarketAnalyzer(
+        settings, connectors=default_connectors(), recommender=recommender
+    ).valuate(make_request(include_recommendation=True))
+
+    assert result.recommendation is not None
+    assert recommender.last_budget == 25.0
+
+
+async def test_zero_recommendation_budget_skips_the_llm() -> None:
+    recommender = FakeRecommender()
+    settings = make_settings(deepseek_recommendation_budget_sec=0.0)
+
+    result = await MarketAnalyzer(
+        settings, connectors=default_connectors(), recommender=recommender
+    ).valuate(make_request(include_recommendation=True))
+
+    assert recommender.calls == 0
+    assert result.recommendation is None
+    assert RECOMMENDATION_SKIPPED_WARNING in result.warnings

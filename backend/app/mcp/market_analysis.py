@@ -96,8 +96,8 @@ class MarketAnalyzer:
         )
 
         if not live:
-            return await self._fallback_or_raise(request, query, sources, deadline)
-        return await self._build_live(request, query, live, sources, deadline)
+            return await self._fallback_or_raise(request, query, sources)
+        return await self._build_live(request, query, live, sources)
 
     async def _gather(self, query: str, deadline: float) -> list[ConnectorResult]:
         remaining = max(0.0, deadline - monotonic())
@@ -130,7 +130,6 @@ class MarketAnalyzer:
         query: str,
         live: list[MarketListingSample],
         sources: dict[MarketPlatform, str],
-        deadline: float,
     ) -> MarketValuationResult:
         cleaned = filter_outliers_iqr([listing.price for listing in live])
         triplet = compute_price_triplet(cleaned, request.condition_score)
@@ -153,14 +152,13 @@ class MarketAnalyzer:
             source="live_mcp",
             warnings=warnings,
         )
-        return await self._maybe_recommend(request, result, deadline)
+        return await self._maybe_recommend(request, result)
 
     async def _fallback_or_raise(
         self,
         request: ValuationRequest,
         query: str,
         sources: dict[MarketPlatform, str],
-        deadline: float,
     ) -> MarketValuationResult:
         if not self._settings.market_allow_fallback:
             raise MarketUnavailableError(UNAVAILABLE_DETAIL, sources)
@@ -173,17 +171,16 @@ class MarketAnalyzer:
         result = fallback.model_copy(
             update={"warnings": [*_source_warnings(sources), *fallback.warnings]}
         )
-        return await self._maybe_recommend(request, result, deadline)
+        return await self._maybe_recommend(request, result)
 
     async def _maybe_recommend(
-        self, request: ValuationRequest, result: MarketValuationResult, deadline: float
+        self, request: ValuationRequest, result: MarketValuationResult
     ) -> MarketValuationResult:
         if not request.include_recommendation:
             return result
-        remaining = deadline - monotonic()
-        if remaining <= 0.05:
+        budget = self._settings.deepseek_recommendation_budget_sec
+        if budget <= 0:
             return _with_warnings(result, (RECOMMENDATION_SKIPPED_WARNING,))
-        budget = min(self._settings.deepseek_recommendation_budget_sec, remaining)
         try:
             outcome = await self._recommender.recommend(
                 request=request, valuation=result, budget_sec=budget
