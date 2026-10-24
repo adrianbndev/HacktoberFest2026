@@ -90,6 +90,39 @@ configured page (raising `min_results`) to measure the real page cost:
 - `/api/market/analyze` request/response contracts are unchanged; this is a
   configuration knob only.
 
+### Spike 1b: Milanuncios HTTP connector vs browser
+
+Script: `scripts/milanuncios_http_spike.py` (committed), result
+`artifacts/milanuncios-http-spike*.json` (gitignored). It drives the fast
+`MilanunciosConnector` parser over real HTTP pages and compares it with the
+browser depth above.
+
+| Transport | Pages | Latency | Usable listings |
+|---|---|---|---|
+| HTTP (first run) | 1 | 0.92 s | 1 |
+| HTTP (first run) | 2 | **1.52 s** | **10** |
+| HTTP (first run) | 3 | 2.51 s | 7 |
+| Browser | 3 | 10.70 s | 8 |
+| Browser | 6 | 21.49 s | 15 |
+
+After the first run, nine consecutive HTTP samples (three per depth) returned
+HTTP 200 with an anti-bot/PerimeterX body: **0 usable listings in 0.2–0.8 s**.
+The block persisted across a later single-sample run. The browser pages kept
+working with a clean fingerprint.
+
+Decision:
+
+- `MARKET_MILANUNCIOS_TRANSPORT=auto` (default): try HTTP first with up to
+  `MARKET_MILANUNCIOS_MAX_PAGES` (3) pages; if it is blocked, has no listings or
+  yields fewer than **8 usable** listings, fall back to the browser source on a
+  free pool slot. All data is real; there is no synthetic fallback.
+- `http` is kept for measurement/debugging and reports the HTTP failure status
+  without a browser retry; `browser` forces the browser source.
+- HTTP is 4–10× faster when it works, but it is not reliable enough to be the
+  only transport on the venue network. The 8-usable threshold is unchanged.
+- The fast `/valuate` connector remains single-page and frozen; multi-page HTTP
+  is only used by the deep path.
+
 Because background pages reported `visible` and the measured latencies did not
 degrade, the spike did not prove throttling. The entrypoint still gains
 `--disable-background-tab-throttling --disable-renderer-backgrounding
@@ -102,7 +135,7 @@ fingerprint.
 ### 1. `BrowserSessionPool`
 
 A bounded pool of `BrowserSessionManager` slots (`MARKET_BROWSER_POOL_SIZE`,
-default 3). Each slot owns:
+default **2**: eBay + Wallapop). Each slot owns:
 
 - one `chrome-devtools-mcp` stdio process (`--browserUrl $CDP_URL`, never
   `--headless`, never `--enable-automation`, never launches Chrome);
@@ -118,12 +151,15 @@ never falls back to the fast path or to synthetic data.
 ### 2. Parallel engine
 
 `DeepMarketAnalyzer` starts all requested sources at once
-(`asyncio.gather`/`as_completed`) with one pool session per source.
-`MARKET_SOURCE_CONCURRENCY ∈ {1,2,3}` (default 3) caps simultaneous sources;
-`1` reproduces Phase 2's sequential behavior. Aggregation is unchanged: one IQR
-pass, per-platform quota, confidence, partial statuses. `sources[]` in the final
-payload is sorted by `request.sources`; SSE `source_result` follows completion
-order.
+(`asyncio.gather`/`as_completed`). eBay and Wallapop each take one of the two
+browser slots; Milanuncios uses the fast HTTP connector (2–3 pages) in parallel
+with them. If HTTP Milanuncios is blocked, empty or yields fewer than 8 usable
+listings, the engine falls back to the browser Milanuncios source on a free
+slot (waiting for eBay/Wallapop if needed). `MARKET_SOURCE_CONCURRENCY ∈
+{1,2,3}` (default 3) caps simultaneous sources; `1` reproduces Phase 2's
+sequential behavior. Aggregation is unchanged: one IQR pass, per-platform quota,
+confidence, partial statuses. `sources[]` in the final payload is sorted by
+`request.sources`; SSE `source_result` follows completion order.
 
 ### 3. Failure semantics (unchanged from Phase 2)
 
@@ -140,12 +176,14 @@ order.
 | Variable | Default | Meaning |
 |---|---|---|
 | `MARKET_SOURCE_CONCURRENCY` | `3` | simultaneous source collections (1–3) |
-| `MARKET_BROWSER_POOL_SIZE` | `3` | MCP processes/pages in the pool (1–3) |
+| `MARKET_BROWSER_POOL_SIZE` | `2` | MCP processes/pages for eBay + Wallapop (1–3) |
 | `MARKET_MILANUNCIOS_MAX_PAGES` | `3` | Milanuncios result pages (1–6); 6 = completeness |
+| `MARKET_MILANUNCIOS_TRANSPORT` | `auto` | `http`, `browser` or `auto` (HTTP first, browser fallback) |
 
-The pool size must be ≥ concurrency; a smaller pool serializes the excess
-sources instead of failing. Anti-throttling flags live in
-`backend/docker/browser-entrypoint.sh`.
+The pool size bounds browser slots only; HTTP does not consume one. Extra
+browser sources wait for a free slot instead of failing, and a Milanuncios
+browser fallback waits for eBay/Wallapop to release one. Anti-throttling flags
+live in `backend/docker/browser-entrypoint.sh`.
 
 ## Rejected alternatives
 
