@@ -30,8 +30,8 @@
 ### 1.2 Flujo Cámara Móvil $\leftrightarrow$ Web PC sin Fricción (`Track B - Adri`)
 - [ ] Botón destacado en PC: *"📱 Añadir Producto con el Móvil"*.
 - [ ] Generación de sesión única (`/mobile-capture/[sessionId]`) con código QR escaneable y link directo integrable en LAN/túnel.
-- [ ] Interfaz móvil limpia con apertura directa de cámara trasera (`<input type="file" accept="image/*" capture="environment" />`) y compresión cliente en Canvas ($<800\text{ KB}$) para evitar errores de payload.
-- [ ] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1.5\text{ s}$.
+- [ ] Interfaz móvil limpia con apertura directa de cámara trasera (`<input type="file" accept="image/*" capture="environment" />`) y compresión cliente en Canvas ($\le 1024\text{ px}$, JPEG $0.78$, $<350\text{ KB}$) para evitar errores de payload.
+- [ ] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1\text{ s}$.
 - [ ] Recepción instantánea de la foto en la pantalla del PC y disparo automático del análisis sin intervención manual.
 
 ### 1.3 Reconocimiento por Visión IA + Salud/Estado + SEO (`Track B - Adri`)
@@ -84,7 +84,7 @@
 
 ### 3.1 Módulo de Planes Locales Conectado al Inventario (`Track C + Track A`)
 - [ ] Servicio `/api/lifeos/plans` con recomendador de planes locales (gastronomía, eventos, aire libre, cultura).
-- [ ] **Cruce Inteligente con Nivel 1 y 2:** Cálculo del presupuesto desbloqueado por la subida reciente del inventario ($\Delta P_{\text{avg}}$ positivo) y/o liquidez inmediata ($P_{\min}$ total).
+- [ ] **Cruce Inteligente con Nivel 1 y 2:** Cálculo del presupuesto desbloqueado por la subida reciente del inventario ($\Delta P_{\text{avg}}$ positivo) y/o el valor de mercado de lo listo para vender ($\sum P_{\text{avg}}$ de artículos `in_stock` / `listed`).
 - [ ] UI en el Bento Grid mostrando mensajes contextuales: *"El valor medio de tu inventario ha subido +25 € hoy y tienes 140 € acumulados listos para vender: aquí tienes 3 planes increíbles por tu zona dentro de ese presupuesto"*.
 
 ### 3.2 Módulo Día a Día: Clima, Calendario y Entregas Wallapop (`Track C + Track A`)

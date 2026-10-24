@@ -39,7 +39,7 @@ Ningún agente debe escribir código de implementación a ciegas. Todo desarroll
 * **Framework Web:** Next.js (App Router, Server Actions & Route Handlers para REST/SSE).
 * **Lenguaje:** TypeScript estricto (`strict: true`), interfaces compartidas en `src/types/sdd.ts`.
 * **Estilos y UI:** Tailwind CSS + diseño **Bento Grid** moderno (modo oscuro/claro pulido, micro-interacciones fluidas) + `lucide-react` para iconografía.
-* **Sincronización Móvil $\leftrightarrow$ PC:** Route Handlers en `/api/capture-session/[sessionId]` con Server-Sent Events (SSE) y/o *short-polling* rápido cada $1.5\text{ s}$ (garantizando compatibilidad total en redes de hackathon).
+* **Sincronización Móvil $\leftrightarrow$ PC:** Route Handlers en `/api/capture-session/[sessionId]` con Server-Sent Events (SSE) y/o *short-polling* rápido cada $1\text{ s}$ (garantizando compatibilidad total en redes de hackathon).
 * **Persistencia:** Almacenamiento híbrido sin fricción (JSON local persistente en disco `/data/store.json` + caché en memoria / SQLite / Supabase opcional) con usuarios preconfigurados para demo (**Ales, Adri, Matías y Jurado**).
 * **IA & Visión:** SDK multimodal (Gemini Flash / Pro o OpenAI Vision compatible) con salida estructurada JSON (nombre, marca, categoría, `conditionScore` $0-100$, `conditionLabel`, `seoTitle`, `seoDescription`) y fallback inteligente.
 * **MCP (Model Context Protocol):** Servidor y adaptador MCP Stealth (`stealth-market-mcp`) con cabeceras humanas rotativas, *jitter* aleatorio ($800\text{ ms} - 2200\text{ ms}$), ponderación por salud del artículo y **capa de fallback determinista blindada** ante bloqueos de red.

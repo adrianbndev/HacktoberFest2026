@@ -16,14 +16,14 @@ El motor `stealth-market-mcp` proporciona herramientas bajo el estándar **Model
 Para evitar bloqueos `403 Forbidden` / Cloudflare / Akamai durante el hackathon, toda petición saliente debe aplicar las siguientes técnicas:
 
 ### 2.1 Jitter Temporal Aleatorio ($800\text{ ms} - 2200\text{ ms}$)
-* Antes de despachar la consulta de mercado, aplicar una pausa asíncrona con distribución uniforme entre **$800\text{ ms}$ y $2200\text{ ms}$**:
+* Entre peticiones consecutivas a la misma plataforma (bucle de `/api/market/refresh`), aplicar una pausa asíncrona con distribución uniforme entre **$800\text{ ms}$ y $2200\text{ ms}$**. En `/api/market/valuate` (una sola petición por plataforma) basta `humanJitter(200, 600)`: esperar antes de una única petición solo añade latencia.
   ```typescript
   export const humanJitter = (minMs = 800, maxMs = 2200): Promise<void> => {
     const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
     return new Promise((resolve) => setTimeout(resolve, delay));
   };
   ```
-* Las consultas a múltiples plataformas se ejecutan en paralelo (`Promise.allSettled`) con un *timeout* duro de **$3500\text{ ms}$** por plataforma, garantizando que el pipeline completo (Visión IA + MCP) nunca supere el guardrail global de **$6\text{ s}$**.
+* Las consultas a múltiples plataformas se ejecutan en paralelo (`Promise.allSettled`) con un *deadline* duro de **$2500\text{ ms}$ en total, jitter incluido**. Las plataformas que no hayan respondido se descartan; si no queda ninguna, entra el fallback (§4). Sumado al timeout de $3000\text{ ms}$ de Visión IA, el pipeline completo queda en $\le 5.5\text{ s}$, dentro del guardrail global de **$6\text{ s}$**.
 
 ### 2.2 Rotación de Huella HTTP y User-Agents Reales
 * Mantener un pool rotativo de al menos 6 `User-Agent` modernos (Chrome 128+ en macOS/Windows/Linux, Safari 17+ iOS/macOS, Firefox 130+).
@@ -49,9 +49,9 @@ Para evitar bloqueos `403 Forbidden` / Cloudflare / Akamai durante el hackathon,
 Una vez obtenida la muestra de precios brutos de mercado $S = \{p_1, p_2, \dots, p_n\}$ (filtrando *outliers* extremos mediante rango intercuartílico IQR para descartar cajas vacías o anuncios de $1\text{ €}$ falsos):
 
 ### 3.1 Factor de Ponderación por Estado/Salud ($W_{\text{health}}$)
-La IA de Visión entrega un `conditionScore` $\in [0, 100]$. Definimos el multiplicador de condición $W_{\text{health}}$ respecto a la media de segunda mano estándar ($\approx 75\%$):
+La IA de Visión entrega un `conditionScore` $\in [0, 100]$. Definimos el multiplicador de condición $W_{\text{health}}$ respecto a la media de segunda mano estándar ($\approx 70\%$):
 
-$$\text{Si } \text{score} = 75 \implies W_{\text{health}} = 1.00$$
+$$\text{Si } \text{score} = 70 \implies W_{\text{health}} = 1.00$$
 
 $$W_{\text{health}} = 0.65 + 0.50 \times \left(\frac{\text{conditionScore}}{100}\right)$$
 
@@ -80,7 +80,7 @@ Sea $P_{\text{base}}$ la mediana/media recortada del mercado para ese modelo:
 
 En un hackathon, el Wi-Fi del recinto o los firewalls pueden bloquear peticiones hacia Wallapop/Vinted en mitad de la presentación ante el jurado. Por tanto, el motor MCP **SIEMPRE** debe ejecutar una estrategia de doble capa:
 
-1. **Intento Primario (Live Stealth Fetch):** Consulta en vivo con *jitter* humano y *timeout* máximo de $3.5\text{ s}$.
+1. **Intento Primario (Live Stealth Fetch):** Consulta en vivo con *jitter* humano dentro del *deadline* total de $2.5\text{ s}$ (§2.1).
 2. **Fallback Determinista Inteligente (Zero-Downtime):**
    * Si la red falla, devuelve `403/429`, o la lista de resultados es vacía:
    * El motor consulta un **Catálogo Semilla de Mercado Curado** (con precios reales de 2026 en España para consolas, móviles, monitores, auriculares, portátiles, cámaras, bicicletas, ropa vintage, periféricos, libros, etc.) combinado con un **estimador determinista por hash de marca/modelo + categoría**.

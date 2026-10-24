@@ -32,7 +32,7 @@
   * Al pulsar *"📱 Añadir Producto con el Móvil"*, llama a `POST /api/capture-session`.
   * Renderiza un código QR grande (usando `qrcode.react` o SVG generador local sin dependencias rotas) apuntando a `http://<LAN_IP_OR_HOST>:3000/mobile-capture/[sessionId]`.
   * Incluye un campo editable para ajustar la IP LAN local si se detecta `localhost`, facilitando el escaneo desde el móvil en la red del hackathon, además de un botón *"Simular Captura Móvil desde PC"* como respaldo adicional.
-  * Inicia polling cada $1200\text{ ms}$ (o conexión SSE) contra `GET /api/capture-session/[sessionId]`.
+  * Inicia polling cada $1000\text{ ms}$ (o conexión SSE) contra `GET /api/capture-session/[sessionId]`.
 * **En Móvil (`/mobile-capture/[sessionId]`):**
   * Al cargar la página, notifica `status: 'mobile_connected'` para que el PC muestre *"📱 ¡Móvil conectado! Esperando foto..."*.
   * Muestra un botón de acción masivo que activa `<input type="file" accept="image/*" capture="environment" />`.

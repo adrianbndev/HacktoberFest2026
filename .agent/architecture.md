@@ -47,6 +47,7 @@
         └── api/
             ├── auth/route.ts           # Sesión rápida de usuario (Ales, Adri, Matías, Jurado)
             ├── inventory/route.ts      # CRUD de productos del perfil
+            ├── notifications/route.ts  # Centro de Alertas: GET lista / PATCH marcar como leída
             ├── capture-session/
             │   └── [sessionId]/route.ts # Track B: Sincronización Móvil <-> PC (POST foto / GET SSE-Polling)
             ├── vision/
@@ -232,6 +233,31 @@ export interface HacktoberfestRepo {
   aiArchitectureSummary: string;  // Línea 1: Arquitectura del repo
   aiQuickStartGuide: string;      // Línea 2: Cómo contribuir rápido hoy
 }
+
+// ==========================================
+// 6. CUERPOS Y RESPUESTAS DE ENDPOINTS (contratos entre Tracks)
+// ==========================================
+export type VisionAnalysis = Pick<InventoryItem,          // POST /api/vision/analyze
+  'name' | 'category' | 'brand' | 'model' | 'conditionScore' | 'conditionLabel' |
+  'conditionReasoning' | 'seoTitle' | 'seoDescription'>;
+
+export interface ValuationRequest {                      // POST /api/market/valuate (body)
+  query: string;
+  category: string;
+  conditionScore: number;
+  conditionLabel: ConditionLabel;
+}
+
+export type ValuationResult =                            // POST /api/market/valuate (respuesta)
+  Pick<PricePoint, 'priceMin' | 'priceAvg' | 'priceMax' | 'sampleSize' | 'platforms'> & {
+    comparableListings: MarketListingSample[];
+    source: 'live_mcp' | 'stealth_fallback';
+  };
+
+export interface MarketRefreshResponse {                 // POST /api/market/refresh
+  items: InventoryItem[];
+  notifications: MarketNotification[];                  // Solo las nuevas de este refresco
+}
 ```
 
 ---
@@ -242,7 +268,7 @@ export interface HacktoberfestRepo {
 * **`POST /api/capture-session`**
   * Crea una nueva sesión con `sessionId` único para el usuario activo y devuelve `{ sessionId, mobileUrl }`.
 * **`GET /api/capture-session/[sessionId]`**
-  * Devuelve el estado actual `MobileCaptureSession` (usado tanto por el móvil al abrir el QR como por el PC en polling cada $1.5\text{ s}$ o stream SSE).
+  * Devuelve el estado actual `MobileCaptureSession` (usado tanto por el móvil al abrir el QR como por el PC en polling cada $1\text{ s}$ o stream SSE).
 * **`PUT /api/capture-session/[sessionId]`**
   * El móvil envía `{ status: 'photo_uploaded', photoDataUrl: 'data:image/jpeg;base64,...' }`.
   * El PC detecta `photo_uploaded` en $<1.5\text{ s}$ y lanza automáticamente el pipeline Visión IA $\rightarrow$ MCP Stealth.
@@ -250,15 +276,19 @@ export interface HacktoberfestRepo {
 ### 3.2 Pipeline de Visión IA y Tasación MCP
 * **`POST /api/vision/analyze`**
   * **Body:** `{ photoDataUrl: string }`
-  * **Response:** `{ name, category, brand, model, conditionScore, conditionLabel, conditionReasoning, seoTitle, seoDescription }`
+  * **Response:** `VisionAnalysis`
 * **`POST /api/market/valuate`**
-  * **Body:** `{ query: string, category: string, conditionScore: number, conditionLabel: ConditionLabel }`
-  * **Response:** `{ priceMin, priceAvg, priceMax, sampleSize, platforms, comparableListings, source: 'live_mcp' | 'stealth_fallback' }`
+  * **Body:** `ValuationRequest`
+  * **Response:** `ValuationResult`
 
 ### 3.3 Rastreo de Precios y Notificaciones (Nivel 2)
 * **`POST /api/market/refresh`**
   * **Body:** `{ userId: TeamMemberId, demoMode?: boolean }`
-  * **Acción:** Recorre los artículos del usuario, consulta el MCP (o aplica variación realista de mercado en `demoMode: true` si se invoca desde el botón *"Forzar Actualización de Mercado"*), añade un nuevo `PricePoint` a `priceHistory`, recalcula `priceTrend`, `priceDeltaPercent`, `priceDeltaEur` y genera objetos `MarketNotification` para subidas o bajadas significativas ($\ge 5\%$ o $\ge 5\text{ €}$).
+  * **Acción:** Recorre los artículos del usuario, consulta el MCP (o aplica variación realista de mercado en `demoMode: true` si se invoca desde el botón *"Forzar Actualización de Mercado"*), añade un nuevo `PricePoint` a `priceHistory`, recalcula `priceTrend`, `priceDeltaPercent`, `priceDeltaEur` y genera objetos `MarketNotification` para subidas o bajadas significativas ($\ge 5\%$ o $\ge 5\text{ €}$), **como máximo una por artículo** (la métrica con mayor variación %).
+  * **Response:** `MarketRefreshResponse` (inventario actualizado + solo las notificaciones nuevas).
+* **`GET /api/notifications?userId=ales`** $\rightarrow$ `MarketNotification[]` (más recientes primero).
+* **`PATCH /api/notifications`**
+  * **Body:** `{ id: string, read: true }` $\rightarrow$ `MarketNotification` actualizada.
 
 ### 3.4 Módulos LifeOS (Niveles 3 y 4)
 * **`GET /api/lifeos/weather?city=Madrid`** $\rightarrow$ `WeatherForecast`

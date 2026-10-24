@@ -23,7 +23,7 @@
   * Ubicado en la barra superior del inventario.
   * Al pulsarlo, invoca `POST /api/market/refresh` con `{ userId, demoMode: true }`.
   * Para cada producto del usuario:
-    * Consulta el motor MCP Stealth (aplicando variaciones de mercado realistas entre $-8\%$ y $+15\%$ sobre la oferta actual en modo demo para demostrar tanto subidas como bajadas).
+    * Consulta el motor MCP Stealth (aplicando variaciones de mercado realistas entre $-8\%$ y $+15\%$ sobre la oferta actual en modo demo para demostrar tanto subidas como bajadas). El modo demo **no toca la red** y **garantiza al menos una subida y una bajada por encima del umbral** en cada clic. La variación se aplica como un único factor sobre $P_{\text{base}}$ y las 3 medidas se recalculan con la fórmula del MCP (§3.2), así se mantiene $P_{\min} < P_{\text{avg}} < P_{\max}$.
     * Añade el nuevo registro `PricePoint` (`timestamp`, `priceMin`, `priceAvg`, `priceMax`) al array `priceHistory` del producto (conservando los últimos 10 puntos).
     * Calcula:
       * `priceDeltaEur = newPriceAvg - previousPriceAvg`
@@ -31,8 +31,8 @@
       * `priceTrend = priceDeltaEur > 0 ? 'up' : priceDeltaEur < 0 ? 'down' : 'stable'`
 
 ### 2.2 Generador de Alertas y Centro de Notificaciones (`Track C` + `Track A`)
-* Cada vez que un producto cambia su $P_{\min}$, $P_{\text{avg}}$ o $P_{\max}$:
-  * Se crea una `MarketNotification` asociada al `userId`:
+* Cuando $P_{\min}$, $P_{\text{avg}}$ o $P_{\max}$ de un producto varía de forma significativa ($\ge 5\%$ o $\ge 5\text{ €}$):
+  * Se crea **una sola** `MarketNotification` por producto (la métrica con mayor variación %) asociada al `userId`:
     * **Ejemplo Subida ($P_{\text{avg}}$):** *"🔔 ¡Subida detectada! El **precio medio** de tu Nintendo Switch OLED ha subido un **+12%** (185 € → 207 €). ¡Buen momento para publicar!"*
     * **Ejemplo Bajada ($P_{\min}$):** *"📉 El **precio mínimo** de los monitores LG ha bajado **10 €** esta semana (120 € → 110 €)."*
 * **UI del Centro de Notificaciones (`Track A`):**

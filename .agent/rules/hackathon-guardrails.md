@@ -12,8 +12,8 @@
 2. **Compresión de Imagen en el Cliente antes de Subir:**
    * Las cámaras móviles actuales generan fotos de $5\text{ MB}$ a $15\text{ MB}$, lo que rompe límites de body en Next.js o ralentiza el Wi-Fi del recinto.
    * **Regla:** Antes de hacer `PUT /api/capture-session/[sessionId]`, el navegador móvil debe redimensionar la imagen en un `<canvas>` a un máximo de **$1024\text{ px}$** en su lado mayor y comprimirla en JPEG (`quality: 0.78`), asegurando un payload $< 350\text{ KB}$ y una transmisión en $< 400\text{ ms}$.
-3. **Doble vía de Sincronización (SSE + Short-Polling $1.5\text{ s}$):**
-   * El PC debe escuchar cambios de la sesión cada $\le 1.5\text{ s}$ para que, en cuanto el móvil suba la foto, la pantalla del PC transicione sola al análisis sin que el usuario tenga que tocar el teclado ni refrescar la página.
+3. **Doble vía de Sincronización (SSE + Short-Polling $1\text{ s}$):**
+   * El PC debe escuchar cambios de la sesión cada $\le 1\text{ s}$ para que, en cuanto el móvil suba la foto, la pantalla del PC transicione sola al análisis sin que el usuario tenga que tocar el teclado ni refrescar la página.
 
 ---
 
@@ -21,7 +21,7 @@
 
 1. **Tiempo Máximo de Tasación End-to-End ($\le 6.0\text{ s}$):**
    * Desde que la foto llega al PC hasta que se muestran el estado de salud ($0-100\%$), la descripción SEO y los 3 precios ($P_{\min}, P_{\text{avg}}, P_{\max}$), **no pueden pasar más de $6\text{ segundos}$**.
-   * `AbortSignal.timeout(4000)` obligatorio en llamadas a APIs externas de Visión IA y scraping MCP.
+   * `AbortSignal.timeout(3000)` obligatorio en Visión IA; el MCP tiene un *deadline* total de $2500\text{ ms}$ con el jitter incluido (ver [`stealth-market-mcp.md`](../mcp/stealth-market-mcp.md) §2.1).
 2. **Feedback Visual Progresivo en la UI:**
    * Mientras transcurren los $2\text{ s} - 4\text{ s}$ de análisis + jitter humano del MCP, la UI debe mostrar pasos animados en vivo:
      1. *"📸 Imagen recibida desde el móvil..."*
