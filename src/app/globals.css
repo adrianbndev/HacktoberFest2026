@@ -49,15 +49,15 @@
 
 html {
   caret-color: var(--accent);
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Barras de desplazamiento cohesivas con la estética de la web (página, diálogos y áreas de texto). */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+/* Barras de desplazamiento sin flechas y contenidas dentro de las esquinas redondeadas de los modales. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
 }
 
 *::-webkit-scrollbar {
@@ -65,9 +65,23 @@ html {
   height: 8px;
 }
 
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 *::-webkit-scrollbar-track {
   background: transparent;
   margin-block: 6px;
+}
+
+dialog::-webkit-scrollbar-track {
+  margin-block: var(--radius-panel);
+}
+
+textarea::-webkit-scrollbar-track {
+  margin-block: 8px;
 }
 
 *::-webkit-scrollbar-thumb {
@@ -87,6 +101,21 @@ html {
 
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* Desplegables con flecha espaciada respecto al borde derecho del campo. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235b606b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.5rem;
+}
+
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239299a9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 body {

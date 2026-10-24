@@ -39,16 +39,16 @@ PREFERRED_MAC_VISION_MODELS: tuple[str, ...] = (
 
 
 class _VLMDynamicFieldItem(BaseModel):
-    key: str = Field(..., description="Identificador camelCase del campo exclusivo de este objeto (ej: connectivity, sensorDpi, buttons, fuelType, storage)")
-    label: str = Field(..., description="Nombre del campo en español específico para este objeto exacto (ej: 'Conectividad', 'Sensor / DPI', 'Número de botones', 'Tipo de combustible')")
-    value: str = Field(..., description="Valor observado en la imagen o estimado para este modelo concreto")
-    field_type: Literal["select", "text", "number"] = Field(default="select", description="'select' si tiene opciones frecuentes, 'text' o 'number' si es dato abierto")
-    options: list[str] = Field(default_factory=list, description="Si field_type es 'select', 3 a 5 opciones reales posibles en español para este campo (incluyendo 'value')")
+    key: str = Field(..., description="Identificador camelCase del atributo propio de este artículo (ej: connectivity, color, material, format, accessories)")
+    label: str = Field(..., description="Nombre del atributo en español propio y exclusivo del objeto fotografiado")
+    value: str = Field(..., description="Valor observado en la imagen o propio del modelo identificado")
+    field_type: Literal["select", "text", "number"] = Field(default="select", description="'select' si tiene opciones cerradas frecuentes, 'text' o 'number' si es dato abierto")
+    options: list[str] = Field(default_factory=list, description="Si field_type es 'select', 3 a 5 opciones reales en español para este mismo atributo (incluyendo 'value')")
 
 
 class _VLMFormExtractionSchema(BaseModel):
     name: str = Field(..., description="Nombre comercial completo en español")
-    category: str = Field(..., description="Categoría precisa del objeto (ej: Periféricos · Ratones, Motor y Vehículos, Móviles y Telefonía, Mobiliario y Decoración)")
+    category: str = Field(..., description="Categoría precisa del objeto (ej: Audio y Sonido, Periféricos · Ratones, Periféricos · Teclados, Móviles y Telefonía, Informática y Portátiles, Consolas y Videojuegos, Motor y Vehículos, Mobiliario y Decoración)")
     brand: str = Field(..., description="Marca comercial")
     model: str = Field(..., description="Modelo específico o referencia")
     condition_score: int = Field(..., ge=0, le=100, description="Salud visual 0 a 100")
@@ -57,19 +57,21 @@ class _VLMFormExtractionSchema(BaseModel):
     seo_description: str = Field(..., description="Descripción persuasiva de venta")
     dynamic_fields: list[_VLMDynamicFieldItem] = Field(
         default_factory=list,
-        description="Entre 4 y 6 campos técnicos EXCLUSIVOS del objeto concreto de la foto (ej. ratón -> Conectividad, Sensor/DPI, Botones, Ergonomía, Alimentación, Color; coche -> Combustible, Transmisión, Kilometraje, Año, Carrocería; móvil -> Almacenamiento, RAM, Salud batería, Operador)",
+        description="Entre 4 y 6 campos técnicos o físicos EXCLUSIVOS del objeto concreto de la foto. PROHIBIDO mezclar atributos de otros aparatos.",
     )
 
 
 SYSTEM_PROMPT_ES = (
     "Eres un tasador experto de productos de segunda mano en España. "
     "Analiza la fotografía e identifica el OBJETO EXACTO (nombre comercial, marca, modelo, categoría específica y salud física 0-100). "
-    "En 'dynamic_fields', genera entre 4 y 6 campos técnicos EXCLUSIVOS del objeto concreto que ves en la foto: "
-    "PROHIBIDO poner campos de otro aparato (por ejemplo, NUNCA pongas tamaño de pantalla, memoria RAM o almacenamiento SSD a un ratón, teclado o accesorio que no los tenga). "
-    "- Si es un ratón: Conectividad (Inalámbrico Bluetooth, Receptor USB 2.4GHz, Cable USB), Tipo de sensor / DPI, Número de botones, Ergonomía (Diestro, Ambidiestro, Vertical), Alimentación (Batería recargable, Pila AA, Cable), Color.\n"
-    "- Si es un coche/vehículo: Tipo de combustible (Gasolina, Diésel, Híbrido, Eléctrico), Transmisión (Manual, Automático), Carrocería, Año aproximado, Kilometraje (km), Etiqueta DGT, Color.\n"
-    "- Si es un móvil: Capacidad de almacenamiento, Memoria RAM, Salud de batería (%), Estado de pantalla, Operador, Color.\n"
-    "- Para cualquier otro objeto (teclado, auricular, silla, ropa, calzado, reloj, cámara, bici, herramienta, electrodoméstico), genera los 4-6 campos específicos reales que definen ese objeto concreto. "
+    "En 'dynamic_fields', genera entre 4 y 6 campos técnicos EXCLUSIVOS del objeto concreto que ves en la foto. "
+    "REGLA ESTRICTA DE NO CONTAMINACIÓN: NUNCA pongas atributos de otro tipo de aparato (jamás pongas Sensor/DPI o Número de botones a unos auriculares/altavoces; jamás pongas RAM, SSD o Tamaño de pantalla a un ratón, teclado o auricular).\n"
+    "- Si es Audio (auriculares, cascos, AirPods, altavoz): Formato de audio (Diadema Over-Ear, In-Ear True Wireless, Altavoz portátil), Conectividad (Bluetooth inalámbrico, Bluetooth + Cable Jack, Solo cable), Cancelación de ruido ANC (Sí ANC activa, Aislamiento pasivo, No), Estuche y cables, Color.\n"
+    "- Si es un Ratón: Conectividad, Sensor / Precisión DPI, Número de botones, Ergonomía / Mano, Alimentación, Color.\n"
+    "- Si es un Teclado: Tipo de interruptores (Switches), Formato / Tamaño (75%, TKL, 100%, 60%), Distribución de idioma (Español ISO Ñ, ANSI), Conectividad, Iluminación, Color.\n"
+    "- Si es un Móvil o Portátil: Almacenamiento, Memoria RAM, Procesador o Salud de batería (%), Tamaño/Estado de pantalla, Color.\n"
+    "- Si es un Coche/Vehículo: Tipo de combustible, Cambio/Transmisión, Carrocería, Año, Kilometraje (km), Etiqueta DGT, Color.\n"
+    "- Para cualquier otro objeto (consola, monitor, cámara, bici, mueble, ropa, calzado, reloj, electrodoméstico), genera únicamente los 4-6 atributos reales que definen ese artículo concreto. "
     "Para cada campo con 'field_type': 'select', incluye de 3 a 5 'options' reales en español que contengan el 'value'. "
     "Responde SIEMPRE en JSON válido."
 )
@@ -216,6 +218,11 @@ class OllamaVisionProvider:
             for f in extracted.dynamic_fields
         ]
 
+        normalized_fields = normalize_vlm_dynamic_fields(
+            vlm_fields=raw_vlm_fields, category=extracted.category, name=extracted.name,
+            brand=extracted.brand, model=extracted.model, color_name_es=metrics.color_name_es,
+        )
+
         return VisionAnalysisResult(
             name=extracted.name.strip(),
             category=extracted.category.strip(),
@@ -229,11 +236,9 @@ class OllamaVisionProvider:
                 name=extracted.name, brand=extracted.brand, model=extracted.model,
                 category=extracted.category, condition_score=score, condition_label=label,
                 condition_reasoning=extracted.condition_reasoning, candidate_description=extracted.seo_description,
+                dynamic_fields=normalized_fields,
             ),
-            dynamic_fields=normalize_vlm_dynamic_fields(
-                vlm_fields=raw_vlm_fields, category=extracted.category, name=extracted.name,
-                brand=extracted.brand, model=extracted.model, color_name_es=metrics.color_name_es,
-            ),
+            dynamic_fields=normalized_fields,
             source="ollama_local",
             model_used=model_to_use,
         )

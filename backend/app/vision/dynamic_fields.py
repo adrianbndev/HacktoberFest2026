@@ -24,12 +24,11 @@ def ensure_dotenv_loaded() -> None:
         if candidate.is_file():
             for raw_line in candidate.read_text(encoding="utf-8").splitlines():
                 line = raw_line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, val = line.partition("=")
-                key, val = key.strip(), val.strip().strip("'").strip('"')
-                if key and (key not in os.environ or key == "VISION_TIMEOUT_SEC"):
-                    os.environ[key] = val
+                if line and not line.startswith("#") and "=" in line:
+                    k, _, v = line.partition("=")
+                    k, v = k.strip(), v.strip().strip("'").strip('"')
+                    if k and (k not in os.environ or k == "VISION_TIMEOUT_SEC"):
+                        os.environ[k] = v
             break
 
 
@@ -119,10 +118,9 @@ OBJECT_FIELD_SPECS: dict[str, list[FieldSpec]] = {
         ("color", "Color / Acabado", "text", [], "Ej. Roble, Nogal, Blanco"),
     ],
     "moda": [
-        ("size", "Talla", "text", [], "Ej. M, L, 42 EU, Talla única"),
+        ("size", "Talla", "text", [], "Ej. M, L, 42 EU, Talla única"), ("color", "Color principal", "text", [], "Ej. Blanco, Negro, Azul"),
         ("material", "Material / Tejido", "select", ["Algodón / Textil", "Piel / Cuero", "Sintético / Técnico", "Vaquero / Denim", "Lana / Punto"], "Algodón / Textil"),
         ("authenticity", "Etiquetas / Caja", "select", ["Con etiquetas o caja original", "Sin etiquetas (Original)", "Con ticket de compra"], "Sin etiquetas (Original)"),
-        ("color", "Color principal", "text", [], "Ej. Blanco, Negro, Azul"),
     ],
     "hogar": [
         ("applianceType", "Tipo de artículo", "select", ["Pequeño electrodoméstico", "Limpieza / Aspiración", "Cafetera / Cocina", "Bricolaje / Herramienta", "Artículo general"], "Pequeño electrodoméstico"),
@@ -133,72 +131,95 @@ OBJECT_FIELD_SPECS: dict[str, list[FieldSpec]] = {
 }
 
 _KEY_ALIASES: dict[str, tuple[str, ...]] = {
-    "fuelType": ("combustible", "tipo de combustible", "motor", "fuel"),
-    "transmission": ("transmision", "transmisión", "cambio", "caja de cambios"),
-    "bodyType": ("carroceria", "carrocería", "tipo vehiculo", "segmento"),
-    "year": ("anio", "año", "matriculacion"),
-    "mileageKm": ("kilometros", "kilómetros", "kilometraje", "km"),
-    "horsepower": ("potencia", "cv", "caballos"),
-    "storage": ("almacenamiento", "capacidad", "memoria interna", "ssd", "gb"),
-    "ram": ("memoria ram", "ram"),
-    "batteryHealth": ("bateria", "batería", "salud bateria"),
-    "color": ("color", "acabado", "color exterior", "color principal"),
-    "material": ("material", "material principal", "tejido"),
+    "connectivity": ("conectividad", "conexion", "conexión", "tipo de conexion", "tipo de conexión"), "formFactor": ("formato", "formato de audio", "tipo de auricular", "tipo de auriculares", "diseño"),
+    "noiseCancelling": ("cancelacion de ruido", "cancelación de ruido", "cancelación de ruido (anc)", "anc", "aislamiento"), "accessories": ("accesorios", "estuche y cables", "caja y accesorios", "batería y accesorios", "accesorios o caja", "estuche"),
+    "fuelType": ("combustible", "tipo de combustible", "motor", "fuel"), "transmission": ("transmision", "transmisión", "cambio", "caja de cambios"),
+    "bodyType": ("carroceria", "carrocería", "tipo vehiculo", "segmento"), "year": ("anio", "año", "matriculacion"),
+    "mileageKm": ("kilometros", "kilómetros", "kilometraje", "km"), "horsepower": ("potencia", "cv", "caballos"),
+    "storage": ("almacenamiento", "capacidad", "memoria interna", "ssd", "gb"), "ram": ("memoria ram", "ram"),
+    "batteryHealth": ("bateria", "batería", "salud bateria"), "material": ("material", "material principal", "tejido"),
+    "color": ("color", "acabado", "color exterior", "color principal", "color / acabado"),
 }
 
 
 def resolve_object_family(category: str, name: str, brand: str = "", model: str = "") -> str:
-    """Resolves the specific object type first (e.g., mouse vs keyboard vs laptop) before broad categories."""
+    """Resolves the specific object type first (peripherals/audio/cameras before broad host devices)."""
     full_blob = f"{name} {model} {brand} {category}".lower()
     if any(k in full_blob for k in ("ratón", "raton", "mouse", "mx master", "deathadder", "superlight", "g502", "trackball")): return "raton"
     if any(k in full_blob for k in ("teclado", "keyboard", "keychron", "switches", "keycaps")): return "teclado"
+    if any(k in full_blob for k in ("auricular", "cascos", "altavoz", "airpods", "earbuds", "wh-1000", "wf-1000", "bose", "sennheiser", "jbl", "marshall", "sonido", "audio")): return "audio"
+    if any(k in full_blob for k in ("cámara", "camara", "fotograf", "eos", "canon", "nikon", "fujifilm", "réflex", "reflex", "dslr", "objetivo", "lente")): return "camaras"
+    if any(k in full_blob for k in ("bici", "orbea", "mtb", "patinete", "ciclismo", "trek", "specialized")): return "bicicletas"
     if any(k in full_blob for k in ("monitor", "ultrawide", "display")): return "monitor"
     if any(k in full_blob for k in ("coche", "auto", "vehículo", "vehiculo", "motor", "moto", "furgoneta", "suv", "berlina", "seat", "bmw", "audi", "mercedes", "volkswagen", "toyota", "renault", "peugeot", "ford", "tesla")): return "motor"
     if any(k in full_blob for k in ("móvil", "movil", "telefon", "teléfono", "iphone", "smartphone", "galaxy", "xiaomi", "redmi", "pixel")): return "moviles"
     if any(k in full_blob for k in ("consola", "videojuego", "switch", "playstation", "ps5", "ps4", "xbox", "joy-con", "joycon")): return "consolas"
     if any(k in full_blob for k in ("portátil", "portatil", "macbook", "laptop", "ipad", "tablet", "ordenador", "imac", "mac mini")): return "informatica"
-    if any(k in full_blob for k in ("audio", "auricular", "cascos", "altavoz", "wh-1000", "airpods", "sonido", "bose", "sennheiser")): return "audio"
-    if any(k in full_blob for k in ("cámara", "camara", "fotograf", "eos", "canon", "nikon", "fujifilm", "réflex", "reflex", "dslr", "objetivo", "lente")): return "camaras"
-    if any(k in full_blob for k in ("bici", "orbea", "mtb", "patinete", "ciclismo", "trek", "specialized")): return "bicicletas"
     if any(k in full_blob for k in ("silla", "mesa", "sofá", "sofa", "mueble", "mobiliario", "armario", "estantería", "estanteria", "butaca", "escritorio", "cama", "lámpara", "lampara", "madera")): return "mobiliario"
     if any(k in full_blob for k in ("moda", "ropa", "zapatilla", "calzado", "chaqueta", "camiseta", "pantalón", "bolso", "reloj", "gafas", "nike", "adidas")): return "moda"
     return "hogar"
 
 
+def _is_incompatible_field(k_low: str, l_low: str, v_low: str, family: str) -> bool:
+    """Blocks cross-domain hallucinated fields (e.g. mouse DPI/sensor/buttons on headphones)."""
+    combined, val_blob = f"{k_low} {l_low}", f"{k_low} {l_low} {v_low}"
+    if family != "raton":
+        if any(t in val_blob for t in ("dpi", "ambidiestro", "diestro", "botones laterales", "rueda")):
+            return True
+        if any(t in combined for t in ("sensortype", "sensordpi", "ergonom", "buttons", "botones", "numero de botones", "número de botones")):
+            return True
+        if "sensor" in combined and (family != "camaras" or any(t in v_low for t in ("óptico", "optico", "láser", "laser", "dpi"))):
+            return True
+    if family != "teclado" and any(t in combined for t in ("switch", "keycap", "tkl", "retroilumin", "backlight")):
+        return True
+    if family not in ("moviles", "informatica", "consolas") and any(t in combined for t in ("ram", "memoria ram", "procesador", "processor", "cpu", "ssd", "disco duro", "almacenamiento", "storage", "imei", "operador", "carrier", "salud de batería", "salud bateria", "batteryhealth")):
+        return True
+    if family not in ("monitor", "informatica", "moviles", "consolas", "camaras") and any(t in combined for t in ("pulgadas", "screensize", "tamaño de pantalla", "tamano de pantalla", "resolución", "resolucion", "resolution", "refresco", "refresh", "panel", "estado de pantalla", "screenstatus")):
+        return True
+    return family != "motor" and any(t in combined for t in ("combustible", "fuel", "kilometr", "mileage", "caballos", "horsepower", "matriculaci", "etiqueta dgt", "environmental", "carrocer", "bodytype", "transmisi", "caja de cambios"))
+
+
+def _canonical_key_for(k_low: str, l_low: str) -> str:
+    return next((c for c, al in _KEY_ALIASES.items() if k_low == c.lower() or l_low == c.lower() or k_low in al or l_low in al), k_low)
+
+
 def normalize_vlm_dynamic_fields(
     vlm_fields: list[VisionDynamicField], category: str, name: str, brand: str, model: str, color_name_es: str,
 ) -> list[VisionDynamicField]:
-    """Normalizes AI-generated dynamic fields for the specific photographed object without overwriting them."""
+    """Sanitizes AI-generated dynamic fields against cross-domain contamination and backfills if needed."""
     family = resolve_object_family(category, name, brand, model)
-    forbidden_on_peripherals = {"ram", "storage", "screensize", "processor", "memoria ram", "almacenamiento", "tamaño de pantalla", "procesador", "almacenamiento ssd"}
-    cleaned: list[VisionDynamicField] = []
-    seen_keys: set[str] = set()
+    spec_by_key = {k: (lbl, ft, opts, hint) for k, lbl, ft, opts, hint in OBJECT_FIELD_SPECS.get(family, ())}
+    cleaned, seen_concepts = [], set()
 
     for item in vlm_fields:
-        k_low, l_low = item.key.strip().lower(), item.label.strip().lower()
-        if not k_low or not l_low or k_low in seen_keys:
+        k_low, l_low, v_low = item.key.strip().lower(), item.label.strip().lower(), item.value.strip().lower()
+        if not k_low or not l_low or _is_incompatible_field(k_low, l_low, v_low, family):
             continue
-        if family in ("raton", "teclado") and (k_low in forbidden_on_peripherals or l_low in forbidden_on_peripherals):
+        concept = _canonical_key_for(k_low, l_low)
+        if concept in seen_concepts or l_low in seen_concepts:
             continue
-        seen_keys.add(k_low)
-        val = item.value.strip()
-        if val.lower() in ("no especificado", "desconocido", "n/a", "none", "null", "sin especificar"):
-            val = color_name_es if "color" in k_low or "color" in l_low else ""
-        opts = [o.strip() for o in item.options if o and o.strip()]
+        seen_concepts.update((concept, k_low, l_low))
+        val = (color_name_es if concept == "color" or "color" in l_low else "") if v_low in ("no especificado", "desconocido", "n/a", "none", "null", "sin especificar") else item.value.strip()
+        opts = [o.strip() for o in item.options if o and o.strip() and not _is_incompatible_field("", "", o.lower(), family)]
         f_type: FieldKind = item.field_type
+        if concept in spec_by_key and spec_by_key[concept][1] == "select":
+            opts.extend(c_opt for c_opt in spec_by_key[concept][2] if c_opt not in opts)
         if f_type == "select":
-            if val and val not in opts:
-                opts = [val, *opts]
+            opts = [val, *opts] if val and val not in opts else opts
             if len(opts) < 2:
                 f_type, opts = "text", []
-        cleaned.append(VisionDynamicField(
-            key=item.key.strip(), label=item.label.strip(), value=val, field_type=f_type,
-            options=opts, placeholder=item.placeholder or (f"Ej. {val}" if val else "Introduce un valor…"),
-        ))
+        cleaned.append(VisionDynamicField(key=concept if concept in spec_by_key else item.key.strip(), label=item.label.strip(), value=val, field_type=f_type, options=opts, placeholder=item.placeholder or (f"Ej. {val}" if val else "Introduce un valor…")))
 
-    if len(cleaned) >= 3:
+    if len(cleaned) >= 4:
         return cleaned
-    return build_dynamic_fields(category, name, brand, model, color_name_es, {f.key: f.value for f in cleaned})
+    for fb in build_dynamic_fields(category, name, brand, model, color_name_es, {f.key: f.value for f in cleaned}):
+        fb_concept = _canonical_key_for(fb.key.lower(), fb.label.lower())
+        if fb_concept not in seen_concepts and fb.label.lower() not in seen_concepts:
+            cleaned.append(fb)
+            seen_concepts.update((fb_concept, fb.key.lower(), fb.label.lower()))
+        if len(cleaned) >= 5:
+            break
+    return cleaned
 
 
 def build_dynamic_fields(
@@ -208,36 +229,20 @@ def build_dynamic_fields(
     family = resolve_object_family(category, name, brand, model)
     specs = OBJECT_FIELD_SPECS.get(family, OBJECT_FIELD_SPECS["hogar"])
     attrs = {k.lower().strip(): v.strip() for k, v in (raw_attributes or {}).items() if v and v.strip()}
-    low_blob = f"{name} {model}".lower()
-    fields: list[VisionDynamicField] = []
+    low_blob, fields = f"{name} {model}".lower(), []
 
     for key, label, field_type, options, default_hint in specs:
-        candidates = (key.lower(), label.lower(), *_KEY_ALIASES.get(key, ()))
-        val = next((attrs[c] for c in candidates if c in attrs), "")
-        if val.lower() in ("no especificado", "desconocido", "n/a", "none", "null", "sin especificar"):
-            val = ""
+        val = next((attrs[c] for c in (key.lower(), label.lower(), *_KEY_ALIASES.get(key, ())) if c in attrs), "")
+        val = "" if val.lower() in ("no especificado", "desconocido", "n/a", "none", "null", "sin especificar") else val
         if not val:
             if key == "color":
                 val = color_name_es
             elif key == "storage" and any(cap in low_blob for cap in ("64gb", "128gb", "256gb", "512gb", "1tb", "32gb")):
-                for cap, fmt in (("32gb", "32 GB"), ("64gb", "64 GB"), ("128gb", "128 GB"), ("256gb", "256 GB"), ("512gb", "512 GB"), ("1tb", "1 TB")):
-                    if cap in low_blob:
-                        val = fmt if family != "informatica" else f"{fmt} SSD"
-                        break
+                val = next((fmt if family != "informatica" else f"{fmt} SSD" for cap, fmt in (("32gb", "32 GB"), ("64gb", "64 GB"), ("128gb", "128 GB"), ("256gb", "256 GB"), ("512gb", "512 GB"), ("1tb", "1 TB")) if cap in low_blob), "")
             elif key == "fuelType":
-                if any(w in low_blob for w in ("tdi", "dci", "hdi", "diesel", "diésel")):
-                    val = "Diésel"
-                elif any(w in low_blob for w in ("híbrido", "hibrido", "hybrid", "hev")):
-                    val = "Híbrido (HEV)"
-                elif any(w in low_blob for w in ("eléctrico", "electrico", "ev", "tesla")):
-                    val = "Eléctrico (EV)"
-                else:
-                    val = default_hint
+                val = "Diésel" if any(w in low_blob for w in ("tdi", "dci", "hdi", "diesel", "diésel")) else ("Híbrido (HEV)" if any(w in low_blob for w in ("híbrido", "hibrido", "hybrid", "hev")) else ("Eléctrico (EV)" if any(w in low_blob for w in ("eléctrico", "electrico", "ev", "tesla")) else default_hint))
             elif field_type == "select" and options:
                 val = default_hint if default_hint in options else options[0]
         opts = [val, *options] if field_type == "select" and val and val not in options else list(options)
-        fields.append(VisionDynamicField(
-            key=key, label=label, value=val, field_type=field_type, options=opts,
-            placeholder=default_hint if field_type != "select" else None,
-        ))
+        fields.append(VisionDynamicField(key=key, label=label, value=val, field_type=field_type, options=opts, placeholder=default_hint if field_type != "select" else None))
     return fields

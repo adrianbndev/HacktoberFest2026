@@ -127,6 +127,7 @@ class ResilientVisionOrchestrator:
                 condition_label=label,
                 condition_reasoning=result.condition_reasoning,
                 candidate_description=result.seo_description,
+                dynamic_fields=dynamic_fields,
             ),
             dynamic_fields=dynamic_fields,
             source=result.source,

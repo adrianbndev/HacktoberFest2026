@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -11,6 +12,7 @@ from app.models.sdd import (
     SEO_TITLE_MAX_LENGTH,
     ConditionLabel,
     VisionAnalysisResult,
+    VisionDynamicField,
     clamp_condition_score,
     map_score_to_condition_label,
 )
@@ -80,12 +82,19 @@ def build_seo_description(
     condition_label: ConditionLabel,
     condition_reasoning: str,
     candidate_description: str | None = None,
+    dynamic_fields: Sequence[VisionDynamicField] | None = None,
 ) -> str:
-    """Builds a structured 4-part persuasive Wallapop SEO description in Spanish."""
+    """Builds a structured persuasive Wallapop SEO description in Spanish including dynamic fields."""
     score = clamp_condition_score(condition_score)
     label = map_score_to_condition_label(score)
 
-    if candidate_description and len(candidate_description.strip()) >= 85:
+    spec_lines = [
+        f"• {f.label.strip()}: {f.value.strip()}"
+        for f in (dynamic_fields or ())
+        if f.label.strip() and f.value.strip()
+    ]
+
+    if candidate_description and len(candidate_description.strip()) >= 85 and not spec_lines:
         text = candidate_description.strip()
         if "#" in text:
             return text
@@ -93,7 +102,7 @@ def build_seo_description(
     tags = [
         tag.lower().replace(" ", "")
         for tag in (brand, model.split()[0] if model else "", category.split()[0], "segundamano", "oportunidad")
-        if tag and tag.lower() not in ("desconocida", "genérico", "n/a")
+        if tag and tag.lower() not in ("desconocida", "genérico", "generica", "estándar", "estandar", "n/a")
     ]
     hashtag_line = " ".join(f"#{t}" for t in dict.fromkeys(tags) if t)
 
@@ -104,10 +113,14 @@ def build_seo_description(
     elif model and model.lower() not in low_name:
         item_ref = f" (ref. {model})"
 
-    return (
-        f"✨ Se vende {name}{item_ref} en estado '{label}'.\n"
-        f"🔍 Diagnóstico visual IA ({score}/100%): {condition_reasoning.strip()}\n"
-        f"📦 Listo para entrega en mano o envío protegido por Wallapop/Vinted. "
-        f"Se puede ver y probar sin compromiso.\n"
-        f"🏷️ {hashtag_line}"
-    )
+    sections = [
+        f"✨ Se vende {name}{item_ref} en estado '{label}'.",
+        f"🔍 Diagnóstico visual IA ({score}/100%): {condition_reasoning.strip()}",
+    ]
+    if spec_lines:
+        sections.append("📋 Características y detalles:\n" + "\n".join(spec_lines))
+    sections.extend([
+        "📦 Listo para entrega en mano o envío protegido por Wallapop/Vinted. Se puede ver y probar sin compromiso.",
+        f"🏷️ {hashtag_line}",
+    ])
+    return "\n".join(sections)

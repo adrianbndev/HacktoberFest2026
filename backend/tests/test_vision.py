@@ -18,10 +18,11 @@ except ImportError:
 from app.models.sdd import (
     SEO_TITLE_MAX_LENGTH,
     VisionAnalysisResult,
+    VisionDynamicField,
     clamp_condition_score,
     map_score_to_condition_label,
 )
-from app.vision.dynamic_fields import build_dynamic_fields
+from app.vision.dynamic_fields import build_dynamic_fields, normalize_vlm_dynamic_fields
 from app.vision.fallback_provider import DeterministicVisionProvider
 from app.vision.image_processor import decode_image_source, prepare_and_inspect_image
 from app.vision.ollama_provider import OllamaVisionProvider
@@ -131,6 +132,10 @@ class TestVisionModule(unittest.TestCase):
         self.assertEqual(res.source, "ollama_local")
         self.assertEqual(res.condition_label, "Nuevo")
         self.assertLessEqual(len(res.seo_title), SEO_TITLE_MAX_LENGTH)
+        self.assertIn("Características y detalles:", res.seo_description)
+        for field in res.dynamic_fields:
+            if field.value.strip():
+                self.assertIn(f"• {field.label}: {field.value}", res.seo_description)
 
     def test_orchestrator_fallback_under_sla_when_offline(self) -> None:
         data_url = _create_test_data_url()
@@ -143,50 +148,44 @@ class TestVisionModule(unittest.TestCase):
         self.assertLess(res.latency_ms or 9999, 1000)
 
     def test_dynamic_fields_differ_by_category_mobile_vs_car(self) -> None:
-        mobile_fields = build_dynamic_fields(
-            category="Móviles y Telefonía",
-            name="Apple iPhone 14 Pro 256GB",
-            brand="Apple",
-            model="iPhone 14 Pro",
-            color_name_es="Negro",
-        )
+        mobile_fields = build_dynamic_fields("Móviles y Telefonía", "Apple iPhone 14 Pro 256GB", "Apple", "iPhone 14 Pro", "Negro")
         mobile_keys = {f.key for f in mobile_fields}
-        self.assertIn("storage", mobile_keys)
-        self.assertIn("batteryHealth", mobile_keys)
-        self.assertNotIn("fuelType", mobile_keys)
-        storage_val = next(f.value for f in mobile_fields if f.key == "storage")
-        self.assertEqual(storage_val, "256 GB")
+        self.assertTrue({"storage", "batteryHealth"}.issubset(mobile_keys) and "fuelType" not in mobile_keys)
+        self.assertEqual(next(f.value for f in mobile_fields if f.key == "storage"), "256 GB")
 
         car_fields = build_dynamic_fields(
-            category="Motor y Vehículos",
-            name="SEAT León 2.0 TDI 150CV",
-            brand="SEAT",
-            model="León TDI",
-            color_name_es="Blanco",
+            "Motor y Vehículos", "SEAT León 2.0 TDI 150CV", "SEAT", "León TDI", "Blanco",
             raw_attributes={"combustible": "Diésel", "cambio": "Automático", "kilometros": "65.000 km"},
         )
         car_keys = {f.key for f in car_fields}
-        self.assertIn("fuelType", car_keys)
-        self.assertIn("transmission", car_keys)
-        self.assertIn("mileageKm", car_keys)
-        self.assertNotIn("batteryHealth", car_keys)
+        self.assertTrue({"fuelType", "transmission", "mileageKm"}.issubset(car_keys) and "batteryHealth" not in car_keys)
         self.assertEqual(next(f.value for f in car_fields if f.key == "fuelType"), "Diésel")
         self.assertEqual(next(f.value for f in car_fields if f.key == "transmission"), "Automático")
 
-        mouse_fields = build_dynamic_fields(
-            category="Informática y Periféricos",
-            name="Ratón inalámbrico Logitech MX Master 3S",
-            brand="Logitech",
-            model="MX Master 3S",
-            color_name_es="Negro",
-        )
+        mouse_fields = build_dynamic_fields("Informática y Periféricos", "Ratón inalámbrico Logitech MX Master 3S", "Logitech", "MX Master 3S", "Negro")
         mouse_keys = {f.key for f in mouse_fields}
-        self.assertIn("connectivity", mouse_keys)
-        self.assertIn("sensorType", mouse_keys)
-        self.assertIn("buttons", mouse_keys)
-        self.assertNotIn("screenSize", mouse_keys)
-        self.assertNotIn("ram", mouse_keys)
-        self.assertNotIn("storage", mouse_keys)
+        self.assertTrue({"connectivity", "sensorType", "buttons"}.issubset(mouse_keys))
+        self.assertTrue(mouse_keys.isdisjoint({"screenSize", "ram", "storage"}))
+
+    def test_vlm_dynamic_fields_strips_mouse_sensor_on_headphones(self) -> None:
+        raw_vlm = [
+            VisionDynamicField(key="connectivity", label="Conectividad", value="Bluetooth 5.2", field_type="select", options=["Bluetooth 5.2", "Receptor USB 2.4GHz DPI"]),
+            VisionDynamicField(key="sensorDpi", label="Tipo de sensor", value="Óptico de alta precisión", field_type="select", options=["Óptico", "Láser"]),
+            VisionDynamicField(key="buttons", label="Número de botones", value="5 botones", field_type="select", options=["3 botones", "5 botones"]),
+            VisionDynamicField(key="color", label="Color", value="Negro mate", field_type="text"),
+        ]
+        cleaned = normalize_vlm_dynamic_fields(
+            raw_vlm, "Audio y Sonido", "Auriculares inalámbricos Sony WH-1000XM5 para PC y PS5", "Sony", "WH-1000XM5", "Negro",
+        )
+        keys = {f.key for f in cleaned}
+        labels_low = " ".join(f.label.lower() for f in cleaned)
+        self.assertTrue(keys.isdisjoint({"sensorDpi", "sensorType", "buttons"}))
+        self.assertNotIn("sensor", labels_low)
+        self.assertNotIn("botones", labels_low)
+        self.assertTrue({"connectivity", "noiseCancelling", "formFactor"}.issubset(keys))
+        conn_field = next(f for f in cleaned if f.key == "connectivity")
+        self.assertEqual(conn_field.value, "Bluetooth 5.2")
+        self.assertNotIn("Receptor USB 2.4GHz DPI", conn_field.options or [])
 
     @unittest.skipIf(TestClient is None, "FastAPI not installed in current Python environment")
     def test_fastapi_endpoints_via_test_client(self) -> None:

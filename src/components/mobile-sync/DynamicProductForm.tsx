@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2, Plus, RotateCcw, ScanSearch, SlidersHorizontal, X } from "lucide-react";
 import { ConditionChip } from "@/components/inventory/HealthScoreBadge";
-import {
-  PRODUCT_CATEGORIES,
-  buildDynamicFieldsForCategory,
-  mapScoreToConditionLabel,
-} from "@/lib/vision/category-fields";
+import { PRODUCT_CATEGORIES, buildDynamicFieldsForCategory, buildSeoDescriptionFromFields, mapScoreToConditionLabel } from "@/lib/vision/category-fields";
 import type { VisionAnalysisResult, VisionDynamicField } from "@/types/sdd";
 
 export interface DynamicProductFormProps {
@@ -17,9 +13,10 @@ export interface DynamicProductFormProps {
   onRetake: () => void;
 }
 
-const FIELD = "mt-1.5 w-full rounded-inner border border-line bg-paper px-3.5 text-[15px] text-ink transition-colors focus:border-accent";
-const inputCls = `${FIELD} h-11`;
-const textareaCls = `${FIELD} py-2.5 leading-relaxed`;
+const FIELD_BASE = "mt-1.5 w-full rounded-inner border border-line bg-paper text-[15px] text-ink transition-colors focus:border-accent";
+const inputCls = `${FIELD_BASE} h-11 px-3.5`;
+const selectCls = `${FIELD_BASE} h-11 pl-3.5 pr-10`;
+const textareaCls = `${FIELD_BASE} px-3.5 py-2.5 leading-relaxed`;
 const labelCls = "text-[13px] font-medium text-ink-2";
 
 export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onRetake }: DynamicProductFormProps) {
@@ -30,17 +27,18 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
   const [conditionScore, setConditionScore] = useState(initialAnalysis.conditionScore);
   const [conditionReasoning, setConditionReasoning] = useState(initialAnalysis.conditionReasoning);
   const [seoTitle, setSeoTitle] = useState(initialAnalysis.seoTitle);
-  const [seoDescription, setSeoDescription] = useState(initialAnalysis.seoDescription);
+  const [customSeoDescription, setCustomSeoDescription] = useState<string | null>(null);
   const [dynamicFields, setDynamicFields] = useState<VisionDynamicField[]>(() =>
-    initialAnalysis.dynamicFields && initialAnalysis.dynamicFields.length > 0
-      ? initialAnalysis.dynamicFields
-      : buildDynamicFieldsForCategory(initialAnalysis.category, initialAnalysis.name),
+    initialAnalysis.dynamicFields?.length ? initialAnalysis.dynamicFields : buildDynamicFieldsForCategory(initialAnalysis.category, initialAnalysis.name),
   );
   const [extraNotes, setExtraNotes] = useState("");
   const [newFieldLabel, setNewFieldLabel] = useState("");
 
   const conditionLabel = mapScoreToConditionLabel(conditionScore);
   const categories = PRODUCT_CATEGORIES.includes(category) ? PRODUCT_CATEGORIES : [category, ...PRODUCT_CATEGORIES];
+  const seoDescription =
+    customSeoDescription ??
+    buildSeoDescriptionFromFields({ name, brand, model, category, conditionScore, conditionLabel, conditionReasoning, dynamicFields, extraNotes });
 
   function handleCategoryChange(nextCategory: string) {
     setCategory(nextCategory);
@@ -105,7 +103,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
 
         <label className={`${labelCls} sm:col-span-2 lg:col-span-3`}>
           Categoría
-          <select value={category} onChange={(e) => handleCategoryChange(e.target.value)} className={inputCls}>
+          <select value={category} onChange={(e) => handleCategoryChange(e.target.value)} className={selectCls}>
             {categories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
@@ -143,7 +141,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
                 )}
               </div>
               {field.fieldType === "select" && field.options && field.options.length > 0 ? (
-                <select value={field.value} onChange={(e) => updateDynamicField(field.key, e.target.value)} className={inputCls}>
+                <select value={field.value} onChange={(e) => updateDynamicField(field.key, e.target.value)} className={selectCls}>
                   {field.options.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
@@ -213,7 +211,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
             <textarea
               rows={5}
               value={seoDescription}
-              onChange={(e) => setSeoDescription(e.target.value)}
+              onChange={(e) => setCustomSeoDescription(e.target.value)}
               className={`${textareaCls} min-h-32 resize-y`}
             />
           </label>

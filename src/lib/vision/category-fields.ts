@@ -124,14 +124,14 @@ export function resolveCategoryFamily(category: string, name = ""): string {
   const blob = `${category} ${name}`.toLowerCase();
   if (/(rat[oó]n|mouse|mx master|deathadder|superlight|g502|trackball)/.test(blob)) return "raton";
   if (/(teclado|keyboard|keychron|switches|keycaps)/.test(blob)) return "teclado";
+  if (/(audio|auricular|cascos|altavoz|wh-1000|wf-1000|airpods|earbuds|sonido|bose|sennheiser|jbl|marshall)/.test(blob)) return "audio";
+  if (/(c[aá]mara|fotograf|eos|canon|nikon|fujifilm|r[eé]flex|dslr|objetivo|lente)/.test(blob)) return "camaras";
+  if (/(bici|orbea|mtb|patinete|ciclismo|movilidad)/.test(blob)) return "bicicletas";
   if (/(monitor|pantalla|ultrawide|display)/.test(blob)) return "monitor";
   if (/(coche|auto|veh[ií]culo|motor|moto|furgoneta|suv|berlina|seat|bmw|audi|mercedes|volkswagen|toyota|renault|peugeot|ford|tesla)/.test(blob)) return "motor";
   if (/(m[oó]vil|telefon|iphone|smartphone|galaxy|xiaomi|redmi|pixel)/.test(blob)) return "moviles";
   if (/(consola|videojuego|switch|playstation|ps5|ps4|xbox|joy-?con)/.test(blob)) return "consolas";
   if (/(port[aá]til|macbook|laptop|inform[aá]tica|ipad|tablet|ordenador)/.test(blob)) return "informatica";
-  if (/(audio|auricular|cascos|altavoz|wh-1000|airpods|sonido|bose)/.test(blob)) return "audio";
-  if (/(c[aá]mara|fotograf|eos|canon|nikon|fujifilm|r[eé]flex|dslr|objetivo|lente)/.test(blob)) return "camaras";
-  if (/(bici|orbea|mtb|patinete|ciclismo|movilidad)/.test(blob)) return "bicicletas";
   if (/(silla|mesa|sof[aá]|mueble|mobiliario|armario|estanter[ií]a|butaca|escritorio|decoraci[oó]n|madera)/.test(blob)) return "mobiliario";
   if (/(moda|ropa|zapatilla|calzado|chaqueta|camiseta|bolso|reloj|gafas|nike|adidas)/.test(blob)) return "moda";
   return "hogar";
@@ -178,4 +178,57 @@ export function formatDynamicFieldsSummary(fields: VisionDynamicField[], extraNo
     lines.push(`• Notas adicionales: ${extraNotes.trim()}`);
   }
   return lines.join("\n");
+}
+
+export interface SeoDescriptionInput {
+  name: string;
+  brand: string;
+  model: string;
+  category: string;
+  conditionScore: number;
+  conditionLabel: ConditionLabel;
+  conditionReasoning: string;
+  dynamicFields: VisionDynamicField[];
+  extraNotes?: string;
+}
+
+export function buildSeoDescriptionFromFields(input: SeoDescriptionInput): string {
+  const cleanName = input.name.trim() || "Artículo";
+  const cleanBrand = input.brand.trim();
+  const cleanModel = input.model.trim();
+  const lowName = cleanName.toLowerCase();
+  let itemRef = "";
+  if (cleanBrand && cleanBrand.toLowerCase() !== "genérica" && !lowName.includes(cleanBrand.toLowerCase())) {
+    itemRef =
+      cleanModel && cleanModel.toLowerCase() !== "estándar" && !lowName.includes(cleanModel.toLowerCase())
+        ? ` (${cleanBrand} ${cleanModel})`
+        : ` (${cleanBrand})`;
+  } else if (cleanModel && cleanModel.toLowerCase() !== "estándar" && !lowName.includes(cleanModel.toLowerCase())) {
+    itemRef = ` (ref. ${cleanModel})`;
+  }
+
+  const specsSummary = formatDynamicFieldsSummary(input.dynamicFields, input.extraNotes);
+  const tags = [
+    cleanBrand,
+    cleanModel.split(/\s+/)[0] ?? "",
+    input.category.split(/\s+/)[0] ?? "",
+    "segundamano",
+    "oportunidad",
+  ]
+    .map((t) => t.toLowerCase().replace(/[^a-záéíóúñ0-9]/gi, ""))
+    .filter((t) => t && !["desconocida", "generico", "generica", "estandar", "na"].includes(t));
+  const hashtagLine = Array.from(new Set(tags)).map((t) => `#${t}`).join(" ");
+
+  const sections = [
+    `✨ Se vende ${cleanName}${itemRef} en estado '${input.conditionLabel}'.`,
+    `🔍 Diagnóstico visual IA (${Math.round(input.conditionScore)}/100%): ${input.conditionReasoning.trim()}`,
+  ];
+  if (specsSummary) {
+    sections.push(`📋 Características y detalles:\n${specsSummary}`);
+  }
+  sections.push(
+    "📦 Listo para entrega en mano o envío protegido por Wallapop/Vinted. Se puede ver y probar sin compromiso.",
+    `🏷️ ${hashtagLine}`,
+  );
+  return sections.join("\n");
 }

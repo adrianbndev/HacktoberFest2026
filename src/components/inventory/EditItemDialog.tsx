@@ -14,10 +14,11 @@ interface EditItemDialogProps {
   onClose: () => void;
 }
 
-const FIELD =
-  "mt-1.5 w-full rounded-inner border border-line bg-paper px-3.5 text-[15px] text-ink transition-colors focus:border-accent";
-const INPUT = `${FIELD} h-11`;
-const TEXTAREA = `${FIELD} py-2.5 leading-relaxed`;
+const FIELD_BASE =
+  "mt-1.5 w-full rounded-inner border border-line bg-paper text-[15px] text-ink transition-colors focus:border-accent";
+const INPUT = `${FIELD_BASE} h-11 px-3.5`;
+const SELECT = `${FIELD_BASE} h-11 pl-3.5 pr-10`;
+const TEXTAREA = `${FIELD_BASE} px-3.5 py-2.5 leading-relaxed`;
 const STATUSES = Object.entries(STATUS_LABEL) as [InventoryItem["status"], string][];
 
 // Edición a mano de los datos de un objeto; el estado y los precios siguen siendo los de la tasación.
@@ -119,14 +120,14 @@ function EditItemForm({ item, titleId, onClose }: { item: InventoryItem; titleId
           <input id={`${id}-model`} name="model" maxLength={80} defaultValue={item.model} className={INPUT} />
         </Field>
         <Field id={`${id}-category`} label="Categoría">
-          <select id={`${id}-category`} name="category" defaultValue={item.category} className={INPUT}>
+          <select id={`${id}-category`} name="category" defaultValue={item.category} className={SELECT}>
             {categories.map((category) => (
               <option key={category} value={category}>{category || "Sin categoría"}</option>
             ))}
           </select>
         </Field>
         <Field id={`${id}-status`} label="Situación">
-          <select id={`${id}-status`} name="status" defaultValue={item.status} className={INPUT}>
+          <select id={`${id}-status`} name="status" defaultValue={item.status} className={SELECT}>
             {STATUSES.map(([status, label]) => (
               <option key={status} value={status}>{label}</option>
             ))}
