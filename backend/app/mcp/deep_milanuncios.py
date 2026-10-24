@@ -52,6 +52,8 @@ class MilanunciosHybridRunner:
         self._http: MarketConnectorProtocol = http_connector or MilanunciosConnector(
             timeout_sec=settings.market_connector_timeout_sec,
             max_pages=settings.market_milanuncios_max_pages,
+            page_delay_min_sec=settings.market_milanuncios_page_delay_min_sec,
+            page_delay_max_sec=settings.market_milanuncios_page_delay_max_sec,
         )
 
     async def collect(self, query: str, deadline: float) -> SourceOutcome:

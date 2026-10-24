@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # Milanuncios is the slowest source (~3-4 s per result page). The demo uses
     # 3 pages for latency; 6 maximizes usable samples when completeness matters.
     market_milanuncios_max_pages: int = Field(default=3, ge=1, le=6)
+    # Human-like pause between result pages of the same HTTP search (seconds).
+    market_milanuncios_page_delay_min_sec: float = Field(default=0.25, ge=0.0, le=5.0)
+    market_milanuncios_page_delay_max_sec: float = Field(default=0.75, ge=0.0, le=5.0)
     market_cache_path: str = "/app/data/market_cache.sqlite"
     market_cache_ttl_sec: int = Field(default=900, ge=0, le=86_400)
     cdp_url: str = "http://market-browser:9222"
@@ -89,6 +92,14 @@ class Settings(BaseSettings):
     def _check_latency_budget(self) -> Settings:
         if self.market_jitter_max_sec < self.market_jitter_min_sec:
             raise ValueError("market_jitter_max_sec must be >= market_jitter_min_sec")
+        if (
+            self.market_milanuncios_page_delay_max_sec
+            < self.market_milanuncios_page_delay_min_sec
+        ):
+            raise ValueError(
+                "market_milanuncios_page_delay_max_sec must be >= "
+                "market_milanuncios_page_delay_min_sec"
+            )
         if self.market_deadline_sec <= self.market_connector_timeout_sec:
             raise ValueError(
                 "market_deadline_sec must be greater than market_connector_timeout_sec"

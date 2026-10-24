@@ -45,6 +45,8 @@ def test_deep_analysis_defaults_are_safe_and_additive() -> None:
     assert settings.market_source_concurrency == 3
     assert settings.market_milanuncios_transport == "auto"
     assert settings.market_milanuncios_max_pages == 3
+    assert settings.market_milanuncios_page_delay_min_sec == 0.25
+    assert settings.market_milanuncios_page_delay_max_sec == 0.75
     assert settings.market_cache_path == "/app/data/market_cache.sqlite"
     assert settings.market_cache_ttl_sec == 900
     assert settings.cdp_url == "http://market-browser:9222"
@@ -55,6 +57,8 @@ def test_deep_analysis_env_overrides(monkeypatch) -> None:
     monkeypatch.setenv("MARKET_CACHE_PATH", "/tmp/custom.sqlite")
     monkeypatch.setenv("MARKET_CACHE_TTL_SEC", "60")
     monkeypatch.setenv("MARKET_MILANUNCIOS_MAX_PAGES", "6")
+    monkeypatch.setenv("MARKET_MILANUNCIOS_PAGE_DELAY_MIN_SEC", "0.1")
+    monkeypatch.setenv("MARKET_MILANUNCIOS_PAGE_DELAY_MAX_SEC", "0.2")
     monkeypatch.setenv("MARKET_MILANUNCIOS_TRANSPORT", "browser")
     monkeypatch.setenv("MARKET_BROWSER_POOL_SIZE", "3")
     monkeypatch.setenv("MARKET_SOURCE_CONCURRENCY", "2")
@@ -67,10 +71,21 @@ def test_deep_analysis_env_overrides(monkeypatch) -> None:
     assert settings.market_cache_path == "/tmp/custom.sqlite"
     assert settings.market_cache_ttl_sec == 60
     assert settings.market_milanuncios_max_pages == 6
+    assert settings.market_milanuncios_page_delay_min_sec == 0.1
+    assert settings.market_milanuncios_page_delay_max_sec == 0.2
     assert settings.market_milanuncios_transport == "browser"
     assert settings.market_browser_pool_size == 3
     assert settings.market_source_concurrency == 2
     assert settings.cdp_url == "http://127.0.0.1:9222"
+
+
+def test_milanuncios_page_delay_bounds_are_validated(monkeypatch) -> None:
+    monkeypatch.setenv("MARKET_MILANUNCIOS_PAGE_DELAY_MIN_SEC", "0.9")
+    monkeypatch.setenv("MARKET_MILANUNCIOS_PAGE_DELAY_MAX_SEC", "0.1")
+    get_settings.cache_clear()
+
+    with pytest.raises(ValidationError):
+        get_settings()
 
 
 def test_deep_analysis_deadline_must_exceed_the_source_timeout(monkeypatch) -> None:
