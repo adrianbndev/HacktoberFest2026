@@ -7,6 +7,7 @@ import { HealthScoreBadge } from "@/components/inventory/HealthScoreBadge";
 import { PriceTrioDisplay } from "@/components/inventory/PriceTrioDisplay";
 import type { InventoryItem, TeamMemberId } from "@/types/sdd";
 import { DynamicProductForm } from "./DynamicProductForm";
+import { ZoomablePhoto } from "@/components/ui/ZoomablePhoto";
 import { useCaptureSession } from "./useCaptureSession";
 
 export interface MobileSyncModalProps {
@@ -63,7 +64,7 @@ function MobileSyncDialog({
   const baseUrl = customBaseUrl ?? (session ? defaultBaseUrl(session.mobileUrl) : "");
   const mobileUrl = session ? `${baseUrl.replace(/\/+$/, "")}/mobile-capture/${session.sessionId}` : "";
   const waiting = step === "waiting" || step === "connected";
-  // Con foto (análisis, revisión, resultado) el modal se ensancha: foto a la izquierda y datos a la derecha.
+  // Con foto (análisis, revisión, resultado) el modal se ensancha: foto arriba y los datos a todo el ancho.
   const wide = !waiting && step !== "error";
 
   return (
@@ -72,7 +73,7 @@ function MobileSyncDialog({
       onClose={onClose}
       aria-labelledby="mobile-sync-title"
       className={`m-auto max-h-[92dvh] overflow-y-auto rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7 ${
-        wide ? "w-[min(95vw,64rem)]" : "w-[min(95vw,38rem)]"
+        wide ? "w-[min(95vw,72rem)]" : "w-[min(95vw,38rem)]"
       }`}
     >
       <div className="mb-5 flex items-start justify-between gap-4">
@@ -138,23 +139,19 @@ function MobileSyncDialog({
           />
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
+        <div className="flex flex-col gap-5">
           {photo && (
-            <div className="relative overflow-hidden rounded-inner bg-fog lg:sticky lg:top-0">
-              {/* eslint-disable-next-line @next/next/no-img-element -- foto recibida en data URL */}
-              <img
-                src={photo}
-                alt="Foto recibida del producto"
-                className={`aspect-[4/3] w-full object-cover ${step === "review" ? "max-h-48 lg:max-h-none" : ""}`}
-              />
-              {step === "vision" && (
-                <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
-                  <div className="flex items-center gap-2.5 rounded-full bg-paper px-4 py-2 text-[13px] font-semibold text-ink shadow-[0_8px_24px_-8px_rgb(16_17_20/0.4)]">
-                    <Loader2 className="size-4 animate-spin text-accent" aria-hidden />
-                    Analizando la foto…
+            <div className="relative overflow-hidden rounded-inner bg-fog">
+              <ZoomablePhoto src={photo} alt="Foto recibida del producto" className="h-56 w-full object-cover sm:h-72">
+                {step === "vision" && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink/45">
+                    <div className="flex items-center gap-2.5 rounded-full bg-paper px-4 py-2 text-[13px] font-semibold text-ink">
+                      <Loader2 className="size-4 animate-spin text-accent" aria-hidden />
+                      Analizando la foto…
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </ZoomablePhoto>
             </div>
           )}
 

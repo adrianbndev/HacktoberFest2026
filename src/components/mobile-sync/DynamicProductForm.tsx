@@ -97,14 +97,14 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className={`${labelCls} sm:col-span-2`}>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12">
+        <label className={`${labelCls} sm:col-span-2 lg:col-span-5`}>
           Nombre del objeto
           <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
         </label>
 
-        <label className={`${labelCls} sm:col-span-2`}>
-          Categoría (cambia los datos que te pedimos)
+        <label className={`${labelCls} sm:col-span-2 lg:col-span-3`}>
+          Categoría
           <select value={category} onChange={(e) => handleCategoryChange(e.target.value)} className={inputCls}>
             {categories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -112,14 +112,11 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           </select>
         </label>
 
-        <label className={labelCls}>
-          Marca
-          <input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} />
+        <label className={`${labelCls} lg:col-span-2`}>
+          Marca<input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} />
         </label>
-
-        <label className={labelCls}>
-          Modelo o referencia
-          <input value={model} onChange={(e) => setModel(e.target.value)} className={inputCls} />
+        <label className={`${labelCls} lg:col-span-2`}>
+          Modelo<input value={model} onChange={(e) => setModel(e.target.value)} className={inputCls} />
         </label>
       </div>
 
@@ -128,7 +125,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           <SlidersHorizontal className="size-4" aria-hidden /> Datos de {category}
         </legend>
 
-        <div className="clear-both grid gap-3 sm:grid-cols-2">
+        <div className="clear-both grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {dynamicFields.map((field) => (
             <div key={field.key} className={labelCls}>
               <div className="flex items-center justify-between gap-1">
@@ -183,6 +180,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
         </div>
       </fieldset>
 
+      <div className="grid items-start gap-4 lg:grid-cols-2">
       <div className="rounded-panel bg-fog p-4">
         <div className="flex items-center justify-between gap-3 text-[15px] font-semibold">
           <span className="tabular-nums">Estado: {conditionScore}/100</span>
@@ -203,7 +201,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
         </label>
       </div>
 
-      <details className="rounded-panel bg-fog px-4 py-3">
+      <details open className="rounded-panel bg-fog px-4 py-3">
         <summary className="text-[15px] font-semibold">Anuncio y notas (opcional)</summary>
         <div className="mt-3 flex flex-col gap-3">
           <label className={labelCls}>
@@ -225,8 +223,9 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           </label>
         </div>
       </details>
+      </div>
 
-      <div className="flex gap-2.5 pt-1">
+      <div className="flex justify-end gap-2.5 pt-1">
         <button
           type="button"
           onClick={onRetake}
@@ -238,7 +237,7 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
         <button
           type="submit"
           disabled={submitting}
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-accent sm:flex-none sm:px-8 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {submitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
           {submitting ? "Tasando…" : "Confirmar y tasar"}
