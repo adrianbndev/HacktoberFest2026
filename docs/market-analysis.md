@@ -641,7 +641,9 @@ The mobile capture modal now uses the deep path end to end:
   that merely repeats the name.
 - `useCaptureSession` calls `streamMarketAnalysis()` on `confirmVisionAndValuate`
   and **not** `/api/market/valuate`; an `AbortController` cancels the stream on
-  reset, modal close or component unmount.
+  reset, modal close or component unmount. If the deep stream fails there is no
+  automatic fast-path fallback: the hook always propagates the error, so a
+  valuation is only saved when the three-source analysis completes.
 - The hook exposes `marketSources`, `marketRecommendation`, `marketWarnings` and
   `marketError`. Source results are upserted as they arrive; nothing is saved
   until `done`.
@@ -650,9 +652,18 @@ The mobile capture modal now uses the deep path end to end:
   blocked/timeout) is saved with the usable sources; if every source fails the
   hook sets `marketError`, moves to `error` and does not save an item.
 - `MarketProgress.tsx` renders one row per source (`pendiente` / `ok (n)` /
-  `bloqueada` / `sin respuesta` / `sin anuncios` / `error`), the partial-result
-  warning, `PriceTrioDisplay` and the recommendation (`summary`,
+  `bloqueada` / `sin respuesta` / `sin anuncios` / `sin datos` / `error`), the
+  partial-result warning, `PriceTrioDisplay` and the recommendation (`summary`,
   `suggestedPrice`, `bullets`, `risks`), or a clear error with retry.
+- On a `503`/stream error, `src/components/mobile-sync/market-error.ts` maps
+  `error.sources` (`blocked*` → `blocked`, `timeout` → `timeout`,
+  `no_listings*` → `no_listings`, anything else → `error`) and merges those rows
+  without overwriting partial results. Sources with no detail render as
+  `Sin datos`, never as an endless spinner.
+- The provisional inventory item carries `priceMin = priceAvg = priceMax = 0`
+  until the analysis finishes. `inventory-aggregates.ts` excludes every
+  `pendingValuations` id from the status and platform totals, and the card and
+  recent list render skeletons instead of a price.
 
 `InventoryItem` and `src/types/sdd.ts` are unchanged: the recommendation is
 shown in the modal and is not persisted.
@@ -698,5 +709,5 @@ docker compose config
 # Frontend (mobile capture integration)
 npm run typecheck
 npm run build
-node --test src/components/mobile-sync/vision-to-market.test.mjs
+node --test src/components/mobile-sync/*.test.mjs src/components/dashboard/*.test.mjs
 ```
