@@ -152,6 +152,7 @@ class MarketHealthResponse(CamelModel):
     version: str
     fallback_enabled: bool
     jitter_enabled: bool
+    recommendation_enabled: bool
     timestamp: str
 
     @field_validator("timestamp")

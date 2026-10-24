@@ -143,6 +143,7 @@ def test_health_response_requires_iso_timestamp() -> None:
         version="0.1.0",
         fallback_enabled=True,
         jitter_enabled=True,
+        recommendation_enabled=False,
         timestamp="2026-10-24T10:00:00+00:00",
     )
     assert response.status == "ok"

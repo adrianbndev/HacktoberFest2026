@@ -61,6 +61,7 @@ curl -s http://127.0.0.1:8000/api/market/health
   "version": "0.1.0",
   "fallbackEnabled": true,
   "jitterEnabled": true,
+  "recommendationEnabled": false,
   "timestamp": "2026-10-24T11:34:18.876869+00:00"
 }
 ```
@@ -234,7 +235,17 @@ interactive endpoint.
 | `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` | `1.2` | recommendation slice |
 | `CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS` | `1` | MCP telemetry off |
 
-Copy `.env.example` to `.env` for local overrides. Never commit `.env`.
+Copy `.env.example` to the repo-root `.env` for local overrides (this repository
+already ships a gitignored `.env` with an empty `DEEPSEEK_API_KEY`). Both
+`uvicorn` from `backend/` and `docker compose` read that same root file. Never
+commit `.env`.
+
+After pasting a key, recreate the backend container so the env is injected:
+
+```bash
+docker compose up -d --force-recreate lifeos-backend
+curl -s http://127.0.0.1:8000/api/market/health | jq .recommendationEnabled
+```
 
 ## Docker
 
@@ -310,7 +321,7 @@ the `/valuate` hot path.
 |---|---|
 | `source="stealth_fallback"` with warnings | Sources blocked/empty; expected on venue Wi-Fi. Check egress and keep the flag enabled for the demo. |
 | HTTP `503` | `MARKET_ALLOW_FALLBACK=false` and no live listings. Inspect `sources`. |
-| No recommendation | Missing/invalid `DEEPSEEK_API_KEY`, timeout, empty JSON or exhausted budget. A warning is returned and the valuation still succeeds. |
+| No recommendation | Check `recommendationEnabled` in `/api/market/health`. Missing/invalid `DEEPSEEK_API_KEY`, timeout, empty JSON or exhausted budget. A warning is returned and the valuation still succeeds. |
 | `422` | Invalid enum/score/query; unknown fields are rejected on purpose. |
 | Browser container `unhealthy` | Check `docker compose logs market-browser`; the entrypoint clears stale X/profile locks on restart. If needed, remove the `chrome-profile` volume. |
 | `curl 9222` resets | Chrome is loopback-only; always go through the built-in CDP proxy (`9222`, not `9223`). |

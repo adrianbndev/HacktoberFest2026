@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 NO_ENV_FILE = os.devnull
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_ENV_FILE = REPO_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -23,7 +26,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(DEFAULT_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -76,7 +79,10 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a cached settings instance.
 
-    ``LIFEOS_ENV_FILE`` allows tests to point the loader at an empty file so a
-    developer's local ``.env`` can never leak into the test suite.
+    By default it reads the repository-root ``.env`` (shared with Docker
+    Compose). ``LIFEOS_ENV_FILE`` lets tests point the loader at an empty file
+    so a developer's real key can never leak into the test suite.
     """
-    return Settings(_env_file=os.environ.get("LIFEOS_ENV_FILE", ".env"))
+    return Settings(
+        _env_file=os.environ.get("LIFEOS_ENV_FILE", str(DEFAULT_ENV_FILE))
+    )

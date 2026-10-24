@@ -32,6 +32,7 @@ async def market_health(settings: SettingsDep) -> MarketHealthResponse:
         version=settings.app_version,
         fallback_enabled=settings.market_allow_fallback,
         jitter_enabled=settings.market_jitter_max_sec > 0,
+        recommendation_enabled=settings.deepseek_api_key is not None,
         timestamp=datetime.now(UTC).isoformat(),
     )
 

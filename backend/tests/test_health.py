@@ -17,6 +17,7 @@ def test_market_health_returns_ok() -> None:
     assert body["version"]
     assert body["fallbackEnabled"] is True
     assert body["jitterEnabled"] is True
+    assert body["recommendationEnabled"] is False
     assert "timestamp" in body
 
 
@@ -41,3 +42,15 @@ def test_health_reflects_fallback_flag(monkeypatch) -> None:
         body = client.get("/api/market/health").json()
 
     assert body["fallbackEnabled"] is False
+
+
+def test_health_reports_recommendation_when_the_key_is_configured(monkeypatch) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-only")
+    get_settings.cache_clear()
+
+    with TestClient(create_app()) as client:
+        body = client.get("/api/market/health").json()
+
+    assert body["recommendationEnabled"] is True
