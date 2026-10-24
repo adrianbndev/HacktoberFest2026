@@ -537,7 +537,7 @@ Measured on 2026-10-24 in this worktree (arm64, Debian Chromium 156, Xvfb):
 
 - Hybrid smoke (`transport=auto`, query `iPhone 13 128GB`): eBay **58
   usable / 4.0 s**, Wallapop **40 / 4.5 s**, Milanuncios HTTP blocked → browser
-  **7 / 11.1 s**; total **17.3 s**, all three platforms in the valuation, no
+  **7 / 11.1 s**; total **17.3–18.4 s**, all three platforms in the valuation, no
   warnings. The Phase 2 sequential engine took 25–32 s for the same query.
 - Parallel spike with 3 pages: sequential 20.6 s vs parallel **12.0 s**
   (wall/max = 1.00, wall/sum = 0.53).

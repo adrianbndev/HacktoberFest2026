@@ -176,7 +176,7 @@
   con 3 páginas de Milanuncios; fingerprint limpio; HTTP 2 páginas 1.52 s / 10
   usables en la primera pasada y bloqueo posterior → fallback validado.
 * Smoke híbrido real: eBay 58 usables / 4.0 s, Wallapop 40 / 4.5 s, Milanuncios
-  fallback 7 / 11.1 s, total 17.3 s.
+  fallback 7 / 11.1 s, total 17.3–18.4 s.
 * ADR: [`004-parallel-browser-sources.md`](../decisions/004-parallel-browser-sources.md).
 
 ### Diferido (no bloqueante)
