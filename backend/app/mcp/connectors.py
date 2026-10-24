@@ -14,13 +14,7 @@ from urllib.parse import quote_plus
 import httpx
 from bs4 import BeautifulSoup, Tag
 
-from app.mcp.normalize import (
-    build_listing_sample,
-    iter_json_listing_items,
-    json_price_amount,
-    parse_price_eur,
-    squeeze,
-)
+from app.mcp.normalize import build_listing_sample, iter_json_listing_items, json_price_amount, parse_price_eur, squeeze
 from app.mcp.stealth_http import build_headers
 from app.models.sdd import MarketListingSample, MarketPlatform
 

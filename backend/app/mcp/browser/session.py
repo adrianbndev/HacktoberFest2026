@@ -16,13 +16,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from app.config import Settings
-from app.mcp.browser.cdp import (
-    BROWSER_ENV,
-    SCROLL_FUNCTION,
-    parse_page_id,
-    probe_cdp,
-    sanitize,
-)
+from app.mcp.browser.cdp import BROWSER_ENV, SCROLL_FUNCTION, parse_page_id, probe_cdp, sanitize
 from app.mcp.browser.mcp_client import MCPClient, MCPError, parse_tool_payload
 
 
