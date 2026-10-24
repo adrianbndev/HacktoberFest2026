@@ -14,6 +14,24 @@ Level 1 gate stays open until the end-to-end UI verification.
 | 5 | Browser spike is non-blocking | Fingerprint and smoke scripts documented; a blocked source is an explicit `blocked` status, never synthetic data |
 | 6 | Real DeepSeek recommendation in the deep path | `deepseek-v4-pro` with thinking, validated, clamped; the deterministic template is disabled so failures omit the recommendation |
 
+## Closed in the mobile-capture integration
+
+| # | Item | Resolution |
+|---|---|---|
+| 1 | UI wiring of `/analyze` and SSE | `useCaptureSession` streams `/api/market/analyze/stream` and saves `analysis.valuation` + `comparableListings`; `MarketProgress` renders per-source status, partials, prices and the recommendation |
+
+### Verification notes
+
+- `npm run typecheck`, `npm run build` and the 7 mapping tests pass.
+- Live backend smoke (`/analyze/stream`, 2026-10-24): eBay `blocked`, Wallapop
+  `ok` (38 listings), Milanuncios `ok` (8); valuation 12/40/88 € with no
+  synthetic data and the recommendation omitted (no `DEEPSEEK_API_KEY` in this
+  environment).
+- The signed-in modal flow was not exercised here because the available browser
+  had no Google/Firebase session. The three `MarketProgress` states were
+  rendered with a temporary (uncommitted) route using the real partial payload.
+  Re-run the full modal smoke with a signed-in browser before the demo.
+
 ## Still deferred (non-blocking)
 
 | # | Item | Reason | Status | Blocking? |
@@ -21,12 +39,11 @@ Level 1 gate stays open until the end-to-end UI verification.
 | 1 | Vinted connector | Contract supports a subset; Phase 2 scope is eBay + Wallapop + Milanuncios | Deferred | No |
 | 2 | `backend/mcp_server.py` (FastMCP CLI) | The library is MCP-ready but not exposed as a CLI; not needed for the demo | Deferred | No |
 | 3 | `/api/market/refresh` + alerts | Level 2 scope | Deferred | No |
-| 4 | UI wiring of `/analyze` and SSE | Track A owns dashboard components; Track C provides the client only | Pending Track A | No |
-| 5 | Mirror Phase 1 optional fields in `src/types/sdd.ts` | Track A / MOD-00 owns the frozen TypeScript contract | Pending MOD-00 | No |
-| 6 | GHCR multi-arch CI | Build locally on the demo laptop | Post-hackathon | No |
-| 7 | Custom minimal CDP MCP | Only needed if `chrome-devtools-mcp` failed the fingerprint; it passed | Not needed | No |
-| 8 | Split dev dependencies out of the runtime image | `requirements.txt` includes pytest/ruff/mypy so the documented flow works; image is heavier | Post-hackathon | No |
-| 9 | Full MOD-00 (store, auth, seed data) | Separate phase by design | Separate phase | No |
+| 4 | Mirror Phase 1 optional fields in `src/types/sdd.ts` | Track A / MOD-00 owns the frozen TypeScript contract | Pending MOD-00 | No |
+| 5 | GHCR multi-arch CI | Build locally on the demo laptop | Post-hackathon | No |
+| 6 | Custom minimal CDP MCP | Only needed if `chrome-devtools-mcp` failed the fingerprint; it passed | Not needed | No |
+| 7 | Split dev dependencies out of the runtime image | `requirements.txt` includes pytest/ruff/mypy so the documented flow works; image is heavier | Post-hackathon | No |
+| 8 | Full MOD-00 (store, auth, seed data) | Separate phase by design | Separate phase | No |
 
 ## Phase 2 follow-ups (non-blocking)
 
