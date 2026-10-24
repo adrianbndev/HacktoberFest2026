@@ -3,7 +3,7 @@
 * **Nivel SDD:** 🟢 Nivel 1.4
 * **Responsable:** **Track C (Matías)**
 * **Estado Actual:** `⏳ READY`
-* **SLA de Latencia:** $\le 3000\text{ ms}$ (incluyendo *jitter* humano de $800\text{ ms} - 2200\text{ ms}$)
+* **SLA de Latencia:** $\le 2800\text{ ms}$ (incluyendo *jitter* humano de $650\text{ ms} - 1200\text{ ms}$)
 
 ---
 
@@ -53,8 +53,8 @@
 
 ## 4. Checklist de Control y Calidad (MOD-04)
 
-- [ ] Tests unitarios sobre `pricing-math.ts` verificando que para cualquier combinación de precios y `conditionScore` $\in [0, 100]$ se cumple $0 < P_{\min} < P_{\text{avg}} < P_{\max}$.
+- [ ] Tests `pytest` sobre `pricing_math.py` (`backend/tests/test_pricing_math.py`) verificando que para cualquier combinación de precios y `conditionScore` $\in [0, 100]$ se cumple $0 < P_{\min} < P_{\text{avg}} < P_{\max}$.
 - [ ] Verificación de que un `conditionScore = 95` ("Nuevo") devuelve un $P_{\text{avg}}$ superior a un `conditionScore = 50` ("Desgaste visible") para el mismo artículo.
-- [ ] Jitter humano configurable (activo por defecto entre $800\text{ ms}$ y $2200\text{ ms}$, y modo instantáneo para tests unitarios).
+- [ ] Jitter humano configurable (activo por defecto entre $650\text{ ms}$ y $1200\text{ ms}$, y modo instantáneo para tests unitarios).
 - [ ] Retorno de `comparableListings` con muestras de `wallapop`, `vinted`, `milanuncios` y `ebay`.
-- [ ] Servidor MCP operable por CLI y endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$.
+- [ ] Servidor MCP operable por CLI y endpoint `/api/market/valuate` respondiendo en $\le 2.8\text{ s}$.

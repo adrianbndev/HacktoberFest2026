@@ -31,8 +31,8 @@
 ### 1.2 Flujo Cámara Móvil $\leftrightarrow$ Web PC sin Fricción (`Track B - Adri`)
 - [ ] Botón destacado en PC: *"📱 Añadir Producto con el Móvil"*.
 - [ ] Generación de sesión única (`/mobile-capture/[sessionId]`) con código QR escaneable y link directo integrable en LAN/túnel.
-- [ ] Interfaz móvil limpia con apertura directa de cámara trasera (`<input type="file" accept="image/*" capture="environment" />`) y compresión cliente en Canvas ($\le 1024\text{ px}$, JPEG $0.78$, $<350\text{ KB}$) para evitar errores de payload.
-- [ ] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1\text{ s}$.
+- [ ] Interfaz móvil limpia con apertura directa de cámara trasera (`<input type="file" accept="image/*" capture="environment" />`) y compresión cliente en Canvas ($\le 800\text{ px}$, JPEG $0.75$, $<200\text{ KB}$) para evitar errores de payload.
+- [ ] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1.2\text{ s}$.
 - [ ] Recepción instantánea de la foto en la pantalla del PC y disparo automático del análisis sin intervención manual.
 
 ### 1.3 Reconocimiento por Visión IA + Salud/Estado + SEO (`Track B - Adri`)
@@ -45,8 +45,8 @@
 - [ ] Generación automática de **Título SEO** y **Descripción persuasiva** lista para copiar y publicar en Wallapop.
 
 ### 1.4 Motor MCP "Human-Like" (Anti-Bot) y las 3 Medidas de Precio (`Track C - Matías`)
-- [ ] Implementar motor MCP Stealth (`src/mcp/stealth-market-mcp.ts` y `/api/market/valuate`) siguiendo [`.agent/mcp/stealth-market-mcp.md`](mcp/stealth-market-mcp.md).
-- [ ] Simulación de navegación humana: rotación de User-Agents reales, cabeceras HTTP completas y *jitter* aleatorio ($800\text{ ms} - 2200\text{ ms}$).
+- [ ] Implementar motor MCP Stealth (`backend/app/mcp/stealth_engine.py`, `backend/mcp_server.py` y `/api/market/valuate`) siguiendo [`.agent/mcp/stealth-market-mcp.md`](mcp/stealth-market-mcp.md).
+- [ ] Simulación de navegación humana: rotación de User-Agents reales, cabeceras HTTP completas y *jitter* aleatorio ($650\text{ ms} - 1200\text{ ms}$).
 - [ ] Consulta multi-plataforma (Wallapop, Vinted, Milanuncios, eBay) ponderada por el `conditionScore` ($0-100\%$).
 - [ ] Capa de **Fallback Determinista Blindado** si la red del recinto bloquea peticiones o excede el timeout.
 - [ ] Retorno y visualización clara en UI de las **3 medidas obligatorias**:

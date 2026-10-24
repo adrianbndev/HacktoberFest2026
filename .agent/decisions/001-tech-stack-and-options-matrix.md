@@ -29,7 +29,7 @@
 
 #### ¿Qué opciones tenemos para abrir la cámara en el móvil?
 * **Opción A (Elegida): Input Nativo con `capture="environment"` + Compresión Canvas en Cliente.**
-  * **Cómo funciona:** Cuando el usuario escanea el QR y abre `/mobile-capture/[sessionId]`, pulsa un botón que dispara `<input type="file" accept="image/*" capture="environment" />`. El sistema operativo del móvil (iOS/Android) abre la app de cámara nativa a máxima calidad y con enfoque por hardware. Al confirmar la foto, un script en el cliente la dibuja en un `<canvas>` de máximo $1024\text{ px}$ y la exporta como `image/jpeg` al $78\%$ ($<300\text{ KB}$).
+  * **Cómo funciona:** Cuando el usuario escanea el QR y abre `/mobile-capture/[sessionId]`, pulsa un botón que dispara `<input type="file" accept="image/*" capture="environment" />`. El sistema operativo del móvil (iOS/Android) abre la app de cámara nativa a máxima calidad y con enfoque por hardware. Al confirmar la foto, un script en el cliente la dibuja en un `<canvas>` de máximo $800\text{ px}$ y la exporta como `image/jpeg` al $75\%$ ($<200\text{ KB}$).
   * **Ventaja crítica:** **No requiere HTTPS (`https://`)**. Si estamos en la red local del hackathon (`http://192.168.1.45:3000`), `navigator.mediaDevices.getUserMedia()` es bloqueado por seguridad en Safari y Chrome móvil, mientras que `<input capture="environment">` funciona siempre al 100%.
 * **Opción B (Mejora Progresiva):** `getUserMedia` en vivo.
   * Solo se activa si `window.isSecureContext === true` (por ejemplo, si levantamos un túnel HTTPS con `cloudflared`).
@@ -69,13 +69,13 @@
 
 #### ¿Cómo estructuramos el MCP en Python para que sea un MCP real y a la vez ultrarrápido?
 * **Doble Exposición sobre el mismo motor Python (`backend/app/mcp/`):**
-  1. **Núcleo de Dominio (`backend/app/mcp/stealth_engine.py` & `pricing_math.py`):** Contiene la lógica pura en Python: rotación de cabeceras humanas, `await human_jitter(650, 1200)`, conectores asíncronos con `httpx.AsyncClient` + `BeautifulSoup4` (`WallapopConnector`, `VintedConnector`, `MilanunciosConnector`, `EbayConnector`), filtrado estadístico de *outliers* por rango intercuartílico (IQR), ponderación por salud $W_{\text{health}}$ y el catálogo semilla determinista.
+  1. **Núcleo de Dominio (`backend/app/mcp/stealth_engine.py` & `pricing_math.py`):** Contiene la lógica pura en Python: rotación de cabeceras humanas, `await human_jitter(0.65, 1.20)`, conectores asíncronos con `httpx.AsyncClient` + `BeautifulSoup4` (`WallapopConnector`, `VintedConnector`, `MilanunciosConnector`, `EbayConnector`), filtrado estadístico de *outliers* por rango intercuartílico (IQR), ponderación por salud $W_{\text{health}}$ y el catálogo semilla determinista.
   2. **Servidor MCP Estándar en Python (`backend/mcp_server.py`):** Expone las herramientas `search_secondhand_market` y `simulate_market_tick` mediante **`FastMCP` (`from mcp.server.fastmcp import FastMCP`)** sobre transporte `stdio`/SSE. Así se puede registrar directamente en Antigravity CLI, Claude Code o OpenCode y demostrar al jurado el protocolo MCP en Python funcionando.
   3. **Router FastAPI (`backend/app/routers/market.py`):** Invoca `await stealth_engine.valuate(...)` directamente en el mismo proceso asíncrono de Python para garantizar latencia $<2.8\text{ s}$ en la web.
 
 #### ¿Por qué no usar Puppeteer / Playwright Headless en vivo para cada búsqueda?
 * Levantar un navegador Chromium headless consume $>400\text{ MB}$ de RAM y tarda $4-9\text{ segundos}$ solo en arrancar, rompiendo el límite de $6\text{ s}$ del hackathon y arriesgando bloqueos por CAPTCHA.
-* **Solución Profesional:** Peticiones HTTP ligeras (`fetch` con `AbortSignal.timeout(3000)`) usando las cabeceras de API pública/web móvil con *jitter* humano + **Capa de Fallback Determinista Curada** con datos reales del mercado español 2026.
+* **Solución Profesional:** Peticiones HTTP ligeras (`httpx.AsyncClient` con `httpx.Timeout(1.6)`) usando las cabeceras de API pública/web móvil con *jitter* humano + **Capa de Fallback Determinista Curada** con datos reales del mercado español 2026.
 
 ---
 

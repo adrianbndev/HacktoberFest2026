@@ -31,7 +31,7 @@
       * `priceTrend = priceDeltaEur > 0 ? 'up' : priceDeltaEur < 0 ? 'down' : 'stable'`
 
 ### 2.2 Generador de Alertas y Centro de Notificaciones (`Track C` + `Track A`)
-* Cuando $P_{\min}$, $P_{\text{avg}}$ o $P_{\max}$ de un producto varía de forma significativa ($\ge 5\%$ o $\ge 5\text{ €}$):
+* Cuando $P_{\min}$, $P_{\text{avg}}$ o $P_{\max}$ de un producto varía de forma significativa ($\ge 4\%$ o $\ge 5\text{ €}$):
   * Se crea **una sola** `MarketNotification` por producto (la métrica con mayor variación %) asociada al `userId`:
     * **Ejemplo Subida ($P_{\text{avg}}$):** *"🔔 ¡Subida detectada! El **precio medio** de tu Nintendo Switch OLED ha subido un **+12%** (185 € → 207 €). ¡Buen momento para publicar!"*
     * **Ejemplo Bajada ($P_{\min}$):** *"📉 El **precio mínimo** de los monitores LG ha bajado **10 €** esta semana (120 € → 110 €)."*

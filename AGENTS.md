@@ -81,11 +81,11 @@ Todos los agentes deben consultar y mantener sincronizados los siguientes docume
 
 ### 🛡️ Reglas Activas (`always_on` en `.agent/rules/`)
 * [`.agent/rules/hackathon-guardrails.md`](.agent/rules/hackathon-guardrails.md) — Rendimiento ($<6\text{ s}$), captura móvil sin bloqueo HTTPS/CORS y resiliencia en demo.
-* [`.agent/rules/clean-code-solid.md`](.agent/rules/clean-code-solid.md) — Principios SOLID, Clean Architecture en 4 capas, límite de 220 líneas por archivo y Zod estricto.
+* [`.agent/rules/clean-code-solid.md`](.agent/rules/clean-code-solid.md) — Principios SOLID, Clean Architecture en 4 capas, límite de 220 líneas por archivo y validación estricta con Pydantic v2.
 * [`.agent/rules/testing-and-quality-gates.md`](.agent/rules/testing-and-quality-gates.md) — Invariantes matemáticas obligatorias y protocolo del Harness de Verificación.
 
 ### 📦 Fichas de Seguimiento y Control por Módulo (`.agent/modules/`)
-* [`.agent/modules/MOD-00-foundation-store-types.md`](.agent/modules/MOD-00-foundation-store-types.md) — Tipos `sdd.ts`, esquemas Zod y Repositorio JSON Atómico.
+* [`.agent/modules/MOD-00-foundation-store-types.md`](.agent/modules/MOD-00-foundation-store-types.md) — Tipos `sdd.ts`, modelos Pydantic v2 y Repositorio JSON Atómico.
 * [`.agent/modules/MOD-01-auth-and-inventory-ui.md`](.agent/modules/MOD-01-auth-and-inventory-ui.md) — Login rápido, Bento Grid UI y "Mi Inventario" (`Track A`).
 * [`.agent/modules/MOD-02-mobile-pc-sync.md`](.agent/modules/MOD-02-mobile-pc-sync.md) — Sync Cámara Móvil $\leftrightarrow$ PC vía QR + compresión Canvas + SSE/Polling (`Track B`).
 * [`.agent/modules/MOD-03-vision-health-seo.md`](.agent/modules/MOD-03-vision-health-seo.md) — Visión IA Multimodal, diagnóstico de Salud ($0-100\%$) y generador SEO (`Track B`).
