@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, CircleCheck, Loader2, RotateCcw, ScanSearch, Smartphone, TriangleAlert, Upload, X } from "lucide-react";
 import { HealthScoreBadge } from "@/components/inventory/HealthScoreBadge";
-import { PriceTrioDisplay } from "@/components/inventory/PriceTrioDisplay";
 import type { InventoryItem, TeamMemberId } from "@/types/sdd";
 import { DynamicProductForm } from "./DynamicProductForm";
+import { MarketProgress } from "./MarketProgress";
 import { ZoomablePhoto } from "@/components/ui/ZoomablePhoto";
 import { useDialogScrollLock } from "@/components/ui/useDialogScrollLock";
 import { useCaptureSession } from "./useCaptureSession";
@@ -58,7 +58,20 @@ function MobileSyncDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
-  const { session, step, photo, visionDraft, item, simulateCapture, confirmVisionAndValuate, resetToCapture } = capture;
+  const {
+    session,
+    step,
+    photo,
+    visionDraft,
+    item,
+    marketSources,
+    marketRecommendation,
+    marketWarnings,
+    marketError,
+    simulateCapture,
+    confirmVisionAndValuate,
+    resetToCapture,
+  } = capture;
 
   useEffect(() => dialogRef.current?.showModal(), []);
   useDialogScrollLock(dialogRef);
@@ -92,13 +105,29 @@ function MobileSyncDialog({
 
       {step === "error" ? (
         <div className="flex flex-col gap-3">
-          <p role="alert" className="flex items-center gap-3 rounded-inner bg-rose-50 p-4 text-[15px] text-rose-800">
-            <TriangleAlert className="size-5 shrink-0" aria-hidden />
-            No hemos podido analizar la foto. Prueba con otra, con buena luz y el objeto entero a la vista.
-          </p>
-          <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
-            <RotateCcw className="size-4" aria-hidden /> Volver a intentarlo
-          </button>
+          {marketError ? (
+            <>
+              <MarketProgress
+                sources={marketSources}
+                warnings={marketWarnings}
+                error={marketError}
+                onRetry={visionDraft ? () => void confirmVisionAndValuate(visionDraft) : undefined}
+              />
+              <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
+                <RotateCcw className="size-4" aria-hidden /> Usar otra foto
+              </button>
+            </>
+          ) : (
+            <>
+              <p role="alert" className="flex items-center gap-3 rounded-inner bg-rose-50 p-4 text-[15px] text-rose-800">
+                <TriangleAlert className="size-5 shrink-0" aria-hidden />
+                No hemos podido analizar la foto. Prueba con otra, con buena luz y el objeto entero a la vista.
+              </p>
+              <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
+                <RotateCcw className="size-4" aria-hidden /> Volver a intentarlo
+              </button>
+            </>
+          )}
         </div>
       ) : waiting ? (
         <div className="flex flex-col items-center gap-5">
@@ -170,12 +199,20 @@ function MobileSyncDialog({
               </div>
             )}
 
-            {(step === "review" || step === "market") && visionDraft && (
+            {step === "review" && visionDraft && (
               <DynamicProductForm
                 initialAnalysis={visionDraft}
-                submitting={step === "market"}
+                submitting={false}
                 onConfirm={confirmVisionAndValuate}
                 onRetake={resetToCapture}
+              />
+            )}
+
+            {step === "market" && (
+              <MarketProgress
+                sources={marketSources}
+                recommendation={marketRecommendation}
+                warnings={marketWarnings}
               />
             )}
 
@@ -200,7 +237,13 @@ function MobileSyncDialog({
                     {item.details}
                   </div>
                 )}
-                <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
+                <MarketProgress
+                  sources={marketSources}
+                  recommendation={marketRecommendation}
+                  warnings={marketWarnings}
+                  prices={{ priceMin: item.priceMin, priceAvg: item.priceAvg, priceMax: item.priceMax }}
+                  complete
+                />
                 <div className="flex gap-2.5">
                   <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
                     <RotateCcw className="size-4" aria-hidden /> Tasar otro
