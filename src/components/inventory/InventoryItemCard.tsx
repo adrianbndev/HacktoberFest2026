@@ -40,6 +40,11 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
         </div>
 
         <HealthScoreBadge score={item.conditionScore} label={item.conditionLabel} reasoning={item.conditionReasoning} />
+        {item.details && (
+          <p className="whitespace-pre-line rounded-2xl bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+            {item.details}
+          </p>
+        )}
         <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
 
         {item.comparableListings.length > 0 && (

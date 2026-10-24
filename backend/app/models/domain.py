@@ -21,6 +21,7 @@ class UserProfile(CamelModel):
     city: str
     favorite_languages: list[str]
     created_at: str
+    email: str | None = None
 
 
 # ---------- 2. Producto, salud IA y 3 precios MCP ----------
@@ -59,6 +60,8 @@ class InventoryItem(PriceTriplet):
     status: Literal["in_stock", "listed", "reserved", "sold"]
     created_at: str
     last_updated_at: str
+    # Texto libre del usuario para identificar mejor el producto (modelo exacto, accesorios, defectos...).
+    details: str | None = Field(default=None, max_length=2000)
 
 
 # ---------- 3. Sincronización móvil <-> PC ----------
@@ -70,10 +73,6 @@ class MobileCaptureSession(CamelModel):
     result_item: InventoryItem | None = None
     created_at: str
     updated_at: str
-
-
-class CaptureSessionRequest(CamelModel):
-    user_id: TeamMemberId
 
 
 class CaptureSessionCreated(CamelModel):
@@ -175,15 +174,6 @@ class MarketRefreshResponse(CamelModel):
     refreshed_at: str
 
 
-class AuthRequest(CamelModel):
-    user_id: TeamMemberId
-
-
-class AuthSession(CamelModel):
-    active_user_id: TeamMemberId
-    profiles: list[UserProfile]
-
-
 class InventoryResponse(CamelModel):
     profile: UserProfile
     items: list[InventoryItem]
@@ -191,7 +181,8 @@ class InventoryResponse(CamelModel):
 
 
 class AppStoreState(CamelModel):
-    active_user_id: TeamMemberId
+    """Formato del JSON local (backend sin clave de Firebase)."""
+
     profiles: dict[TeamMemberId, UserProfile]
     inventory: list[InventoryItem]
     capture_sessions: dict[str, MobileCaptureSession]

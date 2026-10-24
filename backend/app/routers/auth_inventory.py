@@ -1,11 +1,12 @@
-"""Sesión rápida, CRUD de inventario y reset de la demo (MOD-00 / MOD-01)."""
+"""Perfil del usuario de Firebase, CRUD de su inventario y reset de la demo (MOD-00 / MOD-01)."""
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.models.domain import AuthRequest, AuthSession, InventoryItem, InventoryResponse, InventoryTotals, TeamMemberId
-from app.models.domain import UserProfile
+from app.auth import CurrentUser
+from app.models.domain import InventoryItem, InventoryResponse, InventoryTotals, UserProfile
 from app.store.repository import StoreRepository, get_store
+from app.store.seed_data import demo_items, new_profile
 
 router = APIRouter()
 Store = Annotated[StoreRepository, Depends(get_store)]
@@ -22,44 +23,43 @@ def inventory_totals(items: list[InventoryItem]) -> InventoryTotals:
     )
 
 
-@router.get("/auth", response_model=AuthSession)
-def get_session(store: Store) -> AuthSession:
-    state = store.snapshot()
-    return AuthSession(active_user_id=state.active_user_id, profiles=list(state.profiles.values()))
-
-
-@router.post("/auth", response_model=UserProfile)
-def login(body: AuthRequest, store: Store) -> UserProfile:
-    with store.transaction() as state:
-        state.active_user_id = body.user_id
-        return state.profiles[body.user_id]
+@router.post("/auth", response_model=UserProfile, response_model_exclude_none=True)
+def login(user: CurrentUser, store: Store) -> UserProfile:
+    """Primer acceso: crea el perfil desde la cuenta de Google y le carga 3 productos de demo."""
+    profile = store.get_profile(user.uid)
+    if profile is None:
+        profile = new_profile(user.uid, user.name, user.email, user.picture)
+        store.save_profile(profile)
+        store.replace_items(user.uid, demo_items(user.uid, profile.city))
+    return profile
 
 
 @router.get("/inventory", response_model=InventoryResponse, response_model_exclude_none=True)
-def list_inventory(user_id: Annotated[TeamMemberId, Query(alias="userId")], store: Store) -> InventoryResponse:
-    state = store.snapshot()
-    items = sorted((i for i in state.inventory if i.user_id == user_id), key=lambda i: i.created_at, reverse=True)
-    return InventoryResponse(profile=state.profiles[user_id], items=items, totals=inventory_totals(items))
+def list_inventory(user: CurrentUser, store: Store) -> InventoryResponse:
+    profile = store.get_profile(user.uid)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Perfil no encontrado: llama antes a POST /api/auth")
+    items = sorted(store.list_items(user.uid), key=lambda item: item.created_at, reverse=True)
+    return InventoryResponse(profile=profile, items=items, totals=inventory_totals(items))
 
 
 @router.post("/inventory", response_model=InventoryItem, response_model_exclude_none=True)
-def save_item(item: InventoryItem, store: Store) -> InventoryItem:
-    """Crea o reemplaza (mismo id) un artículo."""
-    with store.transaction() as state:
-        state.inventory = [existing for existing in state.inventory if existing.id != item.id] + [item]
-    return item
+def save_item(item: InventoryItem, user: CurrentUser, store: Store) -> InventoryItem:
+    """Crea o reemplaza (mismo id) un artículo; siempre queda a nombre del usuario de la sesión."""
+    owned_item = item.model_copy(update={"user_id": user.uid})
+    store.save_item(owned_item)
+    return owned_item
 
 
 @router.delete("/inventory", status_code=204)
-def delete_item(item_id: Annotated[str, Query(alias="id")], store: Store) -> None:
-    with store.transaction() as state:
-        if not any(item.id == item_id for item in state.inventory):
-            raise HTTPException(status_code=404, detail=f"No existe el artículo {item_id}")
-        state.inventory = [item for item in state.inventory if item.id != item_id]
+def delete_item(item_id: Annotated[str, Query(alias="id")], user: CurrentUser, store: Store) -> None:
+    if not store.delete_item(user.uid, item_id):
+        raise HTTPException(status_code=404, detail=f"No existe el artículo {item_id}")
 
 
-@router.post("/store/reset", response_model=AuthSession)
-def reset_demo(store: Store) -> AuthSession:
-    """Restaura los datos semilla antes de presentar al jurado."""
-    state = store.reset_to_seed()
-    return AuthSession(active_user_id=state.active_user_id, profiles=list(state.profiles.values()))
+@router.post("/store/reset", response_model=InventoryResponse, response_model_exclude_none=True)
+def reset_demo(user: CurrentUser, store: Store) -> InventoryResponse:
+    """Restaura los 3 productos de demo del usuario antes de presentar al jurado."""
+    profile = login(user, store)
+    store.replace_items(user.uid, demo_items(user.uid, profile.city))
+    return list_inventory(user, store)

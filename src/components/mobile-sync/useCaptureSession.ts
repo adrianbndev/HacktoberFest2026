@@ -38,7 +38,7 @@ export function useCaptureSession(userId: TeamMemberId, onItemCreated: (item: In
 
   useEffect(() => {
     let cancelled = false;
-    requestJson<CaptureSessionCreated>("/api/capture-session", "POST", { userId })
+    requestJson<CaptureSessionCreated>("/api/capture-session", "POST") // el usuario sale del token de Firebase
       .then((created) => !cancelled && setSession(created))
       .catch(() => !cancelled && setStep("error"));
     return () => {
@@ -98,5 +98,14 @@ export function useCaptureSession(userId: TeamMemberId, onItemCreated: (item: In
     await requestJson(`/api/capture-session/${session.sessionId}`, "PUT", update).catch(() => setStep("error"));
   }
 
-  return { session, step, photo, item, simulateCapture };
+  /** Guarda el texto libre que ayuda a identificar el producto (modelo exacto, accesorios, defectos...). */
+  async function saveDetails(details: string) {
+    if (!item) return;
+    const updated: InventoryItem = { ...item, details: details.trim() || undefined };
+    await requestJson("/api/inventory", "POST", updated);
+    setItem(updated);
+    onItemCreated(updated);
+  }
+
+  return { session, step, photo, item, simulateCapture, saveDetails };
 }

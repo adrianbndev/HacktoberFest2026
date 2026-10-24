@@ -6,7 +6,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.models.domain import CaptureSessionCreated, CaptureSessionRequest, CaptureSessionUpdate, MobileCaptureSession
+from app.auth import CurrentUser
+from app.models.domain import CaptureSessionCreated, CaptureSessionUpdate, MobileCaptureSession
 from app.store.repository import StoreRepository, get_store
 
 router = APIRouter()
@@ -35,12 +36,12 @@ def _now() -> str:
 
 
 @router.post("/capture-session", response_model=CaptureSessionCreated)
-def create_session(body: CaptureSessionRequest, store: Store) -> CaptureSessionCreated:
-    session_id = uuid.uuid4().hex[:12]
-    with store.transaction() as state:
-        state.capture_sessions[session_id] = MobileCaptureSession(
-            session_id=session_id, user_id=body.user_id, status="waiting_for_mobile", created_at=_now(), updated_at=_now()
-        )
+def create_session(user: CurrentUser, store: Store) -> CaptureSessionCreated:
+    # El móvil no inicia sesión: el sessionId del QR es su única credencial, así que no debe poder adivinarse.
+    session_id = uuid.uuid4().hex
+    store.save_session(MobileCaptureSession(
+        session_id=session_id, user_id=user.uid, status="waiting_for_mobile", created_at=_now(), updated_at=_now()
+    ))
     ips = lan_ips()
     host = ips[0] if ips else "localhost"
     return CaptureSessionCreated(
@@ -50,7 +51,7 @@ def create_session(body: CaptureSessionRequest, store: Store) -> CaptureSessionC
 
 @router.get("/capture-session/{session_id}", response_model=MobileCaptureSession, response_model_exclude_none=True)
 def get_session(session_id: str, store: Store) -> MobileCaptureSession:
-    session = store.snapshot().capture_sessions.get(session_id)
+    session = store.get_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="La sesión de captura no existe")
     return session
@@ -58,12 +59,12 @@ def get_session(session_id: str, store: Store) -> MobileCaptureSession:
 
 @router.put("/capture-session/{session_id}", response_model=MobileCaptureSession, response_model_exclude_none=True)
 def update_session(session_id: str, body: CaptureSessionUpdate, store: Store) -> MobileCaptureSession:
-    with store.transaction() as state:
-        session = state.capture_sessions.get(session_id)
-        if session is None:
-            raise HTTPException(status_code=404, detail="La sesión de captura no existe")
-        session.status = body.status
-        if body.photo_data_url:
-            session.photo_data_url = body.photo_data_url
-        session.updated_at = _now()
-        return session
+    session = store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="La sesión de captura no existe")
+    update = {"status": body.status, "updated_at": _now()}
+    if body.photo_data_url:
+        update["photo_data_url"] = body.photo_data_url
+    session = session.model_copy(update=update)
+    store.save_session(session)
+    return session

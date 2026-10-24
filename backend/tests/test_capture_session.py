@@ -1,21 +1,27 @@
 from fastapi.testclient import TestClient
 
+from app.auth import AuthenticatedUser, current_user
 from app.main import app
-from app.store.repository import AppStoreRepository, get_store
+from app.store.repository import JsonStoreRepository, get_store
 
 PHOTO = "data:image/jpeg;base64,/9j/AA=="
 
 
 def test_flujo_movil_pc(tmp_path) -> None:
-    repo = AppStoreRepository(tmp_path / "store.json")
+    repo = JsonStoreRepository(tmp_path / "store.json")
     app.dependency_overrides[get_store] = lambda: repo
     client = TestClient(app)
     try:
-        created = client.post("/api/capture-session", json={"userId": "ales"}).json()
+        assert client.post("/api/capture-session").status_code == 401  # solo el PC con sesión iniciada
+
+        app.dependency_overrides[current_user] = lambda: AuthenticatedUser("uid-matias", "Matías", None, None)
+        created = client.post("/api/capture-session").json()
+        assert len(created["sessionId"]) == 32
         session_url = f"/api/capture-session/{created['sessionId']}"
         assert created["mobileUrl"].endswith(f":3000/mobile-capture/{created['sessionId']}")
-        assert client.get(session_url).json()["status"] == "waiting_for_mobile"
 
+        app.dependency_overrides.pop(current_user)  # el móvil no inicia sesión
+        assert client.get(session_url).json()["userId"] == "uid-matias"
         assert client.put(session_url, json={"status": "mobile_connected"}).status_code == 200
         client.put(session_url, json={"status": "photo_uploaded", "photoDataUrl": PHOTO})
         session = client.get(session_url).json()

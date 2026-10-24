@@ -3,7 +3,7 @@
 // Mirror 1:1 with backend/app/models/sdd.py
 // ============================================================================
 
-export type TeamMemberId = 'ales' | 'adri' | 'matias';
+export type TeamMemberId = string;  // uid de Firebase Auth
 
 export interface UserProfile {
   id: TeamMemberId;
@@ -13,6 +13,7 @@ export interface UserProfile {
   city: string;
   favoriteLanguages: string[];
   createdAt: string;
+  email?: string;
 }
 
 export type ConditionLabel =
@@ -65,6 +66,7 @@ export interface InventoryItem {
   status: 'in_stock' | 'listed' | 'reserved' | 'sold';
   createdAt: string;
   lastUpdatedAt: string;
+  details?: string;               // Texto libre para identificar mejor el producto
 }
 
 export type CaptureSessionStatus =
@@ -85,7 +87,6 @@ export interface MobileCaptureSession {
   updatedAt: string;
 }
 
-export interface CaptureSessionRequest { userId: TeamMemberId }            // POST /api/capture-session (body)
 export interface CaptureSessionCreated { sessionId: string; mobileUrl: string; lanIps: string[] }
 export interface CaptureSessionUpdate {                                     // PUT /api/capture-session/{id}
   status: CaptureSessionStatus;
@@ -230,7 +231,6 @@ export interface MarketRefreshResponse {
 }
 
 export interface AppStoreState {
-  activeUserId: TeamMemberId;
   profiles: Record<TeamMemberId, UserProfile>;
   inventory: InventoryItem[];
   captureSessions: Record<string, MobileCaptureSession>;
@@ -240,7 +240,5 @@ export interface AppStoreState {
 }
 
 // ---------- Sesión e inventario de la web (MOD-00 / MOD-01, Track de Matías) ----------
-export interface AuthRequest { userId: TeamMemberId }                    // POST /api/auth
-export interface AuthSession { activeUserId: TeamMemberId; profiles: UserProfile[] }  // GET /api/auth
-// GET /api/inventory?userId= (items: más recientes primero)
+// GET /api/inventory (usuario del token de Firebase; items: más recientes primero)
 export interface InventoryResponse { profile: UserProfile; items: InventoryItem[]; totals: InventoryTotals }

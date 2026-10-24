@@ -37,7 +37,7 @@ function MobileSyncDialog({ userId, onClose, onItemCreated }: Omit<MobileSyncMod
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
-  const { session, step, photo, item, simulateCapture } = useCaptureSession(userId, onItemCreated);
+  const { session, step, photo, item, simulateCapture, saveDetails } = useCaptureSession(userId, onItemCreated);
 
   useEffect(() => dialogRef.current?.showModal(), []);
 
@@ -121,6 +121,7 @@ function MobileSyncDialog({ userId, onClose, onItemCreated }: Omit<MobileSyncMod
               </div>
               <HealthScoreBadge score={item.conditionScore} label={item.conditionLabel} reasoning={item.conditionReasoning} />
               <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
+              <ProductDetailsField onSave={saveDetails} />
               <form method="dialog">
                 <button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900">
                   <Check className="size-4" aria-hidden /> Guardado en Mi Inventario
@@ -144,5 +145,51 @@ function MobileSyncDialog({ userId, onClose, onItemCreated }: Omit<MobileSyncMod
         </div>
       )}
     </dialog>
+  );
+}
+
+function ProductDetailsField({ onSave }: { onSave: (details: string) => Promise<void> }) {
+  const [details, setDetails] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+
+  async function save() {
+    setState("saving");
+    try {
+      await onSave(details);
+      setState("saved");
+    } catch {
+      setState("failed");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor="product-details" className="text-sm font-medium">
+        Detalles para identificarlo mejor
+      </label>
+      <textarea
+        id="product-details"
+        value={details}
+        onChange={(event) => {
+          setDetails(event.target.value);
+          setState("idle");
+        }}
+        rows={3}
+        maxLength={2000}
+        placeholder="Modelo exacto, capacidad, accesorios incluidos, defectos que no se ven en la foto…"
+        className="w-full rounded-xl border border-zinc-200 bg-transparent px-3 py-2 text-sm dark:border-zinc-700"
+      />
+      <button
+        type="button"
+        onClick={save}
+        disabled={!details.trim() || state === "saving" || state === "saved"}
+        className="self-end rounded-xl border border-zinc-200 px-3 py-1.5 text-sm font-medium transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+      >
+        {state === "saved" ? "Detalles guardados" : state === "saving" ? "Guardando…" : "Guardar detalles"}
+      </button>
+      {state === "failed" && (
+        <p role="alert" className="text-xs text-rose-600">No se pudieron guardar los detalles. Vuelve a intentarlo.</p>
+      )}
+    </div>
   );
 }
