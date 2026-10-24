@@ -3,7 +3,7 @@
 * **Nivel SDD:** 🟢 Nivel 1.3
 * **Responsable:** **Track B (Adri)**
 * **Estado Actual:** `✅ DONE`
-* **SLA de Latencia:** $\le 2800\text{ ms}$ (con timeout hacia fallback determinista)
+* **SLA de Latencia:** $\le 2800\text{ ms}$ (con `asyncio.wait_for(..., timeout=2.5)` hacia fallback determinista)
 
 ---
 

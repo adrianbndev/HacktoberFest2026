@@ -1,4 +1,4 @@
-# 🧱 MOD-00: Foundation — Tipos, Validación Zod & Persistencia Atómica
+# 🧱 MOD-00: Foundation — Tipos, Validación Pydantic v2 & Persistencia Atómica
 
 * **Nivel SDD:** 🟢 Nivel 1.0 (Prerrequisito común para Tracks A, B y C)
 * **Responsable:** Compartido (Ales / Adri / Matías)
@@ -30,7 +30,7 @@ Este módulo establece los cimientos desacoplados del proyecto (Frontend Next.js
 
 ---
 
-## 3. Datos Semilla Obligatorios (`seed-data.ts`)
+## 3. Datos Semilla Obligatorios (`seed_data.py`)
 
 Para que cualquier prueba de Nivel 1, 2, 3 o 4 sea inmediata:
 1. **Perfiles:**
@@ -46,9 +46,9 @@ Para que cualquier prueba de Nivel 1, 2, 3 o 4 sea inmediata:
 ## 4. Checklist de Control y Calidad (MOD-00)
 
 - [ ] Crear `src/types/sdd.ts` cumpliendo el 100% del contrato de [`.agent/architecture.md`](../architecture.md).
-- [ ] Crear validadores Zod en `src/lib/schema/sdd-schema.ts`.
-- [ ] Implementar `FileJsonRepository` con singleton en `globalThis.__LIFEOS_STORE__` y escritura atómica (`.tmp` + `renameSync`) que evita corrupción de JSON ante peticiones concurrentes de polling y subida móvil.
-- [ ] Crear `src/lib/store/seed-data.ts` con productos cuyas métricas cumplan $0 < P_{\min} < P_{\text{avg}} < P_{\max}$.
+- [ ] Crear los modelos Pydantic v2 espejo en `backend/app/models/sdd.py` (alias `camelCase`).
+- [ ] Implementar `AppStoreRepository` en `backend/app/store/repository.py` (instancia única + `threading.RLock`) con escritura atómica (`.tmp` + `os.replace`) que evita corrupción de JSON ante peticiones concurrentes de polling y subida móvil.
+- [ ] Crear `backend/app/store/seed_data.py` con productos cuyas métricas cumplan $0 < P_{\min} < P_{\text{avg}} < P_{\max}$.
 - [ ] Añadir endpoint `POST /api/store/reset` para restaurar el estado de demo en 1 clic si se desea repetir el ensayo.
 - [ ] Crear `.env.example`, `Dockerfile` y `docker-compose.yml` (con volumen `./data:/app/data` y servicio opcional `mobile-tunnel` con `cloudflared`).
-- [ ] Verificar con test unitario que la lectura/escritura y las invariantes de `seed-data.ts` pasan al 100%.
+- [ ] Verificar con `pytest backend/tests` que la lectura/escritura y las invariantes de `seed_data.py` pasan al 100%.

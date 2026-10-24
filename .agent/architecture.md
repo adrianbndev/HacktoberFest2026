@@ -72,7 +72,7 @@
 
 ## 2. Modelos de Datos Oficiales (`src/types/sdd.ts`)
 
-Todo agente debe respetar exactamente estas interfaces TypeScript:
+Todo agente debe respetar exactamente estas interfaces TypeScript (espejo 1:1 de los modelos Pydantic v2 en `backend/app/models/sdd.py`):
 
 ```typescript
 // ==========================================
@@ -241,31 +241,6 @@ export interface HacktoberfestRepo {
 }
 
 // ==========================================
-// 6. CUERPOS Y RESPUESTAS DE ENDPOINTS (contratos entre Tracks)
-// ==========================================
-export type VisionAnalysis = Pick<InventoryItem,          // POST /api/vision/analyze
-  'name' | 'category' | 'brand' | 'model' | 'conditionScore' | 'conditionLabel' |
-  'conditionReasoning' | 'seoTitle' | 'seoDescription'>;
-
-export interface ValuationRequest {                      // POST /api/market/valuate (body)
-  query: string;
-  category: string;
-  conditionScore: number;
-  conditionLabel: ConditionLabel;
-}
-
-export type ValuationResult =                            // POST /api/market/valuate (respuesta)
-  Pick<PricePoint, 'priceMin' | 'priceAvg' | 'priceMax' | 'sampleSize' | 'platforms'> & {
-    comparableListings: MarketListingSample[];
-    source: 'live_mcp' | 'stealth_fallback';
-  };
-
-export interface MarketRefreshResponse {                 // POST /api/market/refresh
-  items: InventoryItem[];
-  notifications: MarketNotification[];                  // Solo las nuevas de este refresco
-}
-
-// ==========================================
 // 6. DTOs DE INTERCAMBIO ENTRE TRACKS & ESTADO GLOBAL DEL STORE
 // ==========================================
 export interface VisionAnalysisResult {
@@ -279,6 +254,15 @@ export interface VisionAnalysisResult {
   seoTitle: string;
   seoDescription: string;
   source?: 'gemini' | 'openai' | 'deterministic_fallback';
+}
+
+export interface MarketValuationRequest {        // POST /api/market/valuate (body)
+  query: string;
+  brand?: string;
+  model?: string;
+  category: string;
+  conditionScore: number;
+  conditionLabel: ConditionLabel;
 }
 
 export interface MarketValuationResult {
@@ -325,7 +309,7 @@ export interface AppStoreState {
 * **`POST /api/capture-session`**
   * Crea una nueva sesión con `sessionId` único para el usuario activo y devuelve `{ sessionId, mobileUrl, lanIps }`.
 * **`GET /api/capture-session/[sessionId]`**
-  * Devuelve el estado actual `MobileCaptureSession` (usado tanto por el móvil al abrir el QR como por el PC en polling cada $1\text{ s}$ o stream SSE).
+  * Devuelve el estado actual `MobileCaptureSession` (usado tanto por el móvil al abrir el QR como por el PC en polling cada $1.2\text{ s}$ o stream SSE).
 * **`PUT /api/capture-session/[sessionId]`**
   * El móvil envía `{ status: 'photo_uploaded', photoDataUrl: 'data:image/jpeg;base64,...' }` ($\le 200\text{ KB}$ comprimido en `<canvas>`).
   * El PC detecta `photo_uploaded` en $<1.5\text{ s}$ y lanza automáticamente el pipeline Visión IA $\rightarrow$ MCP Stealth.
@@ -334,16 +318,13 @@ export interface AppStoreState {
 * **`POST /api/vision/analyze`**
   * **Body:** `{ photoDataUrl: string, userHint?: string }`
   * **Response:** `VisionAnalysisResult` (SLA $\le 2.5\text{ s}$)
-  * **Body:** `{ photoDataUrl: string }`
-  * **Response:** `VisionAnalysis`
 * **`POST /api/market/valuate`**
-  * **Body:** `{ query: string, brand?: string, model?: string, category: string, conditionScore: number, conditionLabel: ConditionLabel }`
+  * **Body:** `MarketValuationRequest`
   * **Response:** `MarketValuationResult` (SLA $\le 2.8\text{ s}$)
 
 ### 3.3 Rastreo de Precios y Notificaciones (Nivel 2)
 * **`POST /api/market/refresh`**
   * **Body:** `{ userId: TeamMemberId, demoMode?: boolean }`
-  * **Response:** `MarketRefreshResponse`
   * **Acción:** Recorre los artículos del usuario, consulta el MCP (o aplica variación realista de mercado en `demoMode: true` si se invoca desde el botón *"Forzar Actualización de Mercado"*), añade un nuevo `PricePoint` a `priceHistory`, recalcula `priceTrend`, `priceDeltaPercent`, `priceDeltaEur` y genera objetos `MarketNotification` para subidas o bajadas significativas ($\ge 4\%$ o $\ge 5\text{ €}$), **como máximo una por artículo** (la métrica con mayor variación %).
   * **Response:** `MarketRefreshResponse` (inventario actualizado + solo las notificaciones nuevas).
 * **`GET /api/notifications?userId=ales`** $\rightarrow$ `MarketNotification[]` (más recientes primero).

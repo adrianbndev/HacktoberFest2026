@@ -32,11 +32,11 @@
   * Al pulsar *"📱 Añadir Producto con el Móvil"*, llama a `POST /api/capture-session`.
   * Renderiza un código QR grande (usando `qrcode.react` o SVG generador local sin dependencias rotas) apuntando a `http://<LAN_IP_OR_HOST>:3000/mobile-capture/[sessionId]`.
   * Incluye un campo editable para ajustar la IP LAN local si se detecta `localhost`, facilitando el escaneo desde el móvil en la red del hackathon, además de un botón *"Simular Captura Móvil desde PC"* como respaldo adicional.
-  * Inicia polling cada $1000\text{ ms}$ (o conexión SSE) contra `GET /api/capture-session/[sessionId]`.
+  * Inicia polling cada $1200\text{ ms}$ (o conexión SSE) contra `GET /api/capture-session/[sessionId]`.
 * **En Móvil (`/mobile-capture/[sessionId]`):**
   * Al cargar la página, notifica `status: 'mobile_connected'` para que el PC muestre *"📱 ¡Móvil conectado! Esperando foto..."*.
   * Muestra un botón de acción masivo que activa `<input type="file" accept="image/*" capture="environment" />`.
-  * Al tomar la foto, la comprime en `<canvas>` ($\le 1024\text{ px}$, JPEG $0.78$) y la envía vía `PUT /api/capture-session/[sessionId]`.
+  * Al tomar la foto, la comprime en `<canvas>` ($\le 800\text{ px}$, JPEG $0.75$) y la envía vía `PUT /api/capture-session/[sessionId]`.
   * Muestra confirmación en el móvil: *"✅ ¡Foto enviada al PC! Mira la pantalla de tu ordenador"*.
 
 ### 2.3 Reconocimiento por Visión IA + Salud + SEO (`Track B`)
@@ -53,7 +53,7 @@
 
 ### 2.4 Tasación MCP Stealth de 3 Medidas (`Track C`)
 * Con el resultado de Visión IA, se invoca `POST /api/market/valuate` pasándole `{ query: name, category, conditionScore, conditionLabel }`.
-* Ejecuta la búsqueda en `stealth-market-mcp` (con *jitter* $800-2200\text{ ms}$, rotación de headers y fallback determinista).
+* Ejecuta la búsqueda en `stealth-market-mcp` (con *jitter* $650-1200\text{ ms}$, rotación de headers y fallback determinista).
 * Devuelve `priceMin`, `priceAvg`, `priceMax` y listado de anuncios comparables en Wallapop, Vinted, Milanuncios y eBay.
 * El producto completo se guarda automáticamente en el perfil del usuario (`POST /api/inventory`) y aparece resaltado al principio de **"Mi Inventario"**.
 
