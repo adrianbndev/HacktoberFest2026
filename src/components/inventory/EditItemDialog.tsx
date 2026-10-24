@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { InventoryItem } from "@/types/sdd";
 import { useDashboard } from "@/components/dashboard/DashboardShell";
 import { setLaptopBusyReason } from "@/components/mobile-sync/useCaptureSession";
+import { ZoomablePhoto } from "@/components/ui/ZoomablePhoto";
 import { useDialogScrollLock } from "@/components/ui/useDialogScrollLock";
 import { PRODUCT_CATEGORIES } from "@/lib/vision/category-fields";
 import { STATUS_LABEL, formatEur } from "./format";
@@ -45,7 +46,7 @@ export function EditItemDialog({ open, item, onClose }: EditItemDialogProps) {
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby={titleId}
-      className="m-auto max-h-[92dvh] w-[min(94vw,36rem)] overflow-y-auto overscroll-contain rounded-panel bg-paper p-6 text-ink backdrop:bg-black/55 backdrop:backdrop-blur-sm sm:p-7"
+      className="m-auto max-h-[92dvh] w-[min(95vw,44rem)] overflow-y-auto overscroll-contain rounded-panel bg-paper p-6 text-ink backdrop:bg-black/55 backdrop:backdrop-blur-sm sm:p-7"
     >
       {/* El formulario se monta en cada apertura, así arranca siempre con los datos actuales del objeto. */}
       {open && <EditItemForm item={item} titleId={titleId} onClose={onClose} />}
@@ -94,7 +95,16 @@ function EditItemForm({ item, titleId, onClose }: { item: InventoryItem; titleId
           <X className="size-5" aria-hidden />
         </button>
       </div>
-      <p className="mt-2 rounded-inner bg-fog px-4 py-3 text-[13px] leading-relaxed text-ink-2">
+      {item.photoUrl && !item.photoUrl.startsWith("data:image/svg+xml") && (
+        <div className="relative mt-4 overflow-hidden rounded-inner bg-fog">
+          <ZoomablePhoto
+            src={item.photoUrl}
+            alt={item.name}
+            className="h-auto max-h-72 w-full object-cover object-center sm:max-h-96"
+          />
+        </div>
+      )}
+      <p className="mt-3 rounded-inner bg-fog px-4 py-3 text-[13px] leading-relaxed text-ink-2">
         <span className="font-semibold text-ink">
           {item.conditionLabel} ({item.conditionScore}/100) · <span className="tabular-nums">{formatEur(item.priceMin)}</span>{" "}
           a <span className="tabular-nums">{formatEur(item.priceMax)}</span>, precio justo{" "}
