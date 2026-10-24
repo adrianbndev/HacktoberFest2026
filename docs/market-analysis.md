@@ -284,7 +284,7 @@ curl -N -X POST http://127.0.0.1:8000/api/market/analyze/stream \
 |---|---|---|---|
 | eBay | `ebay.es/sch/i.html` with `LH_BIN=1`, `LH_ItemCondition=3000`, `_ipg=60` | `li.s-item, li.s-card`, strips the accessibility suffix, skips "Shop on eBay", optional page 2 if < 20 | ≥ 20 |
 | Wallapop | `es.wallapop.com/app/search?keywords=…&order_by=newest` | scrolls 4 times, extracts `a[href*='/item/']`, parses `1.234 €` and `1.234,56 €` | ≥ 20 |
-| Milanuncios | `milanuncios.com/anuncios/?s=…&pagina=N` | **HTTP first**: `article` cards, depth `MARKET_MILANUNCIOS_MAX_PAGES` (1–6, default 3); PerimeterX/captcha/access-denied → browser fallback. `MARKET_MILANUNCIOS_TRANSPORT=auto|http|browser` | ≥ 8 with 3 pages |
+| Milanuncios | `milanuncios.com/anuncios/?s=…&pagina=N` | **HTTP first**: `article` cards, depth `MARKET_MILANUNCIOS_MAX_PAGES` (1–6, default 3); one client per search with cookies and inter-page jitter; a later-page block keeps earlier pages as a real partial; PerimeterX/captcha/access-denied on page 1 → browser fallback. `MARKET_MILANUNCIOS_TRANSPORT=auto|http|browser` | ≥ 8 with 3 pages |
 
 Parser unit tests use saved HTML fixtures under `backend/tests/fixtures/`
 (`*_browser.html`, `milanuncios_blocked.html`). Fixtures are test-only and are
@@ -307,6 +307,25 @@ demo and `6` only for completeness runs. In normal operation the source stops
 early once it has 14 raw cards, so 6 pages is an upper bound. This is a
 configuration knob only: the `/analyze` request/response contract does not
 change.
+
+### Milanuncios HTTP client and partial pages
+
+The HTTP path opens **one `httpx.AsyncClient` per search** and reuses it for every
+result page, so PerimeterX cookies survive navigation. Pages 2+ send the previous
+page as `Referer` and the site origin; a bounded jitter pauses between pages to
+look less like a burst (`MARKET_MILANUNCIOS_PAGE_DELAY_MIN_SEC` /
+`MARKET_MILANUNCIOS_PAGE_DELAY_MAX_SEC`, default 0.25–0.75 s). The delay only
+applies between pages, so the fast `/valuate` path (`max_pages=1`) is unchanged;
+tests set both bounds to `0`.
+
+If a later page blocks after earlier pages already produced real listings, the
+connector logs the block and returns those listings as a **real partial**
+(`ConnectorResult.partial=True`) instead of an empty `blocked` outcome. Nothing
+is synthetic. With `MARKET_MILANUNCIOS_TRANSPORT=http`, that partial is the final
+source result. With `auto`, the browser fallback still runs when the partial has
+fewer than 8 usable listings; if the browser fails or blocks, the real HTTP
+partial is kept. A block on page 1 (zero listings) still reports
+`blocked_http_<status>`.
 
 ## Contract
 
@@ -452,6 +471,8 @@ response.
 | `MARKET_BROWSER_TIMEOUT_SEC` | `45` | MCP tool-call timeout |
 | `MARKET_PLATFORM_QUOTA` | `4` | max listings per source in the final 12 |
 | `MARKET_MILANUNCIOS_MAX_PAGES` | `3` | Milanuncios result pages (1–6); 6 = completeness |
+| `MARKET_MILANUNCIOS_PAGE_DELAY_MIN_SEC` | `0.25` | lower bound of the pause between HTTP result pages |
+| `MARKET_MILANUNCIOS_PAGE_DELAY_MAX_SEC` | `0.75` | upper bound of the pause between HTTP result pages |
 | `MARKET_MILANUNCIOS_TRANSPORT` | `auto` | `http`, `browser` or `auto` (HTTP first, browser fallback) |
 | `MARKET_BROWSER_POOL_SIZE` | `2` | MCP processes/pages for eBay + Wallapop (1–3) |
 | `MARKET_SOURCE_CONCURRENCY` | `3` | simultaneous sources (1 = Phase 2 sequential) |
@@ -529,7 +550,7 @@ Always run the fingerprint check on the architecture used for the demo.
 
 | Source | Fast `/valuate` path | Deep path (Phase 3) |
 |---|---|---|
-| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | HTTP 3 pages **7–10 usable in 1.5–2.5 s** when not blocked; after warming, HTTP returns an anti-bot page → browser fallback **8 usable in ~10.7 s** |
+| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | HTTP 3 pages **7–10 usable in 1.5–2.5 s** when not blocked; after warming, an anti-bot page on page 1 falls back to the browser **8 usable in ~10.7 s**, while a block on pages 2–3 now keeps pages 1..N-1 as a real partial |
 | eBay | HTTP 403 from this network | **58 usable** (~4.0–4.4 s) on its own MCP slot; the intermittent eBay error page is reported as `blocked` |
 | Wallapop | HTML is a JS shell (0 server-rendered items) | **40 usable** (~4.5–5.5 s) on its own MCP slot |
 

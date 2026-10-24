@@ -32,6 +32,12 @@ Level 1 gate stays open until the end-to-end UI verification.
   rendered with a temporary (uncommitted) route using the real partial payload.
   Re-run the full modal smoke with a signed-in browser before the demo.
 
+## Closed in the Milanuncios HTTP partial task
+
+| # | Item | Resolution |
+|---|---|---|
+| 1 | Phase 3 verification follow-up #6: HTTP Milanuncios page N failure discarded pages 1..N-1 | One `httpx.AsyncClient` per search (cookies preserved), `Referer`/`Origin` on pages 2+, configurable inter-page jitter, and a real partial with a logged block when a later page fails. The browser fallback still compares usable counts. |
+
 ## Integration verification follow-ups
 
 All non-blocking; they do not change the delivered behaviour.
@@ -225,24 +231,20 @@ No blocking items. These are review findings from the Phase 3 verification.
    cancels the await but the blocking MCP call keeps running in its thread; the
    slot is returned and can be reused while the worker is still alive. Wait for
    or isolate cancelled workers.
-6. **HTTP Milanuncios page N failure discards pages 1..N-1.** A block on page 3
-   returns a blocked/empty source even when pages 1–2 produced real listings.
-   Return the partial real sample with a warning (and let the browser fallback
-   decide whether to improve it).
-7. **Fallback slot wait is not clamped to the remaining deadline.** The pool
+6. **Fallback slot wait is not clamped to the remaining deadline.** The pool
    acquire timeout is `MARKET_SOURCE_TIMEOUT_SEC`, not the request deadline.
    Clamp the fallback wait to `deadline - now`.
-8. **ADR-004 wording.** The ADR said the page id is parsed from `list_pages`;
+7. **ADR-004 wording.** The ADR said the page id is parsed from `list_pages`;
    the implementation parses it from the `new_page` response (no extra
    `list_pages` call). Corrected in ADR-004.
-9. **Threshold mismatch.** `MIN_USABLE_LISTINGS=8`, but the 3-page HTTP spike
+8. **Threshold mismatch.** `MIN_USABLE_LISTINGS=8`, but the 3-page HTTP spike
    measured 7 usable. `transport=auto` falls back to the browser in that case;
    the threshold is intentional and unchanged, but the docs must state it
    explicitly.
-10. **Test gaps.** The wall-clock assertions (`< 0.35 s`, `>= 0.2 s`) are flaky
-    on a loaded CI; use deterministic synchronization or generous bounds. There
-    is no stop-during-in-flight test nor a stale-token reuse test.
-11. **Vinted is explicitly deferred.** It is not part of Phase 3: the contract
+9. **Test gaps.** The wall-clock assertions (`< 0.35 s`, `>= 0.2 s`) are flaky
+   on a loaded CI; use deterministic synchronization or generous bounds. There
+   is no stop-during-in-flight test nor a stale-token reuse test.
+10. **Vinted is explicitly deferred.** It is not part of Phase 3: the contract
     supports a subset and the live transport is still eBay, Wallapop and
     Milanuncios only.
 
