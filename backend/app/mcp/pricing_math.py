@@ -91,13 +91,13 @@ def compute_price_triplet(prices: Iterable[float], condition_score: float) -> Pr
 
     base_price = statistics.median(cleaned)
     weight = w_health(condition_score)
-    weighted_average = base_price * weight
+    price_avg = round(base_price * weight)
 
-    raw_min = min(percentile(cleaned, LOW_PERCENTILE), weighted_average * LIQUIDITY_DISCOUNT)
-    raw_max = max(percentile(cleaned, HIGH_PERCENTILE), weighted_average * CEILING_PREMIUM)
+    raw_min = min(percentile(cleaned, LOW_PERCENTILE), price_avg * LIQUIDITY_DISCOUNT)
+    raw_max = max(percentile(cleaned, HIGH_PERCENTILE), price_avg * CEILING_PREMIUM)
 
     price_min, price_avg, price_max = enforce_price_triplet_invariant(
-        raw_min, weighted_average, raw_max
+        raw_min, price_avg, raw_max
     )
     return PriceTriplet(
         price_min=price_min,

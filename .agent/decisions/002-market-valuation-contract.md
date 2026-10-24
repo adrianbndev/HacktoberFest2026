@@ -137,7 +137,7 @@ the demo architecture.
 
 ## Verification evidence (Phase 1)
 
-- 143 backend tests, `ruff check app tests`, `mypy app` green.
+- 153 backend tests, `ruff check app tests`, `mypy app` green.
 - `docker compose config` valid; `lifeos-backend` and `market-browser` healthy.
 - `/api/market/health` → 200; `/api/market/valuate` → 200 with `source=live_mcp`
   (Milanuncios) and 200 with fallback when all sources fail, plus a structured
@@ -145,8 +145,9 @@ the demo architecture.
 - Browser spike (arm64): `webdriver=false`, `es-ES`, `Europe/Madrid`, no
   `__puppeteer`/`__playwright`; Wallapop 40 listings; eBay 60 on the first run
   and its anti-bot error page on a later run.
-- No production DeepSeek key was available; the transport is covered with fakes
-  and the deterministic template is verified.
+- DeepSeek was validated live with the provided key (`deepseek-v4-pro` takes
+  ~12–23 s); the transport is also covered with fakes and the deterministic
+  template is verified.
 
 ## Deferred (non-blocking)
 

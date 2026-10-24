@@ -79,7 +79,7 @@
 
 ### Evidencia
 
-* `pytest -q`: **143 tests** verdes; `ruff check app tests` y `mypy app` limpios.
+* `pytest -q`: **153 tests** verdes; `ruff check app tests` y `mypy app` limpios.
 * `docker compose config` válido; `lifeos-backend` y `market-browser` en estado `healthy`.
 * `POST /api/market/valuate` medido en Docker: **1.79 s** con anuncios reales de Milanuncios (`source=live_mcp`) y **1.8–2.3 s** con fallback determinista cuando eBay/Wallapop bloquean; SLA interna ≤ 2.8 s con conectores mockeados.
 * `503` estructurado verificado por tests de API cuando `MARKET_ALLOW_FALLBACK=false`.

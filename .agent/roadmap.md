@@ -45,9 +45,10 @@
 - [ ] Generación automática de **Título SEO** y **Descripción persuasiva** lista para copiar y publicar en Wallapop.
 
 ### 1.4 Motor MCP "Human-Like" (Anti-Bot) y las 3 Medidas de Precio (`Track C - Matías`)
-- [x] Implementar motor MCP Stealth en Python (`backend/app/mcp/` y `POST /api/market/valuate`) siguiendo [`.agent/mcp/stealth-market-mcp.md`](mcp/stealth-market-mcp.md).
+- [x] Implementar el núcleo de tasación en Python (`backend/app/mcp/` y `POST /api/market/valuate`) siguiendo [`.agent/mcp/stealth-market-mcp.md`](mcp/stealth-market-mcp.md).
+- [ ] Exponer el servidor MCP (`backend/mcp_server.py`) por CLI (Fase 2).
 - [x] Simulación de navegación humana: rotación de User-Agents reales, cabeceras HTTP coherentes y *jitter* configurable (0.2-0.6 s en `/valuate`, 0.65-1.2 s por defecto).
-- [x] Consulta multi-plataforma (Wallapop, Milanuncios, eBay) ponderada por el `conditionScore` ($0-100\%$); Vinted diferido a Fase 2.
+- [ ] Consulta multi-plataforma con datos en vivo de las cuatro webs: Milanuncios funciona; eBay devuelve 403; Wallapop requiere el motor de navegador; Vinted diferido a Fase 2.
 - [x] Capa de **Fallback Determinista Blindado** si la red del recinto bloquea peticiones o excede el timeout.
 - [ ] Retorno y visualización clara en UI de las **3 medidas obligatorias**:
   1. 📉 **Precio Mínimo ($P_{\min}$):** Venta rápida / liquidez inmediata.

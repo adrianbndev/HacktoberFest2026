@@ -76,3 +76,31 @@ def test_default_models_are_the_approved_ones(model: str) -> None:
     settings = make_settings()
 
     assert model in {settings.deepseek_reasoning_model, settings.deepseek_fast_model}
+
+
+@pytest.mark.parametrize(
+    ("query", "title", "accepted"),
+    [
+        ("iPhone 13", "iPhone 14 128GB", False),
+        ("iPhone 13", "iPhone 13 Pro", True),
+        ("PS5", "PS4 Slim", False),
+        ("PS5", "Sony PS5 Digital Edition", True),
+        ("S23", "Samsung Galaxy S24", False),
+        ("S23", "Samsung Galaxy S23 Ultra", True),
+        ("iPhone", "iPhone 14 128GB", True),
+        ("iPhone", "Samsung Galaxy S23", False),
+    ],
+)
+def test_model_tokens_are_required_and_conflicts_are_rejected(
+    query: str, title: str, accepted: bool
+) -> None:
+    recommender = DeepSeekRecommender(Settings(_env_file=None))
+    listings = [
+        MarketListingSample(
+            title=title, price=300, platform="wallapop", condition="Buen estado"
+        )
+    ]
+
+    ranked = recommender.score_relevance(query, listings)
+
+    assert bool(ranked) is accepted

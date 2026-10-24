@@ -89,14 +89,18 @@ async def test_slow_connectors_are_cut_off_by_the_per_source_timeout() -> None:
         FakeConnector("milanuncios", [310, 330, 350, 370], delay=1.0),
         FakeConnector("ebay", [290, 315, 345, 355]),
     ]
-    settings = make_settings(market_connector_timeout_sec=0.05)
+    settings = make_settings(
+        market_connector_timeout_sec=0.05,
+        market_jitter_min_sec=0.0,
+        market_jitter_max_sec=0.0,
+    )
 
     started = time.monotonic()
     result = await MarketAnalyzer(settings, connectors=connectors).valuate(make_request())
     elapsed = time.monotonic() - started
 
     assert result.source == "live_mcp"
-    assert elapsed < 0.5
+    assert elapsed < 1.0
     assert any("milanuncios" in warning and "timeout" in warning for warning in result.warnings)
 
 

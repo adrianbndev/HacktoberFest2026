@@ -27,7 +27,8 @@ CLAMP_WARNING = "El precio sugerido por la IA se ajustó al rango de mercado."
 MAX_BULLETS = 5
 MAX_RISKS = 4
 RELEVANCE_THRESHOLD = 0.34
-_TOKEN_RE = re.compile(r"[a-z0-9]{4,}")
+_TOKEN_RE = re.compile(r"[a-z0-9]{2,}")
+_CAPACITY_RE = re.compile(r"^\d+(?:gb|tb|mb)$")
 _STOPWORDS = frozenset(
     {"caja", "como", "con", "desde", "esta", "este", "para", "pero", "solo", "todo", "viene"}
 )
@@ -97,9 +98,17 @@ class DeepSeekRecommender:
         query_tokens = _tokens(query)
         if not query_tokens:
             return list(listings)
+        query_models = _model_tokens(query_tokens)
         scored: list[tuple[float, MarketListingSample]] = []
         for listing in listings:
-            overlap = len(query_tokens & _tokens(listing.title)) / len(query_tokens)
+            title_tokens = _tokens(listing.title)
+            if query_models:
+                title_models = _model_tokens(title_tokens)
+                if not query_models & title_models:
+                    continue
+                overlap = len(query_models & title_models) / len(query_models)
+            else:
+                overlap = len(query_tokens & title_tokens) / len(query_tokens)
             if overlap >= RELEVANCE_THRESHOLD:
                 scored.append((overlap, listing))
         scored.sort(key=lambda pair: (-pair[0], pair[1].price))
@@ -219,6 +228,15 @@ def _deterministic_parsed_query(raw_query: str) -> ParsedQuery:
 
 def _tokens(text: str) -> set[str]:
     return set(_TOKEN_RE.findall(_strip_accents(text.lower())))
+
+
+def _model_tokens(tokens: set[str]) -> set[str]:
+    """Digit-bearing tokens identify a model (13, s23, ps5); capacities do not."""
+    return {
+        token
+        for token in tokens
+        if any(char.isdigit() for char in token) and not _CAPACITY_RE.match(token)
+    }
 
 
 def _keywords(text: str, limit: int = 3) -> list[str]:

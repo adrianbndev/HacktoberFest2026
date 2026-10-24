@@ -147,3 +147,18 @@ def test_invariant_guard_rejects_non_finite_prices() -> None:
 def test_empty_sample_is_a_typed_error() -> None:
     with pytest.raises(ValueError):
         compute_price_triplet([], 80)
+
+
+@pytest.mark.parametrize(
+    ("base", "score", "expected"),
+    [
+        (100.6, 70, (83, 101, 125)),
+        (100.4, 90, (90, 110, 136)),
+    ],
+)
+def test_triplet_uses_the_rounded_average_for_min_and_max(
+    base: float, score: int, expected: tuple[int, int, int]
+) -> None:
+    triplet = compute_price_triplet([base] * 10, score)
+
+    assert (triplet.price_min, triplet.price_avg, triplet.price_max) == expected
