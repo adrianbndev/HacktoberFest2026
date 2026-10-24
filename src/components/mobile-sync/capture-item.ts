@@ -171,6 +171,19 @@ export async function runMarketValuationWithFallback(params: {
     const valuation = await requestJson<MarketValuationResult>("/api/market/valuate", "POST", fallbackReq).catch(() => {
       throw streamErr;
     });
+    for (const source of ["ebay", "wallapop", "milanuncios"] as const) {
+      const listings = valuation.comparableListings.filter((item) => item.platform === source);
+      onEvent({
+        type: "source_result",
+        data: {
+          source,
+          status: listings.length > 0 ? "ok" : "no_listings",
+          sampleSize: listings.length,
+          listings,
+          latencyMs: 0,
+        },
+      });
+    }
     return buildInventoryItemFromValuation(userId, photoUrl, vision, valuation, details, itemId);
   }
 }
