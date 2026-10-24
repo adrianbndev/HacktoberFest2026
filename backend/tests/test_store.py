@@ -1,10 +1,9 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from app.auth import AuthenticatedUser, current_user
 from app.main import app
-from app.store.repository import JsonStoreRepository, get_store
-from app.store.seed_data import demo_items, new_profile
+from app.store.repository import get_store
+from app.store.seed_data import demo_items
 
 MATIAS = AuthenticatedUser(uid="uid-matias", name="Matías", email="matias@example.com", picture=None)
 ALES = AuthenticatedUser(uid="uid-ales", name="Ales", email="ales@example.com", picture=None)
@@ -22,33 +21,20 @@ def test_productos_demo_cumplen_invariantes() -> None:
     assert {item.price_trend for item in items} == {"up", "down", "stable"}
 
 
-def test_json_persiste_y_sobrevive_a_un_reinicio(tmp_path) -> None:
-    path = tmp_path / "store.json"
-    JsonStoreRepository(path).save_profile(new_profile("uid-1", "Adri", None, None))
-    assert JsonStoreRepository(path).get_profile("uid-1").name == "Adri"
-    assert not path.with_suffix(".json.tmp").exists()
+def test_sin_clave_de_firebase_la_api_explica_que_falta(monkeypatch) -> None:
+    monkeypatch.setattr("app.store.repository.has_service_account", lambda: False)
+    get_store.cache_clear()
+    app.dependency_overrides[current_user] = lambda: MATIAS
+    try:
+        response = TestClient(app).get("/api/inventory")
+        assert response.status_code == 503 and "firebase-service-account.json" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+        get_store.cache_clear()
 
 
-def test_cambio_fallido_no_guarda_nada(tmp_path) -> None:
-    repo = JsonStoreRepository(tmp_path / "store.json")
-    repo.replace_items("uid-1", demo_items("uid-1"))
-    with pytest.raises(RuntimeError), repo._mutate() as state:
-        state.inventory.clear()
-        raise RuntimeError
-    assert len(repo.list_items("uid-1")) == 3
-
-
-def test_archivo_corrupto_se_aparta_y_arranca_vacio(tmp_path) -> None:
-    path = tmp_path / "store.json"
-    path.write_text("{roto", encoding="utf-8")
-    repo = JsonStoreRepository(path)
-    assert path.with_suffix(".json.corrupt").read_text(encoding="utf-8") == "{roto"
-    assert repo.get_profile("uid-1") is None
-
-
-def test_api_de_punta_a_punta(tmp_path) -> None:
-    repo = JsonStoreRepository(tmp_path / "store.json")
-    app.dependency_overrides[get_store] = lambda: repo
+def test_api_de_punta_a_punta(memory_store) -> None:
+    app.dependency_overrides[get_store] = lambda: memory_store
     client = TestClient(app)
     try:
         assert client.get("/api/inventory").status_code == 401  # sin login de Firebase

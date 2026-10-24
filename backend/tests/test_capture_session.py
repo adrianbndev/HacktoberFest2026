@@ -2,14 +2,13 @@ from fastapi.testclient import TestClient
 
 from app.auth import AuthenticatedUser, current_user
 from app.main import app
-from app.store.repository import JsonStoreRepository, get_store
+from app.store.repository import get_store
 
 PHOTO = "data:image/jpeg;base64,/9j/AA=="
 
 
-def test_flujo_movil_pc(tmp_path) -> None:
-    repo = JsonStoreRepository(tmp_path / "store.json")
-    app.dependency_overrides[get_store] = lambda: repo
+def test_flujo_movil_pc(memory_store) -> None:
+    app.dependency_overrides[get_store] = lambda: memory_store
     client = TestClient(app)
     try:
         assert client.post("/api/capture-session").status_code == 401  # solo el PC con sesión iniciada

@@ -182,7 +182,7 @@ class InventoryResponse(CamelModel):
 
 
 class AppStoreState(CamelModel):
-    """Formato del JSON local (backend sin clave de Firebase)."""
+    """Estado global de referencia del contrato (los datos viven en Firestore, ver app/store)."""
 
     profiles: dict[TeamMemberId, UserProfile]
     inventory: list[InventoryItem]

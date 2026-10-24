@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
 
   lifeos-web:
     image: node:24-slim
