@@ -57,4 +57,5 @@
 - [x] Verificación de que un `conditionScore = 95` ("Nuevo") devuelve un $P_{\text{avg}}$ superior a un `conditionScore = 50` ("Desgaste visible") para el mismo artículo (test de monotonicidad).
 - [x] Jitter humano configurable (`human_jitter`, 650-1200 ms por defecto según `stealth-market-mcp.md` §2.1; `max_sec=0` instantáneo para tests unitarios).
 - [x] Retorno de `comparableListings` con muestras de `wallapop`, `milanuncios` y `ebay` (Vinted diferido a Fase 2, ver ADR-002).
-- [ ] Servidor MCP operable por CLI y endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$.
+- [x] Endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$ (SLA interna $< 2.8\text{ s}$ con conectores mockeados).
+- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): fuera del alcance de la Fase 1 (ver ADR-002).
