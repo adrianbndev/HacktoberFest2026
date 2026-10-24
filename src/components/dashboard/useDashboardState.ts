@@ -35,11 +35,15 @@ export function useDashboardState() {
       await signInWithPopup(auth, googleProvider);
       return null;
     } catch (cause) {
-      const code = (cause as { code?: string }).code;
+      const code = (cause as { code?: string }).code ?? "desconocido";
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return null;
-      return code === "auth/popup-blocked"
-        ? "El navegador ha bloqueado la ventana de Google. Permite las ventanas emergentes y vuelve a intentarlo."
-        : "No se pudo iniciar sesión con Google. Vuelve a intentarlo.";
+      if (code === "auth/popup-blocked") {
+        return "El navegador ha bloqueado la ventana de Google. Permite las ventanas emergentes y vuelve a intentarlo.";
+      }
+      if (code === "auth/unauthorized-domain") {
+        return `Firebase no tiene autorizado ${window.location.hostname}. Abre la web en http://localhost:3000 o añade el dominio en Firebase Auth.`;
+      }
+      return `No se pudo iniciar sesión con Google (${code}). Vuelve a intentarlo.`;
     }
   }
 
