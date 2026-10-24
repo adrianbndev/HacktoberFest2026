@@ -158,20 +158,25 @@
   mantiene el IQR único, la cuota por plataforma y la confianza.
 * `deep_milanuncios.py`: HTTP primero (3 páginas), fallback al navegador cuando
   HTTP está bloqueado, vacío o da menos de 8 usables. `transport=http|browser`
-  fuerza un único transporte. Nunca hay datos sintéticos.
+  fuerza un único transporte. Una página posterior bloqueada conserva las
+  listings reales de las páginas anteriores como parcial. Nunca hay datos
+  sintéticos.
 * `deep_analysis.py`: `source_started` para las 3 fuentes al inicio,
   `source_result` en orden de finalización, `sources[]` ordenado por request y
   `503` si las 3 bloquean o el pool no está disponible.
-* `connectors.py`: `MilanunciosConnector(max_pages=…)` multi-página; el
+* `connectors.py` / `connector_base.py`: `MilanunciosConnector(max_pages=…)`
+  multi-página con un `httpx.AsyncClient` reutilizado por búsqueda (cookies),
+  `Referer`/`Origin` desde la página 2 y jitter configurable entre páginas; el
   `/valuate` rápido sigue usando 1 página.
 * Docker: flags anti-throttling en `browser-entrypoint.sh`; variables
-  `MARKET_MILANUNCIOS_TRANSPORT`, `MARKET_BROWSER_POOL_SIZE` y
+  `MARKET_MILANUNCIOS_TRANSPORT`, `MARKET_MILANUNCIOS_PAGE_DELAY_MIN_SEC`,
+  `MARKET_MILANUNCIOS_PAGE_DELAY_MAX_SEC`, `MARKET_BROWSER_POOL_SIZE` y
   `MARKET_SOURCE_CONCURRENCY` en compose y `.env.example`.
 
 ### Evidencia
 
-* `pytest`: **336 tests** verdes (herméticos; fake MCP, sin CDP ni red);
-  `ruff` scoped a Track C y `mypy app` limpios.
+* `pytest`: **345 tests** verdes (herméticos; fake MCP, sin CDP ni red);
+  `ruff` scoped a Track C y `mypy` scoped a los módulos tocados limpios.
 * Spike: 3 procesos MCP contra el mismo Chrome, wall/max = 1.00, speed-up 1.72×
   con 3 páginas de Milanuncios; fingerprint limpio; HTTP 2 páginas 1.52 s / 10
   usables en la primera pasada y bloqueo posterior → fallback validado.
@@ -183,6 +188,6 @@
 ### Diferido (no bloqueante)
 
 * Vinted (explícitamente diferido), FastMCP CLI, `/api/market/refresh` y alertas
-  (Nivel 2), cableado UI de Track A, backoff/jitter para HTTP Milanuncios,
+  (Nivel 2), cableado UI de Track A, backoff HTTP para Milanuncios,
   page recovery/stale `pageId` tras un crash MCP, hook de lifespan del pool y CI
   multi-arch. Ver `docs/backlog.md`.
