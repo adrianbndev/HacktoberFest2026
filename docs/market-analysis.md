@@ -537,14 +537,17 @@ Measured on 2026-10-24 in this worktree (arm64, Debian Chromium 156, Xvfb):
 
 - Hybrid smoke (`transport=auto`, query `iPhone 13 128GB`): eBay **58
   usable / 4.0 s**, Wallapop **40 / 4.5 s**, Milanuncios HTTP blocked → browser
-  **7 / 11.1 s**; total **17.3–18.4 s**, all three platforms in the valuation, no
-  warnings. The Phase 2 sequential engine took 25–32 s for the same query.
+  **7 / 11.1 s**; total **17.3–18.4 s** (*reported* in the Phase 3 session; not
+  persisted as an artifact), all three platforms in the valuation, no warnings.
+  The Phase 2 sequential engine took 25–32 s for the same query.
 - Parallel spike with 3 pages: sequential 20.6 s vs parallel **12.0 s**
   (wall/max = 1.00, wall/sum = 0.53).
 - Milanuncios depth: 3 pages **10.7 s / 8 usable**; 6 pages **21.5 s / 15
   usable**. The demo default is 3; 6 is completeness mode.
 - HTTP spike: first run 2 pages **1.52 s / 10 usable**, 3 pages **2.51 s / 7
   usable**; subsequent HTTP runs were blocked and fell back to the browser.
+  Because 7 is below `MIN_USABLE_LISTINGS=8`, `transport=auto` falls back to the
+  browser instead of pricing the short HTTP sample.
 - Fingerprint (`scripts/fingerprint_check.py`): `webdriver=false`, no
   `HeadlessChrome`, `__puppeteer`/`__playwright` undefined, `es-ES`,
   `Europe/Madrid`.

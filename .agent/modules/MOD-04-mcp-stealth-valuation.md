@@ -69,7 +69,7 @@
 - [x] Tests unitarios sobre `pricing_math.py` (equivalente Python de `pricing-math.ts`) verificando que para cualquier combinación de precios y `conditionScore` $\in [0, 100]$ se cumple $0 < P_{\min} < P_{\text{avg}} < P_{\max}$ (`backend/tests/test_pricing_math.py`, property-based con Hypothesis).
 - [x] Verificación de que un `conditionScore = 95` ("Nuevo") devuelve un $P_{\text{avg}}$ superior a un `conditionScore = 50` ("Desgaste visible") para el mismo artículo (test de monotonicidad).
 - [x] Jitter humano configurable (`human_jitter`, 650-1200 ms por defecto según `stealth-market-mcp.md` §2.1; `max_sec=0` instantáneo para tests unitarios).
-- [x] Retorno de `comparableListings` con muestras de `wallapop`, `milanuncios` y `ebay` (Vinted diferido a Fase 2, ver ADR-002).
+- [x] Retorno de `comparableListings` con muestras de `wallapop`, `milanuncios` y `ebay` (Vinted sigue diferido en Fase 3, ver ADR-002).
 - [x] Endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$ (SLA interna $< 2.8\text{ s}$ con conectores mockeados).
 - [x] `POST /api/market/analyze` con datos reales de navegador, estados por fuente, IQR único, cuota por plataforma (máx. 4) y confianza determinista.
 - [x] `POST /api/market/analyze/stream` (SSE): orden `analysis_started → source_started → source_result → valuation → recommendation? → done`, heartbeat cada 15 s y cancelación al desconectar.
@@ -80,7 +80,7 @@
 - [x] Milanuncios híbrido: HTTP (3 páginas) en paralelo; fallback real al navegador si HTTP bloquea, no devuelve anuncios o da < 8 usables.
 - [x] `asyncio` concurrente para las 3 fuentes, `source_result` en orden de finalización y `sources[]` en orden de request.
 - [x] Config `MARKET_MILANUNCIOS_TRANSPORT=auto|http|browser`, `MARKET_BROWSER_POOL_SIZE=2`, `MARKET_SOURCE_CONCURRENCY=3`.
-- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): fuera del alcance de la Fase 2 (ver ADR-003).
+- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): sigue diferido en Fase 3 (ver ADR-003/004).
 
 ---
 
@@ -111,7 +111,7 @@
 ### Diferido (no bloqueante)
 
 * Conector Vinted.
-* `backend/mcp_server.py` (FastMCP CLI), Vinted y `/api/market/refresh` (Nivel 2). La Fase 2 (`/analyze`, SSE, caché y motor de navegador) ya está implementada, pero el **gate del Nivel 1 permanece abierto** hasta la verificación end-to-end con la UI.
+* `backend/mcp_server.py` (FastMCP CLI), Vinted y `/api/market/refresh` (Nivel 2) siguen diferidos en Fase 3. Las Fases 2–3 (`/analyze`, SSE, caché, pool y motor híbrido) ya están implementadas, pero el **gate del Nivel 1 permanece abierto** hasta la verificación end-to-end con la UI.
 * Espejo de campos opcionales en `src/types/sdd.ts` (MOD-00 / Track A).
 * Validación con una API key real de DeepSeek (no disponible en este entorno).
 
@@ -176,11 +176,13 @@
   con 3 páginas de Milanuncios; fingerprint limpio; HTTP 2 páginas 1.52 s / 10
   usables en la primera pasada y bloqueo posterior → fallback validado.
 * Smoke híbrido real: eBay 58 usables / 4.0 s, Wallapop 40 / 4.5 s, Milanuncios
-  fallback 7 / 11.1 s, total 17.3–18.4 s.
+  fallback 7 / 11.1 s, total 17.3–18.4 s (*reportado* en la sesión; no persistido
+  como artifact).
 * ADR: [`004-parallel-browser-sources.md`](../decisions/004-parallel-browser-sources.md).
 
 ### Diferido (no bloqueante)
 
-* Vinted, FastMCP CLI, `/api/market/refresh` y alertas (Nivel 2), cableado UI de
-  Track A, backoff/jitter para HTTP Milanuncios, hook de lifespan del pool y CI
+* Vinted (explícitamente diferido), FastMCP CLI, `/api/market/refresh` y alertas
+  (Nivel 2), cableado UI de Track A, backoff/jitter para HTTP Milanuncios,
+  page recovery/stale `pageId` tras un crash MCP, hook de lifespan del pool y CI
   multi-arch. Ver `docs/backlog.md`.

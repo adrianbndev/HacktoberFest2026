@@ -45,7 +45,8 @@ Measured with the new 3-page Milanuncios default
 - Per source (parallel): eBay 5 279 ms (`ok`, 60 listings), Wallapop 5 526 ms
   (`ok`, 40 listings), Milanuncios 11 969 ms (`ok`, 7 usable listings).
 - An earlier run with the old 6-page Milanuncios depth measured 31 132 ms
-  sequential vs 20 860 ms parallel (1.49×); the lower page depth is what makes
+  sequential vs 20 860 ms parallel (1.49×; **reported** from that earlier run,
+  not persisted in the current artifact); the lower page depth is what makes
   the parallel path fit the demo budget.
 - Focus test: `select_page(bringToFront=true)` on the Milanuncios page while all
   three were working took 2 170 ms inside its own MCP process and did **not**
@@ -140,9 +141,9 @@ default **2**: eBay + Wallapop). Each slot owns:
 - one `chrome-devtools-mcp` stdio process (`--browserUrl $CDP_URL`, never
   `--headless`, never `--enable-automation`, never launches Chrome);
 - one page created with `new_page` and a unique data-URL token (background
-  tab), parsed by token from `list_pages` so two concurrent `new_page` calls
-  cannot make two slots share the globally "selected" page; the page is reused
-  by that slot only;
+  tab); the page id is parsed from the **`new_page` response** (no extra
+  `list_pages` call), so two concurrent `new_page` calls cannot make two slots
+  share the globally "selected" page; the page is reused by that slot only;
 - its **own** `asyncio.Lock`, so slots do not serialize each other;
 - per-operation timeout, one restart of a dead MCP process, and `close_page`
   plus process shutdown on release/shutdown.
