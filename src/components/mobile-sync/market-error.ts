@@ -43,3 +43,21 @@ export function sourcesFromError(reasons?: Record<string, string>): MarketSource
       error: reason,
     }));
 }
+
+/**
+ * Add error rows for sources that never sent a `source_result`, preserving the
+ * partial results already received. A real result always wins over an error.
+ */
+export function mergeSourceResults(
+  current: MarketSourceResult[],
+  incoming: MarketSourceResult[],
+): MarketSourceResult[] {
+  const known = new Set(current.map((result) => result.source));
+  const merged = [...current];
+  for (const result of incoming) {
+    if (known.has(result.source)) continue;
+    known.add(result.source);
+    merged.push(result);
+  }
+  return merged;
+}

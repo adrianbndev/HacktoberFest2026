@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { sourcesFromError } from "./market-error.ts";
+import { mergeSourceResults, sourcesFromError } from "./market-error.ts";
 
 test("maps every known source reason to its status", () => {
   const rows = sourcesFromError({
@@ -47,4 +47,38 @@ test("treats any other reason as a generic error", () => {
 test("returns no rows when the payload has no source detail", () => {
   assert.deepEqual(sourcesFromError(undefined), []);
   assert.deepEqual(sourcesFromError({}), []);
+});
+
+function source(overrides) {
+  return {
+    source: "ebay",
+    status: "ok",
+    sampleSize: 3,
+    listings: [],
+    latencyMs: 120,
+    ...overrides,
+  };
+}
+
+test("merge keeps partial results and appends only missing error rows", () => {
+  const partial = source({ source: "wallapop", status: "ok", sampleSize: 4 });
+  const merged = mergeSourceResults(
+    [partial],
+    sourcesFromError({ ebay: "blocked_http_403", wallapop: "timeout" }),
+  );
+
+  assert.deepEqual(merged.map((row) => row.source), ["wallapop", "ebay"]);
+  assert.equal(merged[0], partial, "a received result must not be overwritten");
+  assert.equal(merged[1].status, "blocked");
+});
+
+test("merge returns the incoming rows when there are no partial results", () => {
+  const merged = mergeSourceResults([], sourcesFromError({ milanuncios: "timeout" }));
+  assert.deepEqual(merged.map((row) => row.source), ["milanuncios"]);
+});
+
+test("merge does not duplicate a source repeated in the incoming rows", () => {
+  const incoming = sourcesFromError({ ebay: "timeout" });
+  const merged = mergeSourceResults([], [...incoming, ...incoming]);
+  assert.equal(merged.length, 1);
 });

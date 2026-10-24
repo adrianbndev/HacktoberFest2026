@@ -11,6 +11,7 @@ import {
   runMarketValuationWithFallback,
   upsertSourceResult,
 } from "./capture-item";
+import { mergeSourceResults, sourcesFromError } from "./market-error";
 import { useCaptureSessionFeed } from "./useCaptureSessionFeed";
 import type { MarketAnalysisRecommendation, MarketSourceResult } from "@/types/market-analysis";
 import type {
@@ -198,6 +199,13 @@ export function useCaptureSession(
       if (controller.signal.aborted) return;
       options?.onValuationFailed?.(itemId);
       if (runIdRef.current === runId) {
+        if (error instanceof MarketAnalysisError) {
+          const failed = sourcesFromError(error.sources);
+          if (failed.length > 0) {
+            // Keep the sources that already answered; only fill in the failures.
+            setMarketSources((prev) => mergeSourceResults(prev, failed));
+          }
+        }
         const msg = error instanceof MarketAnalysisError ? error.message : "No hemos podido guardar el producto con los precios del análisis.";
         setMarketError(msg);
         setStep("error");
