@@ -7,52 +7,34 @@ errors are reported as a failed ``ConnectorResult`` and never raised.
 from __future__ import annotations
 
 import json
-import logging
-from dataclasses import dataclass
-from typing import Any, Protocol
-from urllib.parse import quote_plus
+from typing import Any
 
-import httpx
 from bs4 import BeautifulSoup, Tag
 
-from app.mcp.normalize import build_listing_sample, iter_json_listing_items, json_price_amount, parse_price_eur, squeeze
-from app.mcp.stealth_http import build_headers, human_jitter
+from app.mcp.connector_base import (
+    ConnectorResult,
+    HtmlConnector,
+    MarketConnectorProtocol,
+    looks_blocked,
+)
+from app.mcp.normalize import (
+    build_listing_sample,
+    iter_json_listing_items,
+    json_price_amount,
+    parse_price_eur,
+)
 from app.models.sdd import MarketListingSample, MarketPlatform
 
-BLOCK_STATUS_CODES = frozenset({403, 429})
-BLOCK_MARKERS = (
-    "captcha",
-    "datadome",
-    "cf-chl",
-    "access denied",
-    "unusual traffic",
-    "just a moment",
-    "robot check",
-)
+__all__ = [
+    "ConnectorResult",
+    "EbayConnector",
+    "MarketConnectorProtocol",
+    "MilanunciosConnector",
+    "WallapopConnector",
+    "looks_blocked",
+]
+
 SKIPPED_TITLES = frozenset({"shop on ebay"})
-
-logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True, slots=True)
-class ConnectorResult:
-    """Outcome of one platform query, including why it produced nothing."""
-
-    platform: MarketPlatform
-    listings: tuple[MarketListingSample, ...] = ()
-    failure_reason: str | None = None
-    # True when a later page blocked but earlier pages already had real listings.
-    partial: bool = False
-
-    @property
-    def ok(self) -> bool:
-        return self.failure_reason is None
-
-
-class MarketConnectorProtocol(Protocol):
-    platform: MarketPlatform
-
-    async def search(self, query: str) -> ConnectorResult: ...
 
 
 def _href(tag: Tag | None) -> str | None:
@@ -60,117 +42,7 @@ def _href(tag: Tag | None) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def looks_blocked(html: str, status_code: int) -> bool:
-    if status_code in BLOCK_STATUS_CODES:
-        return True
-    haystack = html.lower()
-    return any(marker in haystack for marker in BLOCK_MARKERS)
-
-
-class _HtmlConnector:
-    """Shared fetch/parse pipeline; subclasses provide the site-specific parser."""
-
-    platform: MarketPlatform = "ebay"
-    base_url: str = ""
-    search_template: str = ""
-    page_template: str | None = None
-
-    def __init__(
-        self,
-        *,
-        timeout_sec: float = 1.6,
-        client: httpx.AsyncClient | None = None,
-        max_pages: int = 1,
-        page_delay_min_sec: float = 0.25,
-        page_delay_max_sec: float = 0.75,
-    ) -> None:
-        if max_pages < 1:
-            raise ValueError("max_pages must be >= 1")
-        if page_delay_min_sec < 0 or page_delay_max_sec < page_delay_min_sec:
-            raise ValueError("page delay bounds must satisfy 0 <= min <= max")
-        self._timeout_sec = timeout_sec
-        self._client = client
-        self._max_pages = max_pages
-        self._page_delay_min_sec = page_delay_min_sec
-        self._page_delay_max_sec = page_delay_max_sec
-
-    async def search(self, query: str) -> ConnectorResult:
-        clean_query = squeeze(query)
-        if len(clean_query) < 2:
-            return ConnectorResult(self.platform, failure_reason="empty_query")
-        client = self._client if self._client is not None else self._make_client()
-        owns_client = self._client is None
-        headers = build_headers()
-        try:
-            listings: list[MarketListingSample] = []
-            for page in range(1, self._max_pages + 1):
-                if page > 1:
-                    await human_jitter(
-                        self._page_delay_min_sec, self._page_delay_max_sec
-                    )
-                try:
-                    status_code, html = await self._fetch(client, clean_query, page, headers)
-                except httpx.HTTPError:
-                    return ConnectorResult(self.platform, failure_reason="network_error")
-                except Exception:
-                    return ConnectorResult(self.platform, failure_reason="unexpected_error")
-                if looks_blocked(html, status_code):
-                    reason = f"blocked_http_{status_code}"
-                    logger.warning(
-                        "%s page %d blocked (%s) after %d listings",
-                        self.platform,
-                        page,
-                        reason,
-                        len(listings),
-                    )
-                    if listings:
-                        return ConnectorResult(
-                            self.platform, tuple(listings), partial=True
-                        )
-                    return ConnectorResult(self.platform, failure_reason=reason)
-                try:
-                    listings.extend(self.parse(html))
-                except Exception:
-                    return ConnectorResult(self.platform, failure_reason="parse_error")
-            if not listings:
-                return ConnectorResult(self.platform, failure_reason="no_listings_parsed")
-            return ConnectorResult(self.platform, tuple(listings))
-        finally:
-            if owns_client:
-                await client.aclose()
-
-    def _make_client(self) -> httpx.AsyncClient:
-        timeout = httpx.Timeout(self._timeout_sec)
-        return httpx.AsyncClient(timeout=timeout, follow_redirects=True)
-
-    def _url_for(self, query: str, page: int) -> str:
-        if page <= 1:
-            return self.search_template.format(query=quote_plus(query))
-        template = self.page_template
-        if template is None:
-            raise ValueError("page_template is required for multi-page connectors")
-        return template.format(query=quote_plus(query), page=page)
-
-    async def _fetch(
-        self,
-        client: httpx.AsyncClient,
-        query: str,
-        page: int,
-        headers: dict[str, str],
-    ) -> tuple[int, str]:
-        request_headers = dict(headers)
-        if page > 1:
-            request_headers["Referer"] = self._url_for(query, page - 1)
-            if self.base_url:
-                request_headers["Origin"] = self.base_url
-        response = await client.get(self._url_for(query, page), headers=request_headers)
-        return response.status_code, response.text
-
-    def parse(self, html: str) -> list[MarketListingSample]:
-        raise NotImplementedError
-
-
-class EbayConnector(_HtmlConnector):
+class EbayConnector(HtmlConnector):
     platform: MarketPlatform = "ebay"
     base_url = "https://www.ebay.es"
     search_template = "https://www.ebay.es/sch/i.html?_nkw={query}&_sacat=0"
@@ -199,7 +71,7 @@ class EbayConnector(_HtmlConnector):
         return listings
 
 
-class WallapopConnector(_HtmlConnector):
+class WallapopConnector(HtmlConnector):
     platform: MarketPlatform = "wallapop"
     base_url = "https://es.wallapop.com"
     search_template = "https://es.wallapop.com/app/search?keywords={query}&order_by=newest"
@@ -252,7 +124,7 @@ class WallapopConnector(_HtmlConnector):
         return f"{self.base_url}/item/{item_id}" if isinstance(item_id, str) and item_id else None
 
 
-class MilanunciosConnector(_HtmlConnector):
+class MilanunciosConnector(HtmlConnector):
     platform: MarketPlatform = "milanuncios"
     base_url = "https://www.milanuncios.com"
     search_template = "https://www.milanuncios.com/anuncios/?s={query}"
