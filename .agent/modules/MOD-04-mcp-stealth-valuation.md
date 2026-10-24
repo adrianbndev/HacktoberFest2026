@@ -2,7 +2,7 @@
 
 * **Nivel SDD:** 🟢 Nivel 1.4
 * **Responsable:** **Track C (Matías)**
-* **Estado Actual:** `⏳ READY`
+* **Estado Actual:** `🚧 IN_PROGRESS` (Fase 1 — fast valuation core)
 * **SLA de Latencia:** $\le 3000\text{ ms}$ (incluyendo *jitter* humano de $800\text{ ms} - 2200\text{ ms}$)
 
 ---

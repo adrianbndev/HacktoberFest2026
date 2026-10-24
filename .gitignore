@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data and demo artifacts
+data/
+backend/data/
+*.sqlite
+*.sqlite3
+chrome-profile/
+artifacts/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
