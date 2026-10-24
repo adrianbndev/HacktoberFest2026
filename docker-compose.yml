@@ -1,0 +1,55 @@
+services:
+  lifeos-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: lifeos-backend:local
+    ports:
+      - "8000:8000"
+    environment:
+      MARKET_ALLOW_FALLBACK: ${MARKET_ALLOW_FALLBACK:-true}
+      MARKET_JITTER_MIN_SEC: ${MARKET_JITTER_MIN_SEC:-0.2}
+      MARKET_JITTER_MAX_SEC: ${MARKET_JITTER_MAX_SEC:-0.6}
+      MARKET_CONNECTOR_TIMEOUT_SEC: ${MARKET_CONNECTOR_TIMEOUT_SEC:-1.6}
+      MARKET_DEADLINE_SEC: ${MARKET_DEADLINE_SEC:-2.8}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_REASONING_MODEL: ${DEEPSEEK_REASONING_MODEL:-deepseek-v4-pro}
+      DEEPSEEK_FAST_MODEL: ${DEEPSEEK_FAST_MODEL:-deepseek-flash}
+      CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/market/health', timeout=3)"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  market-browser:
+    profiles: ["browser"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.browser
+    image: market-browser:local
+    ports:
+      - "9222:9222"
+    environment:
+      DISPLAY: ":99"
+      CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
+    shm_size: 2g
+    volumes:
+      - chrome-profile:/chrome-profile
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9222/json/version"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 25s
+    restart: unless-stopped
+
+volumes:
+  chrome-profile:
