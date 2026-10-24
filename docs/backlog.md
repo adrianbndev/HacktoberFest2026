@@ -14,6 +14,61 @@ Level 1 gate stays open until the end-to-end UI verification.
 | 5 | Browser spike is non-blocking | Fingerprint and smoke scripts documented; a blocked source is an explicit `blocked` status, never synthetic data |
 | 6 | Real DeepSeek recommendation in the deep path | `deepseek-v4-pro` with thinking, validated, clamped; the deterministic template is disabled so failures omit the recommendation |
 
+## Closed in the mobile-capture integration
+
+| # | Item | Resolution |
+|---|---|---|
+| 1 | UI wiring of `/analyze` and SSE | `useCaptureSession` streams `/api/market/analyze/stream` and saves `analysis.valuation` + `comparableListings`; `MarketProgress` renders per-source status, partials, prices and the recommendation |
+
+### Verification notes
+
+- `npm run typecheck`, `npm run build` and the 7 mapping tests pass.
+- Live backend smoke (`/analyze/stream`, 2026-10-24): eBay `blocked`, Wallapop
+  `ok` (38 listings), Milanuncios `ok` (8); valuation 12/40/88 € with no
+  synthetic data and the recommendation omitted (no `DEEPSEEK_API_KEY` in this
+  environment).
+- The signed-in modal flow was not exercised here because the available browser
+  had no Google/Firebase session. The three `MarketProgress` states were
+  rendered with a temporary (uncommitted) route using the real partial payload.
+  Re-run the full modal smoke with a signed-in browser before the demo.
+
+## Integration verification follow-ups
+
+All non-blocking; they do not change the delivered behaviour.
+
+1. **Recommendation merge.** `source_result`/`recommendation` events are applied
+   before `done`, so a `done` payload without `recommendation` would overwrite
+   the recommendation event with `null`. Today the backend includes it, but the
+   merge should keep the last non-null recommendation.
+2. **Inventory idempotency.** `POST /api/inventory` is not idempotent: a retry
+   after a lost response can create a duplicate item. Add an idempotency key or
+   reuse the already-created item.
+3. **Error copy and 422.** The generic error message can surface a raw FastAPI
+   `422` when `detail` is an array (validation errors). Map validation errors to
+   friendly text and avoid showing the raw payload.
+4. **503 all-blocked loses per-source detail.** On `503` all-blocked the
+   `error.sources` map is discarded and `MarketProgress` shows every row as
+   `Pendiente`. Map `error.sources` onto the source rows.
+5. **Partial heading.** “Precios reales de 3 mercados” is also shown for a
+   partial result. Adjust the copy so a partial outcome is not presented as a
+   complete three-source result.
+6. **`aria-live` scope.** `aria-live` wraps the whole section and re-announces
+   too much on each update. Limit it to the source rows or a compact status
+   summary.
+7. **List keys.** Recommendation bullets/risks and warnings use their text as
+   the React key; duplicate texts collide. Use a composite index-based key.
+8. **Blank name/category.** `name`/`category` are not validated as non-blank
+   before the request is sent, which can produce a `422`. Trim and validate
+   before building `MarketAnalysisRequest`.
+9. **Test wiring.** `vision-to-market.test.mjs` is not wired into
+   `package.json`; add a script or document the
+   `node --test src/components/mobile-sync/vision-to-market.test.mjs` command
+   (already listed in `docs/market-analysis.md`).
+10. **Silent missing recommendation.** When the backend omits the
+    recommendation, the modal simply does not render it. Show an explicit
+    notice (the API already returns a warning such as “No se pudo generar la
+    recomendación”).
+
 ## Still deferred (non-blocking)
 
 | # | Item | Reason | Status | Blocking? |
@@ -21,12 +76,11 @@ Level 1 gate stays open until the end-to-end UI verification.
 | 1 | Vinted connector | Contract supports a subset; Phase 2 scope is eBay + Wallapop + Milanuncios | Deferred | No |
 | 2 | `backend/mcp_server.py` (FastMCP CLI) | The library is MCP-ready but not exposed as a CLI; not needed for the demo | Deferred | No |
 | 3 | `/api/market/refresh` + alerts | Level 2 scope | Deferred | No |
-| 4 | UI wiring of `/analyze` and SSE | Track A owns dashboard components; Track C provides the client only | Pending Track A | No |
-| 5 | Mirror Phase 1 optional fields in `src/types/sdd.ts` | Track A / MOD-00 owns the frozen TypeScript contract | Pending MOD-00 | No |
-| 6 | GHCR multi-arch CI | Build locally on the demo laptop | Post-hackathon | No |
-| 7 | Custom minimal CDP MCP | Only needed if `chrome-devtools-mcp` failed the fingerprint; it passed | Not needed | No |
-| 8 | Split dev dependencies out of the runtime image | `requirements.txt` includes pytest/ruff/mypy so the documented flow works; image is heavier | Post-hackathon | No |
-| 9 | Full MOD-00 (store, auth, seed data) | Separate phase by design | Separate phase | No |
+| 4 | Mirror Phase 1 optional fields in `src/types/sdd.ts` | Track A / MOD-00 owns the frozen TypeScript contract | Pending MOD-00 | No |
+| 5 | GHCR multi-arch CI | Build locally on the demo laptop | Post-hackathon | No |
+| 6 | Custom minimal CDP MCP | Only needed if `chrome-devtools-mcp` failed the fingerprint; it passed | Not needed | No |
+| 7 | Split dev dependencies out of the runtime image | `requirements.txt` includes pytest/ruff/mypy so the documented flow works; image is heavier | Post-hackathon | No |
+| 8 | Full MOD-00 (store, auth, seed data) | Separate phase by design | Separate phase | No |
 
 ## Phase 2 follow-ups (non-blocking)
 

@@ -615,6 +615,33 @@ components:
   `EventSource` cannot POST). Both forward the Firebase ID token like
   `requestJson`.
 
+### Mobile capture integration (Track B)
+
+The mobile capture modal now uses the deep path end to end:
+
+- `src/components/mobile-sync/vision-to-market.ts` maps the vision result to
+  `MarketAnalysisRequest` (`description = seoDescription`, three sources,
+  `includeRecommendation: true`) and omits placeholder brands/models
+  (`Sin marca`, `Genérica`, `N/A`, `-`, `Unknown`, `No aplica`), plus a model
+  that merely repeats the name.
+- `useCaptureSession` calls `streamMarketAnalysis()` on `confirmVisionAndValuate`
+  and **not** `/api/market/valuate`; an `AbortController` cancels the stream on
+  reset, modal close or component unmount.
+- The hook exposes `marketSources`, `marketRecommendation`, `marketWarnings` and
+  `marketError`. Source results are upserted as they arrive; nothing is saved
+  until `done`.
+- On success the `InventoryItem` is built from `analysis.valuation` and
+  `analysis.comparableListings`. A real partial result (one or two sources
+  blocked/timeout) is saved with the usable sources; if every source fails the
+  hook sets `marketError`, moves to `error` and does not save an item.
+- `MarketProgress.tsx` renders one row per source (`pendiente` / `ok (n)` /
+  `bloqueada` / `sin respuesta` / `sin anuncios` / `error`), the partial-result
+  warning, `PriceTrioDisplay` and the recommendation (`summary`,
+  `suggestedPrice`, `bullets`, `risks`), or a clear error with retry.
+
+`InventoryItem` and `src/types/sdd.ts` are unchanged: the recommendation is
+shown in the modal and is not persisted.
+
 The Phase 1 optional-field mirror remains Track A's responsibility:
 
 ```ts
@@ -652,4 +679,9 @@ pytest -q          # 336 tests (hermetic; no CDP, no network)
 ruff check app tests
 mypy app
 docker compose config
+
+# Frontend (mobile capture integration)
+npm run typecheck
+npm run build
+node --test src/components/mobile-sync/vision-to-market.test.mjs
 ```
