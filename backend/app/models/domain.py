@@ -189,3 +189,18 @@ class AppStoreState(CamelModel):
     notifications: list[MarketNotification]
     calendar_events: list[CalendarEvent]
     last_updated_at: str
+
+
+# Ya no se usan (el usuario sale del token de Firebase), pero app/models/__init__.py de Track B los reexporta:
+# se pueden borrar cuando ese __init__ deje de importarlos.
+class AuthRequest(CamelModel):
+    user_id: TeamMemberId
+
+
+class AuthSession(CamelModel):
+    active_user_id: TeamMemberId
+    profiles: list[UserProfile]
+
+
+class CaptureSessionRequest(CamelModel):
+    user_id: TeamMemberId
