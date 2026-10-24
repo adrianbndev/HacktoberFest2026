@@ -1,11 +1,10 @@
 "use client";
 
-import { Ban, Check, CircleMinus, Clock, Loader2, RefreshCw, ShieldAlert, Sparkles, TriangleAlert } from "lucide-react";
+import { Ban, Check, CircleDashed, CircleMinus, Clock, Loader2, RefreshCw, ShieldAlert, Sparkles, TriangleAlert } from "lucide-react";
 import { PriceTrioDisplay } from "@/components/inventory/PriceTrioDisplay";
 import { PLATFORM_LABEL, formatEur } from "@/components/inventory/format";
-import type { MarketAnalysisRecommendation, MarketSourceResult, MarketSourceStatus } from "@/types/market-analysis";
-import type { MarketPlatform } from "@/types/sdd";
-import { MARKET_ANALYSIS_SOURCES } from "./vision-to-market";
+import type { MarketAnalysisRecommendation, MarketSourceResult } from "@/types/market-analysis";
+import { buildMarketRows, type MarketRowStatus } from "./market-rows";
 
 export interface MarketProgressProps {
   sources: MarketSourceResult[];
@@ -18,11 +17,9 @@ export interface MarketProgressProps {
   onRetry?: () => void;
 }
 
-type PendingStatus = "pending";
-type RowStatus = MarketSourceStatus | PendingStatus;
-
-const STATUS_TEXT: Record<RowStatus, string> = {
+const STATUS_TEXT: Record<MarketRowStatus, string> = {
   pending: "Pendiente",
+  not_run: "Sin datos",
   ok: "OK",
   blocked: "Bloqueada",
   timeout: "Sin respuesta",
@@ -30,8 +27,9 @@ const STATUS_TEXT: Record<RowStatus, string> = {
   error: "Error",
 };
 
-const STATUS_CLASS: Record<RowStatus, string> = {
+const STATUS_CLASS: Record<MarketRowStatus, string> = {
   pending: "text-ink-2",
+  not_run: "text-ink-2",
   ok: "text-accent",
   blocked: "text-amber-700 dark:text-amber-400",
   timeout: "text-amber-700 dark:text-amber-400",
@@ -49,31 +47,14 @@ const ERROR_TEXT: Record<string, string> = {
   stream_ended_without_done: "El análisis se cortó antes de terminar. Vuelve a intentarlo.",
 };
 
-function StatusIcon({ status }: { status: RowStatus }) {
+function StatusIcon({ status }: { status: MarketRowStatus }) {
   if (status === "pending") return <Loader2 className="size-4 animate-spin" aria-hidden />;
+  if (status === "not_run") return <CircleDashed className="size-4" aria-hidden />;
   if (status === "ok") return <Check className="size-4" aria-hidden />;
   if (status === "timeout") return <Clock className="size-4" aria-hidden />;
   if (status === "no_listings") return <CircleMinus className="size-4" aria-hidden />;
   if (status === "error") return <TriangleAlert className="size-4" aria-hidden />;
   return <Ban className="size-4" aria-hidden />;
-}
-
-function buildRows(sources: MarketSourceResult[]): Array<{ source: MarketPlatform; status: RowStatus; sampleSize: number }> {
-  const known = new Map(sources.map((source) => [source.source, source]));
-  const rows: Array<{ source: MarketPlatform; status: RowStatus; sampleSize: number }> = MARKET_ANALYSIS_SOURCES.map(
-    (source) => {
-      const result = known.get(source);
-      return result
-        ? { source, status: result.status, sampleSize: result.sampleSize }
-        : { source, status: "pending", sampleSize: 0 };
-    },
-  );
-  for (const result of sources) {
-    if (!MARKET_ANALYSIS_SOURCES.some((source) => source === result.source)) {
-      rows.push({ source: result.source, status: result.status, sampleSize: result.sampleSize });
-    }
-  }
-  return rows;
 }
 
 function errorMessage(detail: string): string {
@@ -89,11 +70,16 @@ export function MarketProgress({
   complete = false,
   onRetry,
 }: MarketProgressProps) {
-  const rows = buildRows(sources);
+  const rows = buildMarketRows(sources, Boolean(error));
   const usable = rows.filter((row) => row.status === "ok").length;
   const settled = rows.filter((row) => row.status !== "pending").length;
   const degraded = rows.some(
-    (row) => row.status === "blocked" || row.status === "timeout" || row.status === "no_listings" || row.status === "error",
+    (row) =>
+      row.status === "blocked" ||
+      row.status === "timeout" ||
+      row.status === "no_listings" ||
+      row.status === "not_run" ||
+      row.status === "error",
   );
   const heading = error
     ? "Análisis de mercado"
