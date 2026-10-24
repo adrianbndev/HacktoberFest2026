@@ -1,4 +1,4 @@
-"""Dynamic category-specific field schemas and attribute enrichment for Vision AI."""
+"""Dynamic object-specific field normalization and fallback schemas for Vision AI."""
 
 from __future__ import annotations
 
@@ -27,14 +27,36 @@ def ensure_dotenv_loaded() -> None:
                 if not line or line.startswith("#") or "=" not in line:
                     continue
                 key, _, val = line.partition("=")
-                key = key.strip()
-                val = val.strip().strip("'").strip('"')
-                if key and key not in os.environ:
+                key, val = key.strip(), val.strip().strip("'").strip('"')
+                if key and (key not in os.environ or key == "VISION_TIMEOUT_SEC"):
                     os.environ[key] = val
             break
 
 
-CATEGORY_FIELD_SPECS: dict[str, list[FieldSpec]] = {
+OBJECT_FIELD_SPECS: dict[str, list[FieldSpec]] = {
+    "raton": [
+        ("connectivity", "Conectividad", "select", ["Inalámbrico 2.4GHz + Bluetooth", "Inalámbrico Bluetooth", "Receptor USB 2.4GHz", "Cable USB"], "Inalámbrico 2.4GHz + Bluetooth"),
+        ("sensorType", "Sensor / Precisión DPI", "select", ["Óptico de alta precisión", "Sensor Gaming (16.000+ DPI)", "Óptico estándar oficina", "Láser"], "Óptico de alta precisión"),
+        ("buttons", "Número de botones", "select", ["5-6 botones (con laterales)", "3 botones estándar + rueda", "Programable / Gaming (+7 botones)"], "5-6 botones (con laterales)"),
+        ("ergonomics", "Ergonomía / Mano", "select", ["Diestro ergonómico", "Ambidiestro / Simétrico", "Vertical ergonómico", "Compacto de viaje"], "Diestro ergonómico"),
+        ("powerSource", "Alimentación", "select", ["Batería recargable USB-C", "Pila AA / AAA", "Alimentación por cable USB"], "Batería recargable USB-C"),
+        ("color", "Color / Acabado", "text", [], "Ej. Negro mate, Blanco"),
+    ],
+    "teclado": [
+        ("switchType", "Tipo de interruptores (Switches)", "select", ["Mecánico Táctil (Brown)", "Mecánico Lineal (Red)", "Mecánico Clicky (Blue)", "Membrana / Tijera", "Óptico / Magnético"], "Mecánico Táctil (Brown)"),
+        ("keyboardFormat", "Formato / Tamaño", "select", ["75% Compacto", "TKL (80% sin bloque numérico)", "100% Completo", "60% / 65% Mini"], "75% Compacto"),
+        ("keyboardLayout", "Distribución de idioma", "select", ["Español ISO (con Ñ)", "Inglés ANSI (US)", "Inglés ISO (UK)"], "Español ISO (con Ñ)"),
+        ("connectivity", "Conectividad", "select", ["Inalámbrico Bluetooth + Cable USB-C", "Solo cable USB", "Inalámbrico 2.4GHz + Bluetooth"], "Inalámbrico Bluetooth + Cable USB-C"),
+        ("backlight", "Iluminación", "select", ["RGB personalizable", "Retroiluminación blanca", "Sin iluminación"], "RGB personalizable"),
+        ("color", "Color", "text", [], "Ej. Negro/Gris, Blanco"),
+    ],
+    "monitor": [
+        ("screenSize", "Tamaño de pantalla", "select", ["24 pulgadas", "27 pulgadas", "32 pulgadas", "34 pulgadas Ultrawide"], "27 pulgadas"),
+        ("resolution", "Resolución", "select", ["4K UHD (3840x2160)", "QHD 2K (2560x1440)", "Full HD (1920x1080)"], "4K UHD (3840x2160)"),
+        ("refreshRate", "Tasa de refresco", "select", ["60 - 75 Hz", "144 - 165 Hz Gaming", "240 Hz o superior"], "60 - 75 Hz"),
+        ("panelType", "Tipo de panel", "select", ["IPS", "OLED / QD-OLED", "VA", "TN"], "IPS"),
+        ("color", "Color exterior", "text", [], "Ej. Negro, Plata"),
+    ],
     "motor": [
         ("fuelType", "Tipo de combustible", "select", ["Gasolina", "Diésel", "Híbrido (HEV)", "Híbrido Enchufable (PHEV)", "Eléctrico (EV)", "GLP / GNC"], "Gasolina"),
         ("transmission", "Cambio / Transmisión", "select", ["Manual", "Automático"], "Manual"),
@@ -65,14 +87,14 @@ CATEGORY_FIELD_SPECS: dict[str, list[FieldSpec]] = {
         ("processor", "Procesador / Chip", "text", [], "Ej. Apple M2, Intel Core i7, Ryzen 7"),
         ("ram", "Memoria RAM", "select", ["8 GB", "16 GB", "32 GB", "64 GB", "4 GB"], "8 GB"),
         ("storage", "Almacenamiento SSD", "select", ["256 GB SSD", "512 GB SSD", "1 TB SSD", "2 TB SSD", "128 GB"], "256 GB SSD"),
-        ("screenSize", "Tamaño de pantalla", "select", ["13.3 - 13.6 pulgadas", "14 pulgadas", "15.6 pulgadas", "16 pulgadas", "10.9 - 11 pulgadas", "24 - 27 pulgadas"], "13.3 - 13.6 pulgadas"),
-        ("keyboardLayout", "Teclado / Distribución", "select", ["Español (con Ñ)", "Inglés (US/UK)", "No aplica (Monitor/Tablet)"], "Español (con Ñ)"),
+        ("screenSize", "Tamaño de pantalla", "select", ["13.3 - 13.6 pulgadas", "14 pulgadas", "15.6 pulgadas", "16 pulgadas", "10.9 - 11 pulgadas"], "13.3 - 13.6 pulgadas"),
+        ("keyboardLayout", "Teclado / Distribución", "select", ["Español (con Ñ)", "Inglés (US/UK)", "No aplica (Tablet/Sobremesa)"], "Español (con Ñ)"),
         ("color", "Color", "text", [], "Ej. Gris espacial, Plata"),
     ],
     "audio": [
         ("connectivity", "Conectividad", "select", ["Bluetooth inalámbrico", "Bluetooth + Cable Jack", "Solo cable", "Wi-Fi / Multiroom"], "Bluetooth + Cable Jack"),
         ("noiseCancelling", "Cancelación de ruido (ANC)", "select", ["Sí, ANC activa", "Aislamiento pasivo", "No"], "Sí, ANC activa"),
-        ("formFactor", "Formato de audio", "select", ["Diadema (Over-Ear)", "In-Ear / True Wireless", "Altavoz portátil", "Equipo de estudio / Hi-Fi"], "Diadema (Over-Ear)"),
+        ("formFactor", "Formato de audio", "select", ["Diadema (Over-Ear)", "In-Ear / True Wireless", "Altavoz portátil", "Equipo Hi-Fi / Estudio"], "Diadema (Over-Ear)"),
         ("accessories", "Estuche y cables", "select", ["Con estuche y cables originales", "Con caja original completa", "Solo dispositivo"], "Con estuche y cables originales"),
         ("color", "Color", "text", [], "Ej. Negro, Plata"),
     ],
@@ -103,68 +125,88 @@ CATEGORY_FIELD_SPECS: dict[str, list[FieldSpec]] = {
         ("color", "Color principal", "text", [], "Ej. Blanco, Negro, Azul"),
     ],
     "hogar": [
-        ("applianceType", "Tipo de aparato", "select", ["Pequeño electrodoméstico", "Limpieza / Aspiración", "Cafetera / Cocina", "Climatización", "Bricolaje / Herramienta eléctrica"], "Pequeño electrodoméstico"),
-        ("powerSource", "Alimentación / Potencia", "select", ["Cable eléctrico (220V)", "Batería recargable", "Manual / Sin motor"], "Cable eléctrico (220V)"),
-        ("accessories", "Accesorios o maletín", "select", ["Completo con accesorios", "En caja o maletín original", "Solo aparato principal"], "Completo con accesorios"),
+        ("applianceType", "Tipo de artículo", "select", ["Pequeño electrodoméstico", "Limpieza / Aspiración", "Cafetera / Cocina", "Bricolaje / Herramienta", "Artículo general"], "Pequeño electrodoméstico"),
+        ("powerSource", "Alimentación / Funcionamiento", "select", ["Cable eléctrico (220V)", "Batería recargable", "Manual / Sin motor"], "Cable eléctrico (220V)"),
+        ("accessories", "Accesorios o caja", "select", ["Completo con accesorios", "En caja o maletín original", "Solo artículo principal"], "Completo con accesorios"),
         ("color", "Color / Acabado", "text", [], "Ej. Acero, Blanco"),
     ],
 }
-
-
-def resolve_category_family(category: str, name: str, brand: str = "", model: str = "") -> str:
-    """Determines the dynamic field schema family from category and product text."""
-    blob = f"{category} {name} {brand} {model}".lower()
-    if any(k in blob for k in ("coche", "auto", "vehículo", "vehiculo", "motor", "moto", "furgoneta", "suv", "berlina", "seat", "bmw", "audi", "mercedes", "volkswagen", "toyota", "renault", "peugeot", "ford", "hyundai", "kia", "tesla", "mazda", "nissan", "opel", "citroen", "fiat", "porsche", "honda", "yamaha")):
-        return "motor"
-    if any(k in blob for k in ("móvil", "movil", "telefon", "teléfono", "iphone", "smartphone", "galaxy", "xiaomi", "redmi", "pixel", "oneplus", "oppo", "realme")):
-        return "moviles"
-    if any(k in blob for k in ("consola", "videojuego", "switch", "playstation", "ps5", "ps4", "xbox", "joy-con", "joycon", "steam deck")):
-        return "consolas"
-    if any(k in blob for k in ("portátil", "portatil", "macbook", "laptop", "informática", "informatica", "ipad", "tablet", "monitor", "teclado", "periférico", "periferico", "pc", "ordenador")):
-        return "informatica"
-    if any(k in blob for k in ("audio", "auricular", "cascos", "altavoz", "wh-1000", "airpods", "sonido", "bose", "sennheiser")):
-        return "audio"
-    if any(k in blob for k in ("cámara", "camara", "fotograf", "eos", "canon", "nikon", "fujifilm", "réflex", "reflex", "dslr", "objetivo", "lente")):
-        return "camaras"
-    if any(k in blob for k in ("bici", "orbea", "mtb", "patinete", "ciclismo", "trek", "specialized")):
-        return "bicicletas"
-    if any(k in blob for k in ("silla", "mesa", "sofá", "sofa", "mueble", "mobiliario", "armario", "estantería", "estanteria", "butaca", "escritorio", "cama", "lámpara", "lampara", "decoración", "madera")):
-        return "mobiliario"
-    if any(k in blob for k in ("moda", "ropa", "zapatilla", "calzado", "chaqueta", "camiseta", "pantalón", "bolso", "reloj", "gafas", "nike", "adidas", "zara")):
-        return "moda"
-    return "hogar"
-
 
 _KEY_ALIASES: dict[str, tuple[str, ...]] = {
     "fuelType": ("combustible", "tipo de combustible", "motor", "fuel"),
     "transmission": ("transmision", "transmisión", "cambio", "caja de cambios"),
     "bodyType": ("carroceria", "carrocería", "tipo vehiculo", "segmento"),
-    "year": ("anio", "año", "matriculacion", "año aproximado"),
+    "year": ("anio", "año", "matriculacion"),
     "mileageKm": ("kilometros", "kilómetros", "kilometraje", "km"),
     "horsepower": ("potencia", "cv", "caballos"),
-    "environmentalBadge": ("etiqueta", "distintivo dgt", "etiqueta dgt"),
     "storage": ("almacenamiento", "capacidad", "memoria interna", "ssd", "gb"),
     "ram": ("memoria ram", "ram"),
-    "batteryHealth": ("bateria", "batería", "salud bateria", "estado bateria"),
+    "batteryHealth": ("bateria", "batería", "salud bateria"),
     "color": ("color", "acabado", "color exterior", "color principal"),
     "material": ("material", "material principal", "tejido"),
-    "style": ("estilo", "estilo decorativo", "diseño"),
-    "size": ("talla", "tamaño", "medidas"),
-    "dimensions": ("dimensiones", "medidas", "tamaño"),
 }
 
 
-def build_dynamic_fields(
-    category: str,
-    name: str,
-    brand: str,
-    model: str,
-    color_name_es: str,
-    raw_attributes: dict[str, str] | None = None,
+def resolve_object_family(category: str, name: str, brand: str = "", model: str = "") -> str:
+    """Resolves the specific object type first (e.g., mouse vs keyboard vs laptop) before broad categories."""
+    full_blob = f"{name} {model} {brand} {category}".lower()
+    if any(k in full_blob for k in ("ratón", "raton", "mouse", "mx master", "deathadder", "superlight", "g502", "trackball")): return "raton"
+    if any(k in full_blob for k in ("teclado", "keyboard", "keychron", "switches", "keycaps")): return "teclado"
+    if any(k in full_blob for k in ("monitor", "ultrawide", "display")): return "monitor"
+    if any(k in full_blob for k in ("coche", "auto", "vehículo", "vehiculo", "motor", "moto", "furgoneta", "suv", "berlina", "seat", "bmw", "audi", "mercedes", "volkswagen", "toyota", "renault", "peugeot", "ford", "tesla")): return "motor"
+    if any(k in full_blob for k in ("móvil", "movil", "telefon", "teléfono", "iphone", "smartphone", "galaxy", "xiaomi", "redmi", "pixel")): return "moviles"
+    if any(k in full_blob for k in ("consola", "videojuego", "switch", "playstation", "ps5", "ps4", "xbox", "joy-con", "joycon")): return "consolas"
+    if any(k in full_blob for k in ("portátil", "portatil", "macbook", "laptop", "ipad", "tablet", "ordenador", "imac", "mac mini")): return "informatica"
+    if any(k in full_blob for k in ("audio", "auricular", "cascos", "altavoz", "wh-1000", "airpods", "sonido", "bose", "sennheiser")): return "audio"
+    if any(k in full_blob for k in ("cámara", "camara", "fotograf", "eos", "canon", "nikon", "fujifilm", "réflex", "reflex", "dslr", "objetivo", "lente")): return "camaras"
+    if any(k in full_blob for k in ("bici", "orbea", "mtb", "patinete", "ciclismo", "trek", "specialized")): return "bicicletas"
+    if any(k in full_blob for k in ("silla", "mesa", "sofá", "sofa", "mueble", "mobiliario", "armario", "estantería", "estanteria", "butaca", "escritorio", "cama", "lámpara", "lampara", "madera")): return "mobiliario"
+    if any(k in full_blob for k in ("moda", "ropa", "zapatilla", "calzado", "chaqueta", "camiseta", "pantalón", "bolso", "reloj", "gafas", "nike", "adidas")): return "moda"
+    return "hogar"
+
+
+def normalize_vlm_dynamic_fields(
+    vlm_fields: list[VisionDynamicField], category: str, name: str, brand: str, model: str, color_name_es: str,
 ) -> list[VisionDynamicField]:
-    """Builds pre-populated dynamic fields tailored to the detected product family."""
-    family = resolve_category_family(category, name, brand, model)
-    specs = CATEGORY_FIELD_SPECS.get(family, CATEGORY_FIELD_SPECS["hogar"])
+    """Normalizes AI-generated dynamic fields for the specific photographed object without overwriting them."""
+    family = resolve_object_family(category, name, brand, model)
+    forbidden_on_peripherals = {"ram", "storage", "screensize", "processor", "memoria ram", "almacenamiento", "tamaño de pantalla", "procesador", "almacenamiento ssd"}
+    cleaned: list[VisionDynamicField] = []
+    seen_keys: set[str] = set()
+
+    for item in vlm_fields:
+        k_low, l_low = item.key.strip().lower(), item.label.strip().lower()
+        if not k_low or not l_low or k_low in seen_keys:
+            continue
+        if family in ("raton", "teclado") and (k_low in forbidden_on_peripherals or l_low in forbidden_on_peripherals):
+            continue
+        seen_keys.add(k_low)
+        val = item.value.strip()
+        if val.lower() in ("no especificado", "desconocido", "n/a", "none", "null", "sin especificar"):
+            val = color_name_es if "color" in k_low or "color" in l_low else ""
+        opts = [o.strip() for o in item.options if o and o.strip()]
+        f_type: FieldKind = item.field_type
+        if f_type == "select":
+            if val and val not in opts:
+                opts = [val, *opts]
+            if len(opts) < 2:
+                f_type, opts = "text", []
+        cleaned.append(VisionDynamicField(
+            key=item.key.strip(), label=item.label.strip(), value=val, field_type=f_type,
+            options=opts, placeholder=item.placeholder or (f"Ej. {val}" if val else "Introduce un valor…"),
+        ))
+
+    if len(cleaned) >= 3:
+        return cleaned
+    return build_dynamic_fields(category, name, brand, model, color_name_es, {f.key: f.value for f in cleaned})
+
+
+def build_dynamic_fields(
+    category: str, name: str, brand: str, model: str, color_name_es: str, raw_attributes: dict[str, str] | None = None,
+) -> list[VisionDynamicField]:
+    """Builds pre-populated dynamic fields tailored to the specific object type."""
+    family = resolve_object_family(category, name, brand, model)
+    specs = OBJECT_FIELD_SPECS.get(family, OBJECT_FIELD_SPECS["hogar"])
     attrs = {k.lower().strip(): v.strip() for k, v in (raw_attributes or {}).items() if v and v.strip()}
     low_blob = f"{name} {model}".lower()
     fields: list[VisionDynamicField] = []
@@ -187,24 +229,15 @@ def build_dynamic_fields(
                     val = "Diésel"
                 elif any(w in low_blob for w in ("híbrido", "hibrido", "hybrid", "hev")):
                     val = "Híbrido (HEV)"
-                elif any(w in low_blob for w in ("eléctrico", "electrico", "ev", "tesla", "id.3", "id.4")):
+                elif any(w in low_blob for w in ("eléctrico", "electrico", "ev", "tesla")):
                     val = "Eléctrico (EV)"
                 else:
                     val = default_hint
             elif field_type == "select" and options:
                 val = default_hint if default_hint in options else options[0]
-
-        if field_type == "select" and val and val not in options:
-            options = [val, *options]
-
-        fields.append(
-            VisionDynamicField(
-                key=key,
-                label=label,
-                value=val,
-                field_type=field_type,
-                options=list(options),
-                placeholder=default_hint if field_type != "select" else None,
-            )
-        )
+        opts = [val, *options] if field_type == "select" and val and val not in options else list(options)
+        fields.append(VisionDynamicField(
+            key=key, label=label, value=val, field_type=field_type, options=opts,
+            placeholder=default_hint if field_type != "select" else None,
+        ))
     return fields

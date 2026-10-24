@@ -173,6 +173,21 @@ class TestVisionModule(unittest.TestCase):
         self.assertEqual(next(f.value for f in car_fields if f.key == "fuelType"), "Diésel")
         self.assertEqual(next(f.value for f in car_fields if f.key == "transmission"), "Automático")
 
+        mouse_fields = build_dynamic_fields(
+            category="Informática y Periféricos",
+            name="Ratón inalámbrico Logitech MX Master 3S",
+            brand="Logitech",
+            model="MX Master 3S",
+            color_name_es="Negro",
+        )
+        mouse_keys = {f.key for f in mouse_fields}
+        self.assertIn("connectivity", mouse_keys)
+        self.assertIn("sensorType", mouse_keys)
+        self.assertIn("buttons", mouse_keys)
+        self.assertNotIn("screenSize", mouse_keys)
+        self.assertNotIn("ram", mouse_keys)
+        self.assertNotIn("storage", mouse_keys)
+
     @unittest.skipIf(TestClient is None, "FastAPI not installed in current Python environment")
     def test_fastapi_endpoints_via_test_client(self) -> None:
         import app.routers.vision as vision_router

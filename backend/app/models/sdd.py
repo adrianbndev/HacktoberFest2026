@@ -28,49 +28,26 @@ class CamelModel(BaseModel):
 
 TeamMemberId = Literal["ales", "adri", "matias"]
 
-ConditionLabel = Literal[
-    "Nuevo",
-    "Como nuevo",
-    "Buen estado",
-    "Desgaste visible",
-    "Para piezas",
-]
+ConditionLabel = Literal["Nuevo", "Como nuevo", "Buen estado", "Desgaste visible", "Para piezas"]
 
 CONDITION_LABELS: tuple[ConditionLabel, ...] = (
-    "Nuevo",
-    "Como nuevo",
-    "Buen estado",
-    "Desgaste visible",
-    "Para piezas",
+    "Nuevo", "Como nuevo", "Buen estado", "Desgaste visible", "Para piezas",
 )
 
 MarketPlatform = Literal["wallapop", "vinted", "milanuncios", "ebay"]
 
-VisionProviderSource = Literal[
-    "ollama_local",
-    "gemini",
-    "openai",
-    "deterministic_fallback",
-]
+VisionProviderSource = Literal["ollama_local", "gemini", "openai", "deterministic_fallback"]
 
 SEO_TITLE_MAX_LENGTH = 65
 
 
 def clamp_condition_score(score: int | float) -> int:
     """Clamps a numeric condition score strictly to the [0, 100] interval."""
-    numeric = int(round(float(score)))
-    return max(0, min(100, numeric))
+    return max(0, min(100, int(round(float(score)))))
 
 
 def map_score_to_condition_label(score: int | float) -> ConditionLabel:
-    """Pure deterministic rubric mapping conditionScore (0-100) to ConditionLabel.
-
-    - 90..100 -> 'Nuevo'
-    - 80..89  -> 'Como nuevo'
-    - 65..79  -> 'Buen estado'
-    - 40..64  -> 'Desgaste visible'
-    - 0..39   -> 'Para piezas'
-    """
+    """Pure deterministic rubric mapping conditionScore (0-100) to ConditionLabel."""
     clamped = clamp_condition_score(score)
     if clamped >= 90:
         return "Nuevo"

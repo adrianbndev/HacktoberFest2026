@@ -8,17 +8,17 @@ import os
 import time
 import urllib.error
 import urllib.request
-from typing import Any
-
+from typing import Any, Literal
 from PIL import Image
 from pydantic import BaseModel, Field
 
 from app.models.sdd import (
     VisionAnalysisResult,
+    VisionDynamicField,
     clamp_condition_score,
     map_score_to_condition_label,
 )
-from app.vision.dynamic_fields import build_dynamic_fields, ensure_dotenv_loaded
+from app.vision.dynamic_fields import ensure_dotenv_loaded, normalize_vlm_dynamic_fields
 from app.vision.protocol import (
     ImageVisualMetrics,
     build_seo_description,
@@ -38,30 +38,39 @@ PREFERRED_MAC_VISION_MODELS: tuple[str, ...] = (
 )
 
 
-class _VLMAttribute(BaseModel):
-    key: str = Field(..., description="Clave del atributo (ej: fuelType, storage, material, color, year)")
-    value: str = Field(..., description="Valor observado o estimado en español")
+class _VLMDynamicFieldItem(BaseModel):
+    key: str = Field(..., description="Identificador camelCase del campo exclusivo de este objeto (ej: connectivity, sensorDpi, buttons, fuelType, storage)")
+    label: str = Field(..., description="Nombre del campo en español específico para este objeto exacto (ej: 'Conectividad', 'Sensor / DPI', 'Número de botones', 'Tipo de combustible')")
+    value: str = Field(..., description="Valor observado en la imagen o estimado para este modelo concreto")
+    field_type: Literal["select", "text", "number"] = Field(default="select", description="'select' si tiene opciones frecuentes, 'text' o 'number' si es dato abierto")
+    options: list[str] = Field(default_factory=list, description="Si field_type es 'select', 3 a 5 opciones reales posibles en español para este campo (incluyendo 'value')")
 
 
 class _VLMFormExtractionSchema(BaseModel):
     name: str = Field(..., description="Nombre comercial completo en español")
-    category: str = Field(..., description="Categoría (ej: Móviles y Telefonía, Motor y Vehículos, Consolas y Videojuegos, Mobiliario y Decoración)")
+    category: str = Field(..., description="Categoría precisa del objeto (ej: Periféricos · Ratones, Motor y Vehículos, Móviles y Telefonía, Mobiliario y Decoración)")
     brand: str = Field(..., description="Marca comercial")
     model: str = Field(..., description="Modelo específico o referencia")
     condition_score: int = Field(..., ge=0, le=100, description="Salud visual 0 a 100")
     condition_reasoning: str = Field(..., description="Explicación breve en español")
     seo_title: str = Field(..., description="Título atractivo <= 65 caracteres para Wallapop")
     seo_description: str = Field(..., description="Descripción persuasiva de venta")
-    attributes: list[_VLMAttribute] = Field(default_factory=list, description="Atributos específicos según el tipo de objeto (combustible/carrocería si es coche, almacenamiento/pantalla si es móvil, material/estilo si es mueble)")
+    dynamic_fields: list[_VLMDynamicFieldItem] = Field(
+        default_factory=list,
+        description="Entre 4 y 6 campos técnicos EXCLUSIVOS del objeto concreto de la foto (ej. ratón -> Conectividad, Sensor/DPI, Botones, Ergonomía, Alimentación, Color; coche -> Combustible, Transmisión, Kilometraje, Año, Carrocería; móvil -> Almacenamiento, RAM, Salud batería, Operador)",
+    )
 
 
 SYSTEM_PROMPT_ES = (
-    "Eres un tasador experto de productos de segunda mano en España (Wallapop, Vinted, Milanuncios, Coches.net). "
-    "Analiza la fotografía del objeto y extrae con máxima precisión los datos para rellenar el formulario dinámico: "
-    "nombre comercial exacto (incluyendo color), marca, modelo, categoría (ej. 'Móviles y Telefonía', 'Motor y Vehículos', "
-    "'Consolas y Videojuegos', 'Informática y Portátiles', 'Mobiliario y Decoración', 'Moda y Accesorios', 'Audio y Sonido'), "
-    "estado físico (condition_score 0-100) y en 'attributes' incluye características propias del tipo de producto "
-    "(ej. si es coche: fuelType, transmission, bodyType, color; si es móvil: storage, color, screenStatus; si es mueble: material, style, color). "
+    "Eres un tasador experto de productos de segunda mano en España. "
+    "Analiza la fotografía e identifica el OBJETO EXACTO (nombre comercial, marca, modelo, categoría específica y salud física 0-100). "
+    "En 'dynamic_fields', genera entre 4 y 6 campos técnicos EXCLUSIVOS del objeto concreto que ves en la foto: "
+    "PROHIBIDO poner campos de otro aparato (por ejemplo, NUNCA pongas tamaño de pantalla, memoria RAM o almacenamiento SSD a un ratón, teclado o accesorio que no los tenga). "
+    "- Si es un ratón: Conectividad (Inalámbrico Bluetooth, Receptor USB 2.4GHz, Cable USB), Tipo de sensor / DPI, Número de botones, Ergonomía (Diestro, Ambidiestro, Vertical), Alimentación (Batería recargable, Pila AA, Cable), Color.\n"
+    "- Si es un coche/vehículo: Tipo de combustible (Gasolina, Diésel, Híbrido, Eléctrico), Transmisión (Manual, Automático), Carrocería, Año aproximado, Kilometraje (km), Etiqueta DGT, Color.\n"
+    "- Si es un móvil: Capacidad de almacenamiento, Memoria RAM, Salud de batería (%), Estado de pantalla, Operador, Color.\n"
+    "- Para cualquier otro objeto (teclado, auricular, silla, ropa, calzado, reloj, cámara, bici, herramienta, electrodoméstico), genera los 4-6 campos específicos reales que definen ese objeto concreto. "
+    "Para cada campo con 'field_type': 'select', incluye de 3 a 5 'options' reales en español que contengan el 'value'. "
     "Responde SIEMPRE en JSON válido."
 )
 
@@ -95,7 +104,7 @@ class OllamaVisionProvider:
         ).rstrip("/")
         self.base_url = raw_url if raw_url.startswith("http") else f"http://{raw_url}"
         self.configured_model = model_name or os.getenv("VISION_OLLAMA_MODEL") or "qwen2.5vl:7b"
-        self.request_timeout_sec = request_timeout_sec or float(os.getenv("VISION_TIMEOUT_SEC", "15.0"))
+        self.request_timeout_sec = request_timeout_sec or float(os.getenv("VISION_TIMEOUT_SEC", "35.0"))
         self._resolved_model: str | None = None
         self._last_check_ts: float = 0.0
         self._cached_health: dict[str, Any] | None = None
@@ -171,14 +180,17 @@ class OllamaVisionProvider:
                 {"role": "system", "content": SYSTEM_PROMPT_ES},
                 {
                     "role": "user",
-                    "content": f"Identifica este producto y sus campos dinámicos para el formulario. {context}",
+                    "content": (
+                        f"Identifica el objeto exacto de esta imagen y genera en 'dynamic_fields' los campos específicos "
+                        f"exclusivos de este tipo de artículo (no uses campos de otros aparatos). {context}"
+                    ),
                     "images": [metrics.optimized_jpeg_b64],
                 },
             ],
             "format": _VLMFormExtractionSchema.model_json_schema(),
             "stream": False,
             "keep_alive": "30m",
-            "options": {"temperature": 0.1, "num_predict": 380},
+            "options": {"temperature": 0.1, "num_predict": 650},
         }
 
         try:
@@ -197,7 +209,12 @@ class OllamaVisionProvider:
         extracted = _VLMFormExtractionSchema.model_validate_json(raw.get("message", {}).get("content", "{}"))
         score = clamp_condition_score(extracted.condition_score)
         label = map_score_to_condition_label(score)
-        raw_attrs = {item.key: item.value for item in extracted.attributes if item.key and item.value}
+        raw_vlm_fields = [
+            VisionDynamicField(
+                key=f.key, label=f.label, value=f.value, field_type=f.field_type, options=f.options,
+            )
+            for f in extracted.dynamic_fields
+        ]
 
         return VisionAnalysisResult(
             name=extracted.name.strip(),
@@ -209,22 +226,13 @@ class OllamaVisionProvider:
             condition_reasoning=extracted.condition_reasoning.strip(),
             seo_title=build_seo_title(extracted.name, label, score, extracted.seo_title),
             seo_description=build_seo_description(
-                name=extracted.name,
-                brand=extracted.brand,
-                model=extracted.model,
-                category=extracted.category,
-                condition_score=score,
-                condition_label=label,
-                condition_reasoning=extracted.condition_reasoning,
-                candidate_description=extracted.seo_description,
+                name=extracted.name, brand=extracted.brand, model=extracted.model,
+                category=extracted.category, condition_score=score, condition_label=label,
+                condition_reasoning=extracted.condition_reasoning, candidate_description=extracted.seo_description,
             ),
-            dynamic_fields=build_dynamic_fields(
-                category=extracted.category,
-                name=extracted.name,
-                brand=extracted.brand,
-                model=extracted.model,
-                color_name_es=metrics.color_name_es,
-                raw_attributes=raw_attrs,
+            dynamic_fields=normalize_vlm_dynamic_fields(
+                vlm_fields=raw_vlm_fields, category=extracted.category, name=extracted.name,
+                brand=extracted.brand, model=extracted.model, color_name_es=metrics.color_name_es,
             ),
             source="ollama_local",
             model_used=model_to_use,

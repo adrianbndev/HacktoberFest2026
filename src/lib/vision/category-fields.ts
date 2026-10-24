@@ -3,8 +3,11 @@ import type { ConditionLabel, VisionDynamicField } from "@/types/sdd";
 export const PRODUCT_CATEGORIES: readonly string[] = [
   "Móviles y Telefonía",
   "Motor y Vehículos",
-  "Consolas y Videojuegos",
+  "Periféricos · Ratones",
+  "Periféricos · Teclados",
+  "Monitores y Pantallas",
   "Informática y Portátiles",
+  "Consolas y Videojuegos",
   "Audio y Sonido",
   "Cámaras y Fotografía",
   "Bicicletas y Movilidad",
@@ -19,6 +22,29 @@ export const PRODUCT_CATEGORIES: readonly string[] = [
 type FieldTemplate = Omit<VisionDynamicField, "value"> & { defaultValue: string };
 
 const FAMILY_TEMPLATES: Record<string, FieldTemplate[]> = {
+  raton: [
+    { key: "connectivity", label: "Conectividad", fieldType: "select", options: ["Inalámbrico 2.4GHz + Bluetooth", "Inalámbrico Bluetooth", "Receptor USB 2.4GHz", "Cable USB"], defaultValue: "Inalámbrico 2.4GHz + Bluetooth" },
+    { key: "sensorType", label: "Sensor / Precisión DPI", fieldType: "select", options: ["Óptico de alta precisión", "Sensor Gaming (16.000+ DPI)", "Óptico estándar oficina", "Láser"], defaultValue: "Óptico de alta precisión" },
+    { key: "buttons", label: "Número de botones", fieldType: "select", options: ["5-6 botones (con laterales)", "3 botones estándar + rueda", "Programable / Gaming (+7 botones)"], defaultValue: "5-6 botones (con laterales)" },
+    { key: "ergonomics", label: "Ergonomía / Mano", fieldType: "select", options: ["Diestro ergonómico", "Ambidiestro / Simétrico", "Vertical ergonómico", "Compacto de viaje"], defaultValue: "Diestro ergonómico" },
+    { key: "powerSource", label: "Alimentación", fieldType: "select", options: ["Batería recargable USB-C", "Pila AA / AAA", "Alimentación por cable USB"], defaultValue: "Batería recargable USB-C" },
+    { key: "color", label: "Color / Acabado", fieldType: "text", placeholder: "Ej. Negro mate, Blanco", defaultValue: "" },
+  ],
+  teclado: [
+    { key: "switchType", label: "Tipo de interruptores (Switches)", fieldType: "select", options: ["Mecánico Táctil (Brown)", "Mecánico Lineal (Red)", "Mecánico Clicky (Blue)", "Membrana / Tijera", "Óptico"], defaultValue: "Mecánico Táctil (Brown)" },
+    { key: "keyboardFormat", label: "Formato / Tamaño", fieldType: "select", options: ["75% Compacto", "TKL (80% sin bloque numérico)", "100% Completo", "60% / 65% Mini"], defaultValue: "75% Compacto" },
+    { key: "keyboardLayout", label: "Distribución de idioma", fieldType: "select", options: ["Español ISO (con Ñ)", "Inglés ANSI (US)", "Inglés ISO (UK)"], defaultValue: "Español ISO (con Ñ)" },
+    { key: "connectivity", label: "Conectividad", fieldType: "select", options: ["Inalámbrico Bluetooth + Cable USB-C", "Solo cable USB", "Inalámbrico 2.4GHz + Bluetooth"], defaultValue: "Inalámbrico Bluetooth + Cable USB-C" },
+    { key: "backlight", label: "Iluminación", fieldType: "select", options: ["RGB personalizable", "Retroiluminación blanca", "Sin iluminación"], defaultValue: "RGB personalizable" },
+    { key: "color", label: "Color", fieldType: "text", placeholder: "Ej. Negro/Gris, Blanco", defaultValue: "" },
+  ],
+  monitor: [
+    { key: "screenSize", label: "Tamaño de pantalla", fieldType: "select", options: ["24 pulgadas", "27 pulgadas", "32 pulgadas", "34 pulgadas Ultrawide"], defaultValue: "27 pulgadas" },
+    { key: "resolution", label: "Resolución", fieldType: "select", options: ["4K UHD (3840x2160)", "QHD 2K (2560x1440)", "Full HD (1920x1080)"], defaultValue: "4K UHD (3840x2160)" },
+    { key: "refreshRate", label: "Tasa de refresco", fieldType: "select", options: ["60 - 75 Hz", "144 - 165 Hz Gaming", "240 Hz o superior"], defaultValue: "60 - 75 Hz" },
+    { key: "panelType", label: "Tipo de panel", fieldType: "select", options: ["IPS", "OLED / QD-OLED", "VA", "TN"], defaultValue: "IPS" },
+    { key: "color", label: "Color exterior", fieldType: "text", placeholder: "Ej. Negro, Plata", defaultValue: "" },
+  ],
   motor: [
     { key: "fuelType", label: "Tipo de combustible", fieldType: "select", options: ["Gasolina", "Diésel", "Híbrido (HEV)", "Híbrido Enchufable (PHEV)", "Eléctrico (EV)", "GLP / GNC"], defaultValue: "Gasolina" },
     { key: "transmission", label: "Cambio / Transmisión", fieldType: "select", options: ["Manual", "Automático"], defaultValue: "Manual" },
@@ -49,8 +75,8 @@ const FAMILY_TEMPLATES: Record<string, FieldTemplate[]> = {
     { key: "processor", label: "Procesador / Chip", fieldType: "text", placeholder: "Ej. Apple M2, Intel Core i7, Ryzen 7", defaultValue: "" },
     { key: "ram", label: "Memoria RAM", fieldType: "select", options: ["8 GB", "16 GB", "32 GB", "64 GB", "4 GB"], defaultValue: "8 GB" },
     { key: "storage", label: "Almacenamiento SSD", fieldType: "select", options: ["256 GB SSD", "512 GB SSD", "1 TB SSD", "2 TB SSD", "128 GB"], defaultValue: "256 GB SSD" },
-    { key: "screenSize", label: "Tamaño de pantalla", fieldType: "select", options: ["13.3 - 13.6 pulgadas", "14 pulgadas", "15.6 pulgadas", "16 pulgadas", "10.9 - 11 pulgadas", "24 - 27 pulgadas"], defaultValue: "13.3 - 13.6 pulgadas" },
-    { key: "keyboardLayout", label: "Teclado / Distribución", fieldType: "select", options: ["Español (con Ñ)", "Inglés (US/UK)", "No aplica (Monitor/Tablet)"], defaultValue: "Español (con Ñ)" },
+    { key: "screenSize", label: "Tamaño de pantalla", fieldType: "select", options: ["13.3 - 13.6 pulgadas", "14 pulgadas", "15.6 pulgadas", "16 pulgadas", "10.9 - 11 pulgadas"], defaultValue: "13.3 - 13.6 pulgadas" },
+    { key: "keyboardLayout", label: "Teclado / Distribución", fieldType: "select", options: ["Español (con Ñ)", "Inglés (US/UK)", "No aplica (Tablet/Sobremesa)"], defaultValue: "Español (con Ñ)" },
     { key: "color", label: "Color", fieldType: "text", placeholder: "Ej. Gris espacial, Plata", defaultValue: "" },
   ],
   audio: [
@@ -87,19 +113,22 @@ const FAMILY_TEMPLATES: Record<string, FieldTemplate[]> = {
     { key: "color", label: "Color principal", fieldType: "text", placeholder: "Ej. Blanco, Negro, Azul", defaultValue: "" },
   ],
   hogar: [
-    { key: "applianceType", label: "Tipo de aparato", fieldType: "select", options: ["Pequeño electrodoméstico", "Limpieza / Aspiración", "Cafetera / Cocina", "Climatización", "Bricolaje / Herramienta eléctrica"], defaultValue: "Pequeño electrodoméstico" },
-    { key: "powerSource", label: "Alimentación / Potencia", fieldType: "select", options: ["Cable eléctrico (220V)", "Batería recargable", "Manual / Sin motor"], defaultValue: "Cable eléctrico (220V)" },
-    { key: "accessories", label: "Accesorios o maletín", fieldType: "select", options: ["Completo con accesorios", "En caja o maletín original", "Solo aparato principal"], defaultValue: "Completo con accesorios" },
+    { key: "applianceType", label: "Tipo de artículo", fieldType: "select", options: ["Pequeño electrodoméstico", "Limpieza / Aspiración", "Cafetera / Cocina", "Bricolaje / Herramienta", "Artículo general"], defaultValue: "Pequeño electrodoméstico" },
+    { key: "powerSource", label: "Alimentación / Funcionamiento", fieldType: "select", options: ["Cable eléctrico (220V)", "Batería recargable", "Manual / Sin motor"], defaultValue: "Cable eléctrico (220V)" },
+    { key: "accessories", label: "Accesorios o caja", fieldType: "select", options: ["Completo con accesorios", "En caja o maletín original", "Solo artículo principal"], defaultValue: "Completo con accesorios" },
     { key: "color", label: "Color / Acabado", fieldType: "text", placeholder: "Ej. Acero, Blanco", defaultValue: "" },
   ],
 };
 
 export function resolveCategoryFamily(category: string, name = ""): string {
   const blob = `${category} ${name}`.toLowerCase();
+  if (/(rat[oó]n|mouse|mx master|deathadder|superlight|g502|trackball)/.test(blob)) return "raton";
+  if (/(teclado|keyboard|keychron|switches|keycaps)/.test(blob)) return "teclado";
+  if (/(monitor|pantalla|ultrawide|display)/.test(blob)) return "monitor";
   if (/(coche|auto|veh[ií]culo|motor|moto|furgoneta|suv|berlina|seat|bmw|audi|mercedes|volkswagen|toyota|renault|peugeot|ford|tesla)/.test(blob)) return "motor";
   if (/(m[oó]vil|telefon|iphone|smartphone|galaxy|xiaomi|redmi|pixel)/.test(blob)) return "moviles";
   if (/(consola|videojuego|switch|playstation|ps5|ps4|xbox|joy-?con)/.test(blob)) return "consolas";
-  if (/(port[aá]til|macbook|laptop|inform[aá]tica|ipad|tablet|monitor|teclado|perif[eé]rico|ordenador)/.test(blob)) return "informatica";
+  if (/(port[aá]til|macbook|laptop|inform[aá]tica|ipad|tablet|ordenador)/.test(blob)) return "informatica";
   if (/(audio|auricular|cascos|altavoz|wh-1000|airpods|sonido|bose)/.test(blob)) return "audio";
   if (/(c[aá]mara|fotograf|eos|canon|nikon|fujifilm|r[eé]flex|dslr|objetivo|lente)/.test(blob)) return "camaras";
   if (/(bici|orbea|mtb|patinete|ciclismo|movilidad)/.test(blob)) return "bicicletas";
