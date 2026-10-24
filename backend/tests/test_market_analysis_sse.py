@@ -111,6 +111,24 @@ async def test_stream_emits_heartbeats_while_a_source_is_slow() -> None:
     assert any(frame.startswith("event: analysis_started") for frame in frames)
 
 
+async def test_disconnect_stops_the_browser_and_closes_pages() -> None:
+    analyzer = SlowStreamAnalyzer(make_result())
+    request = MarketAnalysisRequest.model_validate(BODY)
+    stopped = False
+
+    async def _cleanup() -> None:
+        nonlocal stopped
+        stopped = True
+
+    generator = stream_analysis(
+        analyzer, request, heartbeat_sec=10, on_disconnect=_cleanup
+    )
+    await generator.__anext__()
+    await generator.aclose()
+
+    assert stopped is True
+
+
 async def test_disconnect_cancels_the_analysis_stream() -> None:
     analyzer = SlowStreamAnalyzer(make_result())
     request = MarketAnalysisRequest.model_validate(BODY)

@@ -248,8 +248,9 @@ Never `500`, never synthetic data.
 - `source_result` is emitted as soon as that source finishes.
 - A heartbeat comment (`: ping\n\n`) is sent every 15 s.
 - A cache hit emits `analysis_started` with `cached=true` and then `done` fast.
-- On client disconnect the analysis task is cancelled and the browser lock/page
-  is released.
+- On client disconnect the analysis task is cancelled, the browser lock/page is
+  released and `BrowserSessionManager.stop()` closes the page and the MCP
+  process (the next request lazily respawns it).
 
 ```bash
 curl -N -X POST http://127.0.0.1:8000/api/market/analyze/stream \
@@ -605,7 +606,7 @@ interface MarketValuationResult {
 
 ```bash
 cd backend
-pytest -q          # 302 tests (hermetic; no CDP, no network)
+pytest -q          # 303 tests (hermetic; no CDP, no network)
 ruff check app tests
 mypy app
 docker compose config

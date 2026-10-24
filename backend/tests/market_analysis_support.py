@@ -93,6 +93,10 @@ def make_events(result: MarketAnalysisResult) -> list[Any]:
 class FakeBrowser:
     def __init__(self, connected: bool = False) -> None:
         self.connected = connected
+        self.stopped = False
+
+    async def stop(self) -> None:
+        self.stopped = True
 
     async def health(self) -> Any:
         from app.mcp.browser.session import BrowserHealth

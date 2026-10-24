@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from typing import Any, Protocol
 
@@ -33,13 +33,21 @@ class AnalysisStreamer(Protocol):
     ) -> AsyncIterator[DeepAnalysisEvent]: ...
 
 
+OnDisconnect = Callable[[], Awaitable[None]]
+
+
 async def stream_analysis(
     analyzer: AnalysisStreamer,
     request: MarketAnalysisRequest,
     *,
     heartbeat_sec: float = HEARTBEAT_SEC,
+    on_disconnect: OnDisconnect | None = None,
 ) -> AsyncIterator[str]:
-    """Yield SSE frames; heartbeat while a source is slow; cancel on disconnect."""
+    """Yield SSE frames; heartbeat while a source is slow; cancel on disconnect.
+
+    `on_disconnect` (the router passes `browser.stop`) closes the page and the
+    MCP process only when the stream did not finish normally.
+    """
     queue: asyncio.Queue[DeepAnalysisEvent | None] = asyncio.Queue()
 
     async def produce() -> None:
@@ -53,6 +61,7 @@ async def stream_analysis(
             queue.put_nowait(None)
 
     task = asyncio.create_task(produce())
+    completed = False
     try:
         while True:
             try:
@@ -61,12 +70,16 @@ async def stream_analysis(
                 yield ": ping\n\n"
                 continue
             if event is None:
+                completed = True
                 break
             yield serialize_event(event)
     finally:
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+        if not completed and on_disconnect is not None:
+            with suppress(Exception):
+                await on_disconnect()
 
 
 def serialize_event(event: DeepAnalysisEvent) -> str:

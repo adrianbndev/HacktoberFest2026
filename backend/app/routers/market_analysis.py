@@ -60,7 +60,7 @@ async def analyze_stream(
     request: MarketAnalysisRequest, analyzer: DeepAnalyzerDep
 ) -> StreamingResponse:
     return StreamingResponse(
-        stream_analysis(analyzer, request),
+        stream_analysis(analyzer, request, on_disconnect=analyzer.browser.stop),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

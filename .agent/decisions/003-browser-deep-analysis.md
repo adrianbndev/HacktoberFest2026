@@ -122,7 +122,9 @@ stricter than `/valuate`, where the deterministic template remains valid.
 `mcp/sse.py` consumes `DeepAnalysisEvent`s through an `asyncio.Queue`. It emits a
 `: ping` comment every 15 s while a source is slow, serializes each event with
 the frozen wire names, and cancels the producer task when the client disconnects
-(generator close), which releases the browser lock and page.
+(generator close), which releases the browser lock and page. The router
+passes `browser.stop` as `on_disconnect`, so an aborted stream also closes the
+page and the MCP process; the next request respawns it lazily.
 
 `EventSource` cannot POST, so the frontend uses `fetch` +
 `ReadableStream` in `src/lib/market-analysis.ts`.
