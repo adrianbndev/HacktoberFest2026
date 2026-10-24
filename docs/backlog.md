@@ -16,3 +16,21 @@ Classified per the phase brief (§8). **No blocking items remain in Phase 1.**
 | 10 | DeepSeek live validation | Validated with the provided key; `deepseek-v4-pro` takes ~12–23 s, hence the opt-in recommendation window | Done | No |
 | 11 | Split dev dependencies out of the runtime image | `requirements.txt` includes pytest/ruff/mypy so the documented `pip install -r requirements.txt && pytest` works out of the box; the image is heavier than strictly needed | Post-hackathon | No |
 | 12 | Wallapop fast connector | Its search HTML is a JS shell (0 server-rendered items); only the Phase 2 browser engine currently gets its 40 listings | Phase 2 | No |
+
+## Verification follow-ups (non-blocking)
+
+1. `platforms` is derived from `comparableListings` and can omit a minority platform; consider a per-platform quota.
+2. The opt-in recommendation window (25 s) exceeds the 6 s guardrail; the frontend must not request `includeRecommendation` on the hot path.
+3. `DeepSeekChat`/`AsyncOpenAI` is created per request and never closed; cache the analyzer or add a shutdown hook.
+4. IQR filtering runs twice and `sampleSize` can differ from the sample actually valued; compute it once.
+5. The router catch-all turns programmer errors into `503`; log a redacted reason and use a distinct code.
+6. A connector is marked `ok` even when it parses 0 listings; report `no_listings_parsed` / `filtered_out`.
+7. "Grounded" bullets are enforced only by prompt; validate that they cite the supplied listings/prices.
+8. Privacy/prompt injection: `description` is sent verbatim to DeepSeek; redact phone/email and delimit the text.
+9. Config does not validate `jitter_max + connector_timeout < deadline`; add the invariant.
+10. Relevance rejects `Sony PlayStation 5` vs `PlayStation 5` (asymmetric identity); treat the brand as optional when the model matches and the title has no identity.
+11. Relevance loses single-digit generation numbers; `AirPods Pro 2` vs `AirPods Pro 3` is accepted.
+12. Aliases use `str.replace` without word boundaries; use `re.sub` with `\b`.
+13. `keywords()` does not normalise capacities/aliases (template-only impact).
+14. Missing a direct `tests/test_relevance.py` and the `iPhone 13 mini` case.
+15. The timeout test uses 0.05 s, not the production 1.6 s value.
