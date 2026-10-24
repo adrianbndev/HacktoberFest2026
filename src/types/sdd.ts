@@ -16,12 +16,7 @@ export interface UserProfile {
   email?: string;
 }
 
-export type ConditionLabel =
-  | 'Nuevo'
-  | 'Como nuevo'
-  | 'Buen estado'
-  | 'Desgaste visible'
-  | 'Para piezas';
+export type ConditionLabel = 'Nuevo' | 'Como nuevo' | 'Buen estado' | 'Desgaste visible' | 'Para piezas';
 
 export type MarketPlatform = 'wallapop' | 'vinted' | 'milanuncios' | 'ebay';
 
@@ -70,12 +65,7 @@ export interface InventoryItem {
 }
 
 export type CaptureSessionStatus =
-  | 'waiting_for_mobile'
-  | 'mobile_connected'
-  | 'photo_uploaded'
-  | 'analyzing'
-  | 'completed'
-  | 'error';
+  | 'waiting_for_mobile' | 'mobile_connected' | 'photo_uploaded' | 'analyzing' | 'completed' | 'error';
 
 export interface MobileCaptureSession {
   sessionId: string;
@@ -93,11 +83,7 @@ export interface CaptureSessionUpdate {                                     // P
   photoDataUrl?: string;          // data:image/... comprimida en el móvil (<= 800 px, JPEG 0.75)
 }
 
-export type NotificationType =
-  | 'price_up'
-  | 'price_down'
-  | 'sell_opportunity'
-  | 'delivery_reminder';
+export type NotificationType = 'price_up' | 'price_down' | 'sell_opportunity' | 'delivery_reminder';
 
 export type MetricChanged = 'priceMin' | 'priceAvg' | 'priceMax';
 
@@ -166,11 +152,12 @@ export interface HacktoberfestRepo {
   aiQuickStartGuide: string;
 }
 
-export type VisionProviderSource =
-  | 'ollama_local'
-  | 'gemini'
-  | 'openai'
-  | 'deterministic_fallback';
+export type VisionProviderSource = 'ollama_local' | 'gemini' | 'openai' | 'deterministic_fallback';
+
+export interface VisionDynamicField {
+  key: string; label: string; value: string;
+  fieldType: 'text' | 'select' | 'number'; options?: string[]; placeholder?: string;
+}
 
 export interface VisionAnalyzeRequest {
   photoDataUrl: string;
@@ -187,6 +174,7 @@ export interface VisionAnalysisResult {
   conditionReasoning: string;
   seoTitle: string;
   seoDescription: string;
+  dynamicFields?: VisionDynamicField[];
   source?: VisionProviderSource;
   latencyMs?: number;
   modelUsed?: string;

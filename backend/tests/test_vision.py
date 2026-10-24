@@ -21,6 +21,7 @@ from app.models.sdd import (
     clamp_condition_score,
     map_score_to_condition_label,
 )
+from app.vision.dynamic_fields import build_dynamic_fields
 from app.vision.fallback_provider import DeterministicVisionProvider
 from app.vision.image_processor import decode_image_source, prepare_and_inspect_image
 from app.vision.ollama_provider import OllamaVisionProvider
@@ -141,19 +142,60 @@ class TestVisionModule(unittest.TestCase):
         self.assertEqual(res.brand, "Nintendo")
         self.assertLess(res.latency_ms or 9999, 1000)
 
+    def test_dynamic_fields_differ_by_category_mobile_vs_car(self) -> None:
+        mobile_fields = build_dynamic_fields(
+            category="Móviles y Telefonía",
+            name="Apple iPhone 14 Pro 256GB",
+            brand="Apple",
+            model="iPhone 14 Pro",
+            color_name_es="Negro",
+        )
+        mobile_keys = {f.key for f in mobile_fields}
+        self.assertIn("storage", mobile_keys)
+        self.assertIn("batteryHealth", mobile_keys)
+        self.assertNotIn("fuelType", mobile_keys)
+        storage_val = next(f.value for f in mobile_fields if f.key == "storage")
+        self.assertEqual(storage_val, "256 GB")
+
+        car_fields = build_dynamic_fields(
+            category="Motor y Vehículos",
+            name="SEAT León 2.0 TDI 150CV",
+            brand="SEAT",
+            model="León TDI",
+            color_name_es="Blanco",
+            raw_attributes={"combustible": "Diésel", "cambio": "Automático", "kilometros": "65.000 km"},
+        )
+        car_keys = {f.key for f in car_fields}
+        self.assertIn("fuelType", car_keys)
+        self.assertIn("transmission", car_keys)
+        self.assertIn("mileageKm", car_keys)
+        self.assertNotIn("batteryHealth", car_keys)
+        self.assertEqual(next(f.value for f in car_fields if f.key == "fuelType"), "Diésel")
+        self.assertEqual(next(f.value for f in car_fields if f.key == "transmission"), "Automático")
+
     @unittest.skipIf(TestClient is None, "FastAPI not installed in current Python environment")
     def test_fastapi_endpoints_via_test_client(self) -> None:
-        client = TestClient(app)
-        status_res = client.get("/api/vision/node-status")
-        self.assertEqual(status_res.status_code, 200)
-        self.assertIn("activeProviders", status_res.json())
+        import app.routers.vision as vision_router
 
-        data_url = _create_test_data_url()
-        analyze_res = client.post("/api/vision/analyze", json={"photoDataUrl": data_url, "userHint": "Canon EOS"})
-        self.assertEqual(analyze_res.status_code, 200)
-        body = analyze_res.json()
-        self.assertIn("conditionScore", body)
-        self.assertEqual(body["brand"], "Canon")
+        original_orchestrator = vision_router._orchestrator
+        vision_router._orchestrator = ResilientVisionOrchestrator(
+            providers=[DeterministicVisionProvider()], timeout_sec=0.5
+        )
+        try:
+            client = TestClient(app)
+            status_res = client.get("/api/vision/node-status")
+            self.assertEqual(status_res.status_code, 200)
+            self.assertIn("activeProviders", status_res.json())
+
+            data_url = _create_test_data_url()
+            analyze_res = client.post("/api/vision/analyze", json={"photoDataUrl": data_url, "userHint": "Canon EOS"})
+            self.assertEqual(analyze_res.status_code, 200)
+            body = analyze_res.json()
+            self.assertIn("conditionScore", body)
+            self.assertEqual(body["brand"], "Canon")
+            self.assertTrue(len(body.get("dynamicFields", [])) > 0)
+        finally:
+            vision_router._orchestrator = original_orchestrator
 
     def test_corrupted_image_raises_clean_value_error(self) -> None:
         with self.assertRaises(ValueError):

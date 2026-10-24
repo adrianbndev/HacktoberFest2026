@@ -83,6 +83,17 @@ def map_score_to_condition_label(score: int | float) -> ConditionLabel:
     return "Para piezas"
 
 
+class VisionDynamicField(CamelModel):
+    """Dynamic category-specific attribute extracted or suggested by Vision AI."""
+
+    key: str = Field(..., min_length=1)
+    label: str = Field(..., min_length=1)
+    value: str = Field(default="")
+    field_type: Literal["text", "select", "number"] = Field(default="text")
+    options: list[str] = Field(default_factory=list)
+    placeholder: str | None = Field(default=None)
+
+
 class VisionAnalyzeRequest(CamelModel):
     """Input payload for POST /api/vision/analyze."""
 
@@ -102,6 +113,7 @@ class VisionAnalysisResult(CamelModel):
     condition_reasoning: str = Field(..., min_length=5)
     seo_title: str = Field(..., min_length=5, max_length=SEO_TITLE_MAX_LENGTH)
     seo_description: str = Field(..., min_length=15)
+    dynamic_fields: list[VisionDynamicField] = Field(default_factory=list)
     source: VisionProviderSource = Field(default="ollama_local")
     latency_ms: int | None = Field(default=None)
     model_used: str | None = Field(default=None)

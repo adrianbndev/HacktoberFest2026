@@ -18,6 +18,7 @@ from app.models.sdd import (
     clamp_condition_score,
     map_score_to_condition_label,
 )
+from app.vision.dynamic_fields import build_dynamic_fields, ensure_dotenv_loaded
 from app.vision.protocol import (
     ImageVisualMetrics,
     build_seo_description,
@@ -37,22 +38,30 @@ PREFERRED_MAC_VISION_MODELS: tuple[str, ...] = (
 )
 
 
+class _VLMAttribute(BaseModel):
+    key: str = Field(..., description="Clave del atributo (ej: fuelType, storage, material, color, year)")
+    value: str = Field(..., description="Valor observado o estimado en español")
+
+
 class _VLMFormExtractionSchema(BaseModel):
     name: str = Field(..., description="Nombre comercial completo en español")
-    category: str = Field(..., description="Categoría de mercado")
+    category: str = Field(..., description="Categoría (ej: Móviles y Telefonía, Motor y Vehículos, Consolas y Videojuegos, Mobiliario y Decoración)")
     brand: str = Field(..., description="Marca comercial")
     model: str = Field(..., description="Modelo específico o referencia")
     condition_score: int = Field(..., ge=0, le=100, description="Salud visual 0 a 100")
     condition_reasoning: str = Field(..., description="Explicación breve en español")
     seo_title: str = Field(..., description="Título atractivo <= 65 caracteres para Wallapop")
     seo_description: str = Field(..., description="Descripción persuasiva de venta")
+    attributes: list[_VLMAttribute] = Field(default_factory=list, description="Atributos específicos según el tipo de objeto (combustible/carrocería si es coche, almacenamiento/pantalla si es móvil, material/estilo si es mueble)")
 
 
 SYSTEM_PROMPT_ES = (
-    "Eres un tasador experto de productos de segunda mano en España (Wallapop, Vinted, Milanuncios, eBay). "
-    "Analiza la fotografía del objeto y extrae con máxima precisión los datos para rellenar el formulario: "
-    "nombre comercial exacto (incluyendo color visible), marca, modelo, categoría y diagnóstico de estado físico "
-    "(condition_score de 0 a 100: 90-100 Nuevo, 80-89 Como nuevo, 65-79 Buen estado, 40-64 Desgaste visible, 0-39 Para piezas). "
+    "Eres un tasador experto de productos de segunda mano en España (Wallapop, Vinted, Milanuncios, Coches.net). "
+    "Analiza la fotografía del objeto y extrae con máxima precisión los datos para rellenar el formulario dinámico: "
+    "nombre comercial exacto (incluyendo color), marca, modelo, categoría (ej. 'Móviles y Telefonía', 'Motor y Vehículos', "
+    "'Consolas y Videojuegos', 'Informática y Portátiles', 'Mobiliario y Decoración', 'Moda y Accesorios', 'Audio y Sonido'), "
+    "estado físico (condition_score 0-100) y en 'attributes' incluye características propias del tipo de producto "
+    "(ej. si es coche: fuelType, transmission, bodyType, color; si es móvil: storage, color, screenStatus; si es mueble: material, style, color). "
     "Responde SIEMPRE en JSON válido."
 )
 
@@ -75,8 +84,9 @@ class OllamaVisionProvider:
         self,
         base_url: str | None = None,
         model_name: str | None = None,
-        request_timeout_sec: float = 2.5,
+        request_timeout_sec: float | None = None,
     ) -> None:
+        ensure_dotenv_loaded()
         raw_url = (
             base_url
             or os.getenv("VISION_OLLAMA_BASE_URL")
@@ -85,7 +95,7 @@ class OllamaVisionProvider:
         ).rstrip("/")
         self.base_url = raw_url if raw_url.startswith("http") else f"http://{raw_url}"
         self.configured_model = model_name or os.getenv("VISION_OLLAMA_MODEL") or "qwen2.5vl:7b"
-        self.request_timeout_sec = request_timeout_sec
+        self.request_timeout_sec = request_timeout_sec or float(os.getenv("VISION_TIMEOUT_SEC", "15.0"))
         self._resolved_model: str | None = None
         self._last_check_ts: float = 0.0
         self._cached_health: dict[str, Any] | None = None
@@ -101,8 +111,10 @@ class OllamaVisionProvider:
         if not force and self._cached_health and (now - self._last_check_ts) < self.CIRCUIT_BREAKER_TTL_SEC:
             return self._cached_health
 
+        is_local = "127.0.0.1" in self.base_url or "localhost" in self.base_url
+        ping_timeout = 1.0 if is_local else 3.5
         try:
-            tags_data = await asyncio.to_thread(_http_json_request, f"{self.base_url}/api/tags", None, 1.2)
+            tags_data = await asyncio.to_thread(_http_json_request, f"{self.base_url}/api/tags", None, ping_timeout)
             models = [m.get("name", "") for m in tags_data.get("models", [])]
             res = {
                 "reachable": True,
@@ -128,12 +140,7 @@ class OllamaVisionProvider:
             return self.configured_model
         for cand in PREFERRED_MAC_VISION_MODELS:
             for inst in installed:
-                if inst == cand or inst.startswith(cand):
-                    return inst
-        for cand in PREFERRED_MAC_VISION_MODELS:
-            family = cand.split(":")[0]
-            for inst in installed:
-                if inst.startswith(family):
+                if inst == cand or inst.startswith(cand.split(":")[0]):
                     return inst
         return installed[0]
 
@@ -156,10 +163,7 @@ class OllamaVisionProvider:
         del image, photo_data_url
         model_to_use = await self._resolve_model()
         hint_clause = f"\nPista adicional del usuario: '{user_hint}'." if user_hint else ""
-        context = (
-            f"Color dominante en el centro: {metrics.color_name_es}. "
-            f"Resolución original: {metrics.width}x{metrics.height}.{hint_clause}"
-        )
+        context = f"Color dominante: {metrics.color_name_es}. Resolución: {metrics.width}x{metrics.height}.{hint_clause}"
 
         payload: dict[str, Any] = {
             "model": model_to_use,
@@ -167,14 +171,14 @@ class OllamaVisionProvider:
                 {"role": "system", "content": SYSTEM_PROMPT_ES},
                 {
                     "role": "user",
-                    "content": f"Identifica este producto para pre-rellenar el formulario. {context}",
+                    "content": f"Identifica este producto y sus campos dinámicos para el formulario. {context}",
                     "images": [metrics.optimized_jpeg_b64],
                 },
             ],
             "format": _VLMFormExtractionSchema.model_json_schema(),
             "stream": False,
             "keep_alive": "30m",
-            "options": {"temperature": 0.1, "num_predict": 320},
+            "options": {"temperature": 0.1, "num_predict": 380},
         }
 
         try:
@@ -189,9 +193,11 @@ class OllamaVisionProvider:
         except Exception as exc:
             self.last_error = f"Ollama error ({model_to_use}): {exc}"
             raise
+
         extracted = _VLMFormExtractionSchema.model_validate_json(raw.get("message", {}).get("content", "{}"))
         score = clamp_condition_score(extracted.condition_score)
         label = map_score_to_condition_label(score)
+        raw_attrs = {item.key: item.value for item in extracted.attributes if item.key and item.value}
 
         return VisionAnalysisResult(
             name=extracted.name.strip(),
@@ -211,6 +217,14 @@ class OllamaVisionProvider:
                 condition_label=label,
                 condition_reasoning=extracted.condition_reasoning,
                 candidate_description=extracted.seo_description,
+            ),
+            dynamic_fields=build_dynamic_fields(
+                category=extracted.category,
+                name=extracted.name,
+                brand=extracted.brand,
+                model=extracted.model,
+                color_name_es=metrics.color_name_es,
+                raw_attributes=raw_attrs,
             ),
             source="ollama_local",
             model_used=model_to_use,

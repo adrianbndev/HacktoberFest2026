@@ -96,12 +96,29 @@ CATALOG_TEMPLATES: tuple[CatalogItemTemplate, ...] = (
         model="iPad Air 5ª Gen A2588",
         base_score=87,
     ),
+    CatalogItemTemplate(
+        keywords=("coche", "auto", "vehiculo", "vehículo", "seat", "leon", "león", "ibiza", "volkswagen", "golf", "bmw", "toyota", "audi"),
+        name="SEAT León 1.5 TSI 130CV Style",
+        category="Motor y Vehículos",
+        brand="SEAT",
+        model="León 1.5 TSI",
+        base_score=84,
+    ),
+    CatalogItemTemplate(
+        keywords=("silla", "mesa", "sofa", "sofá", "mueble", "mobiliario", "butaca", "armario", "madera"),
+        name="Silla de comedor en madera maciza",
+        category="Mobiliario y Decoración",
+        brand="Artesanal",
+        model="Clásica Madera",
+        base_score=85,
+    ),
 )
 
 KNOWN_BRANDS: tuple[str, ...] = (
     "Apple", "Sony", "Nintendo", "Canon", "LG", "Samsung", "Orbea", "Keychron",
     "Bosch", "Dell", "Lenovo", "HP", "Xiaomi", "Asus", "Logitech", "Microsoft",
     "Nike", "Adidas", "Fender", "Yamaha", "Sennheiser", "Bose", "Dyson", "Cecotec",
+    "SEAT", "Volkswagen", "BMW", "Audi", "Mercedes", "Toyota", "Renault", "Peugeot", "Ford", "Tesla", "IKEA",
 )
 
 
@@ -118,7 +135,9 @@ def synthesize_template_from_hint(hint: str) -> CatalogItemTemplate:
     model_words = [w for w in words if w.lower() != brand.lower()]
     model = " ".join(model_words) if model_words else "Estándar"
 
-    if any(k in low for k in ("consola", "juego", "play", "game", "xbox", "nintendo")):
+    if any(k in low for k in ("coche", "auto", "vehiculo", "vehículo", "moto", "seat", "bmw", "audi", "volkswagen", "toyota", "mercedes", "renault", "peugeot", "ford", "tesla")):
+        category = "Motor y Vehículos"
+    elif any(k in low for k in ("consola", "juego", "play", "game", "xbox", "nintendo")):
         category = "Consolas y Videojuegos"
     elif any(k in low for k in ("movil", "móvil", "telefono", "phone", "smartphone", "iphone")):
         category = "Móviles y Telefonía"
@@ -134,6 +153,8 @@ def synthesize_template_from_hint(hint: str) -> CatalogItemTemplate:
         category = "Periféricos"
     elif any(k in low for k in ("herramienta", "taladro", "sierra", "lijadora", "bricolaje")):
         category = "Bricolaje y Herramientas"
+    elif any(k in low for k in ("silla", "mesa", "sofa", "sofá", "mueble", "mobiliario", "armario", "estanteria", "estantería", "butaca")):
+        category = "Mobiliario y Decoración"
     elif any(k in low for k in ("cafetera", "aspirador", "robot", "hogar", "electrodoméstico")):
         category = "Hogar y Electrodomésticos"
     elif any(k in low for k in ("zapatilla", "deportiva", "ropa", "chaqueta", "moda")):
