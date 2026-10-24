@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import { X } from "lucide-react";
 import type { InventoryItem } from "@/types/sdd";
 import { useDashboard } from "@/components/dashboard/DashboardShell";
+import { setLaptopBusyReason } from "@/components/mobile-sync/useCaptureSession";
 import { PRODUCT_CATEGORIES } from "@/lib/vision/category-fields";
 import { STATUS_LABEL, formatEur } from "./format";
 
@@ -28,7 +29,12 @@ export function EditItemDialog({ open, item, onClose }: EditItemDialogProps) {
     const dialog = dialogRef.current;
     if (open && !dialog?.open) dialog?.showModal();
     if (!open && dialog?.open) dialog.close();
-  }, [open]);
+    if (!open) return;
+    setLaptopBusyReason(
+      `Se está editando "${item.name}" en el portátil. Guarda o cancela la edición en el PC para sacar una foto.`,
+    );
+    return () => setLaptopBusyReason(null);
+  }, [open, item.name]);
 
   return (
     <dialog

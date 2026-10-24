@@ -72,6 +72,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <MobileSyncModal
         userId={state.user.uid}
         isOpen={captureOpen}
+        onOpen={() => setCaptureOpen(true)}
         onClose={closeCapture}
         onItemCreated={(item) => {
           setLastAddedId(item.id);

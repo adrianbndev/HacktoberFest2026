@@ -175,6 +175,7 @@ export interface MobileCaptureSession {
   status: CaptureSessionStatus;
   photoDataUrl?: string;
   resultItem?: InventoryItem;
+  busyReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }

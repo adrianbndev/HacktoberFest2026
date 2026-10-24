@@ -12,8 +12,10 @@ import { useCaptureSession } from "./useCaptureSession";
 export interface MobileSyncModalProps {
   userId: TeamMemberId;
   isOpen: boolean;
+  onOpen?: () => void;
   onClose: () => void;
   onItemCreated: (newItem: InventoryItem) => void;
+  busyReason?: string | null;
 }
 
 // Si el PC usa localhost, el QR apunta a la IP de la red local que detecta el backend.
@@ -22,24 +24,36 @@ function defaultBaseUrl(mobileUrl: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" ? new URL(mobileUrl).origin : origin;
 }
 
-export function MobileSyncModal({ isOpen, ...props }: MobileSyncModalProps) {
-  return isOpen ? <MobileSyncDialog {...props} /> : null;
+export function MobileSyncModal({ userId, isOpen, onOpen, onClose, onItemCreated, busyReason }: MobileSyncModalProps) {
+  const capture = useCaptureSession(userId, onItemCreated, {
+    onOpenModal: onOpen,
+    externalBusyReason: busyReason,
+  });
+
+  if (!isOpen) return null;
+
+  return (
+    <MobileSyncDialog
+      capture={capture}
+      onClose={() => {
+        capture.handleModalClose();
+        onClose();
+      }}
+    />
+  );
 }
 
-function MobileSyncDialog({ userId, onClose, onItemCreated }: Omit<MobileSyncModalProps, "isOpen">) {
+function MobileSyncDialog({
+  capture,
+  onClose,
+}: {
+  capture: ReturnType<typeof useCaptureSession>;
+  onClose: () => void;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
-  const {
-    session,
-    step,
-    photo,
-    visionDraft,
-    item,
-    simulateCapture,
-    confirmVisionAndValuate,
-    resetToCapture,
-  } = useCaptureSession(userId, onItemCreated);
+  const { session, step, photo, visionDraft, item, simulateCapture, confirmVisionAndValuate, resetToCapture } = capture;
 
   useEffect(() => dialogRef.current?.showModal(), []);
 

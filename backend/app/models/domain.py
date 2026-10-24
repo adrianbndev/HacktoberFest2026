@@ -80,6 +80,7 @@ class MobileCaptureSession(CamelModel):
     status: CaptureSessionStatus
     photo_data_url: str | None = None
     result_item: InventoryItem | None = None
+    busy_reason: str | None = Field(default=None, max_length=300)
     created_at: str
     updated_at: str
 
@@ -94,6 +95,7 @@ class CaptureSessionUpdate(CamelModel):
     status: CaptureSessionStatus
     # Solo imágenes en data URL y con tope de tamaño: llega desde el móvil sin autenticar.
     photo_data_url: str | None = Field(default=None, max_length=2_000_000, pattern=r"^data:image/")
+    busy_reason: str | None = Field(default=None, max_length=300)
 
 
 # ---------- 4. Notificaciones de mercado ----------

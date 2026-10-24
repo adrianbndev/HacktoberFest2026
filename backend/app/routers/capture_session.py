@@ -37,11 +37,17 @@ def _now() -> str:
 
 @router.post("/capture-session", response_model=CaptureSessionCreated)
 def create_session(user: CurrentUser, store: Store) -> CaptureSessionCreated:
-    # El móvil no inicia sesión: el sessionId del QR es su única credencial, así que no debe poder adivinarse.
-    session_id = uuid.uuid4().hex
-    store.save_session(MobileCaptureSession(
-        session_id=session_id, user_id=user.uid, status="waiting_for_mobile", created_at=_now(), updated_at=_now()
-    ))
+    # Sesión determinista por usuario: móvil y portátil siguen vinculados aunque ambos recarguen la página.
+    session_id = uuid.uuid5(uuid.NAMESPACE_URL, f"lifeos-capture:{user.uid}").hex
+    existing = store.get_session(session_id)
+    if existing is None:
+        store.save_session(MobileCaptureSession(
+            session_id=session_id, user_id=user.uid, status="waiting_for_mobile", created_at=_now(), updated_at=_now()
+        ))
+    elif existing.status == "analyzing" or existing.busy_reason is not None:
+        store.save_session(
+            existing.model_copy(update={"status": "mobile_connected", "busy_reason": None, "updated_at": _now()})
+        )
     ips = lan_ips()
     host = ips[0] if ips else "localhost"
     return CaptureSessionCreated(
@@ -62,7 +68,12 @@ def update_session(session_id: str, body: CaptureSessionUpdate, store: Store) ->
     session = store.get_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="La sesión de captura no existe")
-    update = {"status": body.status, "updated_at": _now()}
+    if body.status == "photo_uploaded" and (session.status == "analyzing" or session.busy_reason):
+        raise HTTPException(
+            status_code=409,
+            detail=session.busy_reason or "El portátil está ocupado con otro producto ahora mismo.",
+        )
+    update: dict[str, object] = {"status": body.status, "updated_at": _now(), "busy_reason": body.busy_reason}
     if body.photo_data_url:
         update["photo_data_url"] = body.photo_data_url
     session = session.model_copy(update=update)

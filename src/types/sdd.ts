@@ -73,6 +73,7 @@ export interface MobileCaptureSession {
   status: CaptureSessionStatus;
   photoDataUrl?: string;
   resultItem?: InventoryItem;
+  busyReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,6 +82,7 @@ export interface CaptureSessionCreated { sessionId: string; mobileUrl: string; l
 export interface CaptureSessionUpdate {                                     // PUT /api/capture-session/{id}
   status: CaptureSessionStatus;
   photoDataUrl?: string;          // data:image/... comprimida en el móvil (<= 800 px, JPEG 0.75)
+  busyReason?: string | null;     // Motivo por el que el PC no admite otra foto ahora mismo
 }
 
 export type NotificationType = 'price_up' | 'price_down' | 'sell_opportunity' | 'delivery_reminder';
