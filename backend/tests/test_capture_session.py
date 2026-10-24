@@ -1,8 +1,7 @@
-from fastapi.testclient import TestClient
-
 from app.auth import AuthenticatedUser, current_user
 from app.main import app
 from app.store.repository import get_store
+from fastapi.testclient import TestClient
 
 PHOTO = "data:image/jpeg;base64,/9j/AA=="
 

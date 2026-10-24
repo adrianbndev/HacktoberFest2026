@@ -6,6 +6,7 @@ import base64
 import io
 import os
 from pathlib import Path
+
 from PIL import Image, ImageFilter, ImageOps, ImageStat
 
 from app.vision.protocol import ImageVisualMetrics

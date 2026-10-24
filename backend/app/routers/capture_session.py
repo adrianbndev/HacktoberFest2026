@@ -1,7 +1,7 @@
 """Sesión de captura móvil <-> PC (MOD-02): el móvil sube la foto y el PC la recoge con polling."""
 import socket
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -32,7 +32,7 @@ def lan_ips() -> list[str]:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @router.post("/capture-session", response_model=CaptureSessionCreated)

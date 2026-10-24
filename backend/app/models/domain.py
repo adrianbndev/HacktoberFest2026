@@ -7,8 +7,16 @@ from typing import Literal
 from pydantic import Field
 
 from app.models.base import (
-    CamelModel, CaptureSessionStatus, ConditionLabel, ConditionScore, MarketPlatform, MetricChanged,
-    NotificationType, PriceTriplet, TeamMemberId, WeatherCondition,
+    CamelModel,
+    CaptureSessionStatus,
+    ConditionLabel,
+    ConditionScore,
+    MarketPlatform,
+    MetricChanged,
+    NotificationType,
+    PriceTriplet,
+    TeamMemberId,
+    WeatherCondition,
 )
 from app.models.sdd import VisionAnalysisResult, VisionAnalyzeRequest  # Track B, se amplían abajo
 

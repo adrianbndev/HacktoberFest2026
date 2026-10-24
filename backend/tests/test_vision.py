@@ -6,11 +6,12 @@ import asyncio
 import base64
 import io
 import unittest
+
 from PIL import Image
 
 try:
-    from fastapi.testclient import TestClient
     from app.main import app
+    from fastapi.testclient import TestClient
 except ImportError:
     TestClient = None  # type: ignore[assignment,misc]
     app = None  # type: ignore[assignment]

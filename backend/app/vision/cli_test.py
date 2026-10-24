@@ -8,6 +8,7 @@ import io
 import json
 import sys
 from pathlib import Path
+
 from PIL import Image, ImageDraw
 
 # Ensure backend root is in sys.path and load .env automatically when invoked directly

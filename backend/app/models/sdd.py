@@ -5,7 +5,9 @@ Mirrors src/types/sdd.ts 1:1 using camelCase serialization aliases.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
@@ -118,42 +120,130 @@ class VisionAnalysisResult(CamelModel):
         return cleaned[: SEO_TITLE_MAX_LENGTH - 1].rstrip(" -|,.") + "…"
 
     @model_validator(mode="after")
-    def _enforce_rubric_label(self) -> "VisionAnalysisResult":
+    def _enforce_rubric_label(self) -> VisionAnalysisResult:
         self.condition_label = map_score_to_condition_label(self.condition_score)
         return self
 
 
-class ValuationRequest(CamelModel):
-    """Input payload for POST /api/market/valuate."""
+MAX_COMPARABLE_LISTINGS = 12
+ValuationSource = Literal["live_mcp", "stealth_fallback"]
 
-    query: str
-    brand: str | None = None
-    model: str | None = None
-    category: str
+
+class ValuationRequest(CamelModel):
+    model_config = ConfigDict(extra="forbid")
+    query: str = Field(..., min_length=2, max_length=200)
+    brand: str | None = Field(default=None, max_length=80)
+    model: str | None = Field(default=None, max_length=120)
+    category: str = Field(..., min_length=1, max_length=120)
     condition_score: int = Field(..., ge=0, le=100)
     condition_label: ConditionLabel
+    description: str | None = Field(default=None, max_length=2000)
+    include_recommendation: bool = False
+
+    @field_validator("query", "category")
+    @classmethod
+    def _require_visible_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value
 
 
 MarketValuationRequest = ValuationRequest
 
 
-class MarketListingSample(CamelModel):
-    """Comparable secondhand listing sample."""
+class PricePoint(CamelModel):
+    timestamp: str = Field(..., min_length=10, max_length=64)
+    price_min: int = Field(..., ge=1)
+    price_avg: int = Field(..., ge=1)
+    price_max: int = Field(..., ge=1)
+    sample_size: int = Field(..., ge=1)
+    platforms: list[MarketPlatform] = Field(..., min_length=1)
 
-    title: str
-    price: float
+    @field_validator("timestamp")
+    @classmethod
+    def _check_timestamp(cls, value: str) -> str:
+        _parse_iso_timestamp(value)
+        return value
+
+    @model_validator(mode="after")
+    def _check_triplet(self) -> PricePoint:
+        _assert_strict_triplet(self.price_min, self.price_avg, self.price_max)
+        return self
+
+
+class MarketListingSample(CamelModel):
+    title: str = Field(..., min_length=1, max_length=300)
+    price: float = Field(..., ge=1, le=1_000_000)
     platform: MarketPlatform
-    condition: str
-    url: str | None = None
+    condition: str = Field(..., min_length=1, max_length=80)
+    url: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("url")
+    @classmethod
+    def _check_url(cls, value: str | None) -> str | None:
+        if value is not None and not value.startswith(("http://", "https://")):
+            raise ValueError("url must be an absolute http(s) URL")
+        return value
+
+
+class ValuationRecommendation(CamelModel):
+    summary: str = Field(..., min_length=1, max_length=600)
+    suggested_price: int = Field(..., ge=1)
+    bullets: list[str] = Field(default_factory=list, max_length=8)
+    risks: list[str] = Field(default_factory=list, max_length=8)
+    negotiation_margin_eur: int = Field(..., ge=0)
 
 
 class MarketValuationResult(CamelModel):
-    """Output payload for POST /api/market/valuate."""
+    price_min: int = Field(..., ge=1)
+    price_avg: int = Field(..., ge=1)
+    price_max: int = Field(..., ge=1)
+    sample_size: int = Field(..., ge=1)
+    platforms: list[MarketPlatform] = Field(..., min_length=1)
+    comparable_listings: list[MarketListingSample] = Field(
+        default_factory=list, max_length=MAX_COMPARABLE_LISTINGS
+    )
+    source: ValuationSource
+    recommendation: ValuationRecommendation | None = None
+    warnings: list[str] = Field(default_factory=list)
 
-    price_min: float
-    price_avg: float
-    price_max: float
-    sample_size: int
-    platforms: list[MarketPlatform]
-    comparable_listings: list[MarketListingSample]
-    source: Literal["live_mcp", "stealth_fallback"]
+    @model_validator(mode="after")
+    def _check_response_invariants(self) -> MarketValuationResult:
+        _assert_strict_triplet(self.price_min, self.price_avg, self.price_max)
+        if len(set(self.platforms)) != len(self.platforms):
+            raise ValueError("platforms must not contain duplicates")
+        missing = {listing.platform for listing in self.comparable_listings} - set(self.platforms)
+        if missing:
+            raise ValueError(f"comparable listings use undeclared platforms: {sorted(missing)}")
+        return self
+
+
+class MarketHealthResponse(CamelModel):
+    status: Literal["ok"]
+    service: str
+    version: str
+    fallback_enabled: bool
+    jitter_enabled: bool
+    recommendation_enabled: bool
+    timestamp: str
+
+    @field_validator("timestamp")
+    @classmethod
+    def _check_timestamp(cls, value: str) -> str:
+        _parse_iso_timestamp(value)
+        return value
+
+
+def _parse_iso_timestamp(value: str) -> None:
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("timestamp must be an ISO 8601 string") from exc
+
+
+def _assert_strict_triplet(price_min: int, price_avg: int, price_max: int) -> None:
+    if not 0 < price_min < price_avg < price_max:
+        raise ValueError(
+            "price triplet must satisfy 0 < priceMin < priceAvg < priceMax "
+            f"(got {price_min}, {price_avg}, {price_max})"
+        )

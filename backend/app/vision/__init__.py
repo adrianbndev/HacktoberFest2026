@@ -13,11 +13,11 @@ from app.vision.protocol import (
 )
 
 __all__ = [
+    "PREFERRED_MAC_VISION_MODELS",
     "DeterministicVisionProvider",
     "ImageVisualMetrics",
     "OllamaVisionProvider",
     "OpenAIVisionProvider",
-    "PREFERRED_MAC_VISION_MODELS",
     "ResilientVisionOrchestrator",
     "VisionProviderProtocol",
     "build_seo_description",

@@ -9,6 +9,7 @@ import time
 import urllib.error
 import urllib.request
 from typing import Any
+
 from PIL import Image
 from pydantic import BaseModel, Field
 

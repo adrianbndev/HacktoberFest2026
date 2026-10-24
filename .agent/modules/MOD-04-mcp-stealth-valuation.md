@@ -2,8 +2,8 @@
 
 * **Nivel SDD:** 🟢 Nivel 1.4
 * **Responsable:** **Track C (Matías)**
-* **Estado Actual:** `⏳ READY`
-* **SLA de Latencia:** $\le 2800\text{ ms}$ (incluyendo *jitter* humano de $650\text{ ms} - 1200\text{ ms}$)
+* **Estado Actual:** `🚧 IN_PROGRESS` (Fase 1 — fast valuation core)
+* **SLA de Latencia:** $\le 2800\text{ ms}$ (incluyendo *jitter* humano de $650\text{ ms} - 1200\text{ ms}$; $200-600\text{ ms}$ en `/valuate`)
 
 ---
 
@@ -53,8 +53,42 @@
 
 ## 4. Checklist de Control y Calidad (MOD-04)
 
-- [ ] Tests `pytest` sobre `pricing_math.py` (`backend/tests/test_pricing_math.py`) verificando que para cualquier combinación de precios y `conditionScore` $\in [0, 100]$ se cumple $0 < P_{\min} < P_{\text{avg}} < P_{\max}$.
-- [ ] Verificación de que un `conditionScore = 95` ("Nuevo") devuelve un $P_{\text{avg}}$ superior a un `conditionScore = 50` ("Desgaste visible") para el mismo artículo.
-- [ ] Jitter humano configurable (activo por defecto entre $650\text{ ms}$ y $1200\text{ ms}$, y modo instantáneo para tests unitarios).
-- [ ] Retorno de `comparableListings` con muestras de `wallapop`, `vinted`, `milanuncios` y `ebay`.
-- [ ] Servidor MCP operable por CLI y endpoint `/api/market/valuate` respondiendo en $\le 2.8\text{ s}$.
+- [x] Tests unitarios sobre `pricing_math.py` (equivalente Python de `pricing-math.ts`) verificando que para cualquier combinación de precios y `conditionScore` $\in [0, 100]$ se cumple $0 < P_{\min} < P_{\text{avg}} < P_{\max}$ (`backend/tests/test_pricing_math.py`, property-based con Hypothesis).
+- [x] Verificación de que un `conditionScore = 95` ("Nuevo") devuelve un $P_{\text{avg}}$ superior a un `conditionScore = 50` ("Desgaste visible") para el mismo artículo (test de monotonicidad).
+- [x] Jitter humano configurable (`human_jitter`, 650-1200 ms por defecto según `stealth-market-mcp.md` §2.1; `max_sec=0` instantáneo para tests unitarios).
+- [x] Retorno de `comparableListings` con muestras de `wallapop`, `milanuncios` y `ebay` (Vinted diferido a Fase 2, ver ADR-002).
+- [x] Endpoint `/api/market/valuate` respondiendo en $< 3.5\text{ s}$ (SLA interna $< 2.8\text{ s}$ con conectores mockeados).
+- [ ] Servidor MCP operable por CLI (`backend/mcp_server.py`): fuera del alcance de la Fase 1 (ver ADR-002).
+
+---
+
+## 5. Estado de implementación — Fase 1 (Fast Valuation Core)
+
+* **Estado:** `🚧 IN_PROGRESS` — núcleo rápido implementado y verificado; `mcp_server.py` y Vinted quedan fuera de esta fase (ver ADR-002).
+
+### Implementado y verificado
+
+* `backend/app/models/sdd.py`: contratos de mercado Pydantic v2 (`camelCase`), invariante estricta y campos aditivos opcionales.
+* `backend/app/mcp/pricing_math.py`: funciones puras, IQR, `W_health`, triplete e invariante.
+* `backend/app/mcp/normalize.py`, `stealth_http.py`, `connectors.py`: normalización, cabeceras ES coherentes, jitter configurable y conectores eBay/Wallapop/Milanuncios con detección de bloqueo.
+* `backend/app/mcp/catalog_fallback.py`: catálogo curado España 2026 + estimador SHA-256 + deep links.
+* `backend/app/mcp/deepseek.py` + `deepseek_client.py`: parseo, relevancia y recomendación con validación, reintento, fallback de modelo y plantilla determinista.
+* `backend/app/mcp/market_analysis.py` + `routers/market.py`: orquestación, `POST /api/market/valuate`, `GET /api/market/health` y `503` estructurado.
+* `backend/Dockerfile`, `backend/Dockerfile.browser`, `docker-compose.yml`, `.env.example`, `scripts/smoke_live.py`.
+* Documentación: [`docs/market-analysis.md`](../../docs/market-analysis.md), [`docs/backlog.md`](../../docs/backlog.md), [ADR-002](../decisions/002-market-valuation-contract.md).
+
+### Evidencia
+
+* `pytest -q`: **177 tests** verdes; `ruff check app tests` y `mypy app` limpios.
+* `docker compose config` válido; `lifeos-backend` y `market-browser` en estado `healthy`.
+* `POST /api/market/valuate` medido en Docker: **1.79 s** con anuncios reales de Milanuncios (`source=live_mcp`) y **1.8–2.3 s** con fallback determinista cuando eBay/Wallapop bloquean; SLA interna ≤ 2.8 s con conectores mockeados.
+* `503` estructurado verificado por tests de API cuando `MARKET_ALLOW_FALLBACK=false`.
+* Recomendación real con `deepseek-v4-pro` verificada (≈23 s con thinking/max; ventana opt-in fuera del SLA de 2,8 s del mercado).
+* Spike de navegador (arm64, Chromium 156/Xvfb): `webdriver=false`, `es-ES`, `Europe/Madrid`, sin `__puppeteer`/`__playwright`; Wallapop 40 anuncios; eBay 60 en la primera pasada y página anti-bot después.
+
+### Diferido (no bloqueante)
+
+* Conector Vinted.
+* `backend/mcp_server.py` (FastMCP) y `POST /api/market/analyze` + SSE + caché SQLite + motor de navegador completo (Fase 2).
+* Espejo de campos opcionales en `src/types/sdd.ts` (MOD-00 / Track A).
+* Validación con una API key real de DeepSeek (no disponible en este entorno).

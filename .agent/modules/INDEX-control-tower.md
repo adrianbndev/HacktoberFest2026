@@ -12,7 +12,7 @@
 | **MOD-01** | Login, Bento UI & "Mi Inventario" | 🟢 Nivel 1.1 | **Track A (Ales)** | $< 100\text{ ms}$ | `✅ DONE` | [MOD-01-auth-and-inventory-ui.md](MOD-01-auth-and-inventory-ui.md) |
 | **MOD-02** | Sync Cámara Móvil $\leftrightarrow$ PC (QR + SSE/Polling) | 🟢 Nivel 1.2 | **Track B (Adri)** | $< 1500\text{ ms}$ | `🚧 IN_PROGRESS` (falta SSE) | [MOD-02-mobile-pc-sync.md](MOD-02-mobile-pc-sync.md) |
 | **MOD-03** | Visión IA: Producto, Salud ($0-100\%$) & SEO | 🟢 Nivel 1.3 | **Track B (Adri)** | $< 2500\text{ ms}$ | `✅ DONE` | [MOD-03-vision-health-seo.md](MOD-03-vision-health-seo.md) |
-| **MOD-04** | Motor MCP Stealth Multi-Web & 3 Precios | 🟢 Nivel 1.4 | **Track C (Matías)** | $< 2800\text{ ms}$ | `⏳ READY` | [MOD-04-mcp-stealth-valuation.md](MOD-04-mcp-stealth-valuation.md) |
+| **MOD-04** | Motor MCP Stealth Multi-Web & 3 Precios | 🟢 Nivel 1.4 | **Track C (Matías)** | $< 2800\text{ ms}$ | `🚧 IN_PROGRESS` | [MOD-04-mcp-stealth-valuation.md](MOD-04-mcp-stealth-valuation.md) |
 | **MOD-05** | Rastreo Periódico, Botón Demo & Alertas ($\uparrow/\downarrow$) | 🟡 Nivel 2 | **Track C + A** | $< 2500\text{ ms}$ | `🔒 LOCKED (Gate 1)` | [MOD-05-price-tracker-and-alerts.md](MOD-05-price-tracker-and-alerts.md) |
 | **MOD-06** | LifeOS: Planes Locales, Clima & Calendario | 🟠 Nivel 3 | **Track C + A** | $< 1200\text{ ms}$ | `🔒 LOCKED (Gate 2)` | [MOD-06-lifeos-weather-plans-calendar.md](MOD-06-lifeos-weather-plans-calendar.md) |
 | **MOD-07** | GitHub Hacktoberfest 2026 & Resumen IA 2 Líneas | 🔴 Nivel 4 | **Track C + A** | $< 2000\text{ ms}$ | `🔒 LOCKED (Gate 3)` | [MOD-07-github-hacktoberfest-ai.md](MOD-07-github-hacktoberfest-ai.md) |

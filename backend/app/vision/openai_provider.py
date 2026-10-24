@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+
 from PIL import Image
 from pydantic import BaseModel, Field
 

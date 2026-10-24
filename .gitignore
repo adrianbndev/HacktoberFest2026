@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,15 +40,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-!.env.example
 
 # python
 .venv/
+venv/
+env/
 __pycache__/
+*.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # datos de la demo (se regeneran desde la semilla con POST /api/store/reset)
 /data/
+backend/data/
+*.sqlite
+*.sqlite3
+
+# artefactos locales de la demo / spike
+artifacts/
+chrome-profile/
+
 # Scratchpad de tarea actual (local)
 user-taks-prompt.md
 
@@ -56,20 +71,12 @@ user-taks-prompt.md
 .env.local
 .env.*.local
 
-# Python / FastAPI
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.pytest_cache/
-
-# Next.js / Node
-node_modules/
-.next/
-out/
-
 # Clave privada de la cuenta de servicio de Firebase (nunca al repo)
 firebase-service-account.json
 
 # Local
 .local/
+
+# OS / editors
+.idea/
+.vscode/

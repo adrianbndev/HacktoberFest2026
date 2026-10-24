@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
-
 from app.auth import AuthenticatedUser, current_user
 from app.main import app
 from app.store.repository import get_store
 from app.store.seed_data import demo_items
+from fastapi.testclient import TestClient
 
 MATIAS = AuthenticatedUser(uid="uid-matias", name="Matías", email="matias@example.com", picture=None)
 ALES = AuthenticatedUser(uid="uid-ales", name="Ales", email="ales@example.com", picture=None)

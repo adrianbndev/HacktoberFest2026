@@ -1,10 +1,19 @@
-"""Almacén en memoria con la misma interfaz que Firestore, para probar la API sin red ni credenciales."""
-import pytest
+"""Shared pytest fixtures: in-memory store (main) and hermetic settings (phase)."""
 
+from __future__ import annotations
+
+import os
+
+import pytest
+from app.config import get_settings
 from app.models.domain import InventoryItem, MobileCaptureSession, UserProfile
+
+ISOLATED_ENV_KEYS = ("MARKET_", "DEEPSEEK_")
 
 
 class InMemoryStore:
+    """Almacén en memoria con la misma interfaz que Firestore, sin red ni credenciales."""
+
     def __init__(self) -> None:
         self.profiles: dict[str, UserProfile] = {}
         self.items: dict[tuple[str, str], InventoryItem] = {}
@@ -39,3 +48,14 @@ class InMemoryStore:
 @pytest.fixture
 def memory_store() -> InMemoryStore:
     return InMemoryStore()
+
+
+@pytest.fixture(autouse=True)
+def isolated_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LIFEOS_ENV_FILE", os.devnull)
+    for key in list(os.environ):
+        if key.upper().startswith(ISOLATED_ENV_KEYS):
+            monkeypatch.delenv(key, raising=False)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()

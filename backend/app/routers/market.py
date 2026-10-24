@@ -1,16 +1,63 @@
-"""STUB de MOD-00: tasación determinista sin red. Track C (Matías) lo sustituye por el motor MCP en MOD-04."""
-from fastapi import APIRouter
+"""`/api/market` routes: health probe and fast valuation."""
 
-from app.mcp.pricing_math import triplet_from_base
-from app.models.sdd import MarketValuationResult, ValuationRequest
+from __future__ import annotations
 
-router = APIRouter()
+from datetime import UTC, datetime
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+
+from app.config import Settings, get_settings
+from app.mcp.market_analysis import MarketAnalyzer, MarketUnavailableError
+from app.models.sdd import MarketHealthResponse, MarketValuationResult, ValuationRequest
+
+router = APIRouter(prefix="/market", tags=["market"])
+
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
-@router.post("/market/valuate", response_model=MarketValuationResult, response_model_exclude_none=True)
-def valuate(body: ValuationRequest) -> MarketValuationResult:
-    price_min, price_avg, price_max = triplet_from_base(200, body.condition_score)
-    return MarketValuationResult(
-        price_min=price_min, price_avg=price_avg, price_max=price_max, sample_size=0,
-        platforms=["wallapop", "vinted", "milanuncios", "ebay"], comparable_listings=[], source="stealth_fallback",
+def get_market_analyzer(settings: SettingsDep) -> MarketAnalyzer:
+    return MarketAnalyzer(settings)
+
+
+AnalyzerDep = Annotated[MarketAnalyzer, Depends(get_market_analyzer)]
+
+
+@router.get("/health", response_model=MarketHealthResponse, summary="Market engine health")
+async def market_health(settings: SettingsDep) -> MarketHealthResponse:
+    return MarketHealthResponse(
+        status="ok",
+        service=settings.app_name,
+        version=settings.app_version,
+        fallback_enabled=settings.market_allow_fallback,
+        jitter_enabled=settings.market_jitter_max_sec > 0,
+        recommendation_enabled=settings.deepseek_api_key is not None,
+        timestamp=datetime.now(UTC).isoformat(),
     )
+
+
+@router.post(
+    "/valuate",
+    response_model=MarketValuationResult,
+    response_model_exclude_none=True,
+    summary="Fast market valuation (P_min, P_avg, P_max)",
+    responses={503: {"description": "No live sources and fallback disabled"}},
+)
+async def valuate(
+    request: ValuationRequest, analyzer: AnalyzerDep
+) -> MarketValuationResult | JSONResponse:
+    try:
+        return await analyzer.valuate(request)
+    except MarketUnavailableError as exc:
+        return JSONResponse(
+            status_code=503, content={"detail": exc.detail, "sources": exc.sources}
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "Tasación no disponible temporalmente.",
+                "sources": {},
+            },
+        )

@@ -1,5 +1,5 @@
 """Datos de demo: perfil inicial desde la cuenta de Google y 3 productos con histórico de 3 escaneos (MOD-00 §3)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
 from app.mcp.pricing_math import triplet_from_base
@@ -36,7 +36,7 @@ def _iso(moment: datetime) -> str:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc).replace(microsecond=0)
+    return datetime.now(UTC).replace(microsecond=0)
 
 
 def _svg_data_url(label: str, color: str) -> str:
