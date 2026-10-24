@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
@@ -151,6 +152,7 @@ async def test_milanuncios_fetches_every_configured_page() -> None:
 
     assert requested == [None, "2", "3"]
     assert result.ok is True
+    assert result.partial is False
     assert len(result.listings) == 6
 
 
@@ -214,7 +216,9 @@ def test_milanuncios_rejects_inverted_page_delays() -> None:
         MilanunciosConnector(page_delay_min_sec=1.0, page_delay_max_sec=0.5)
 
 
-async def test_milanuncios_multi_page_stops_on_a_blocked_page() -> None:
+async def test_milanuncios_returns_previous_pages_when_a_later_page_blocks(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     body = _fixture("milanuncios_search_v2.html")
     calls = 0
 
@@ -225,6 +229,7 @@ async def test_milanuncios_multi_page_stops_on_a_blocked_page() -> None:
             return httpx.Response(200, text=_fixture("milanuncios_blocked.html"))
         return httpx.Response(200, text=body)
 
+    caplog.set_level(logging.WARNING, logger="app.mcp.connectors")
     async with _client(handler) as client:
         result = await MilanunciosConnector(
             client=client,
@@ -234,7 +239,27 @@ async def test_milanuncios_multi_page_stops_on_a_blocked_page() -> None:
         ).search("iPhone 13 128GB")
 
     assert calls == 2
+    assert result.ok is True
+    assert result.partial is True
+    assert result.failure_reason is None
+    assert [listing.price for listing in result.listings] == [299, 250]
+    assert "blocked_http_200" in caplog.text
+
+
+async def test_milanuncios_blocked_first_page_stays_a_blocked_result() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=_fixture("milanuncios_blocked.html"))
+
+    async with _client(handler) as client:
+        result = await MilanunciosConnector(
+            client=client,
+            max_pages=3,
+            page_delay_min_sec=0,
+            page_delay_max_sec=0,
+        ).search("iPhone 13 128GB")
+
     assert result.ok is False
+    assert result.partial is False
     assert result.listings == ()
     assert result.failure_reason == "blocked_http_200"
 

@@ -20,10 +20,12 @@ class FakeConnector:
         prices: list[int] | None = None,
         *,
         failure_reason: str | None = None,
+        partial: bool = False,
         delay_sec: float = 0.0,
     ) -> None:
         self.prices = prices or []
         self.failure_reason = failure_reason
+        self.partial = partial
         self.delay_sec = delay_sec
         self.calls = 0
 
@@ -42,7 +44,10 @@ class FakeConnector:
             for index, price in enumerate(self.prices)
         )
         return ConnectorResult(
-            "milanuncios", listings=listings, failure_reason=self.failure_reason
+            "milanuncios",
+            listings=listings,
+            failure_reason=self.failure_reason,
+            partial=self.partial,
         )
 
 
@@ -132,6 +137,47 @@ async def test_auto_reports_blocked_when_both_transports_block() -> None:
     assert source.calls == 1
 
 
+async def test_http_transport_returns_a_partial_http_sample() -> None:
+    runner, browser, source, _ = _runner(
+        transport="http",
+        http=FakeConnector([30, 35, 40], partial=True),
+    )
+
+    outcome = await runner.collect("Silla", monotonic() + 5)
+
+    assert outcome.status == "ok"
+    assert len(outcome.listings) == 3
+    assert source.calls == 0
+    assert browser.sessions == 0
+
+
+async def test_auto_keeps_a_partial_sample_above_the_threshold() -> None:
+    runner, browser, source, _ = _runner(
+        browser_source=FakeSource("milanuncios", list(range(30, 40))),
+        http=FakeConnector(list(range(30, 30 + MIN_USABLE_LISTINGS)), partial=True),
+    )
+
+    outcome = await runner.collect("Silla", monotonic() + 5)
+
+    assert outcome.status == "ok"
+    assert len(outcome.listings) == MIN_USABLE_LISTINGS
+    assert source.calls == 0
+    assert browser.sessions == 0
+
+
+async def test_auto_falls_back_to_the_browser_on_a_short_partial_sample() -> None:
+    runner, _, source, _ = _runner(
+        browser_source=FakeSource("milanuncios", list(range(30, 40))),
+        http=FakeConnector([30, 35, 40], partial=True),
+    )
+
+    outcome = await runner.collect("Silla", monotonic() + 5)
+
+    assert outcome.status == "ok"
+    assert len(outcome.listings) == 10
+    assert source.calls == 1
+
+
 async def test_http_transport_never_touches_the_browser() -> None:
     runner, browser, source, _ = _runner(
         transport="http",
@@ -171,10 +217,10 @@ async def test_http_no_listings_falls_back_to_the_browser() -> None:
     assert source.calls == 1
 
 
-async def test_a_short_http_result_survives_an_unavailable_browser() -> None:
+async def test_a_partial_http_result_survives_an_unavailable_browser() -> None:
     runner, _, _, _ = _runner(
         browser=FakeBrowser(fail=True),
-        http=FakeConnector([30, 35, 40]),
+        http=FakeConnector([30, 35, 40], partial=True),
     )
 
     outcome = await runner.collect("Silla", monotonic() + 5)

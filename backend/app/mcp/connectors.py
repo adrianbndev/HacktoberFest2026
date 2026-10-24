@@ -41,6 +41,8 @@ class ConnectorResult:
     platform: MarketPlatform
     listings: tuple[MarketListingSample, ...] = ()
     failure_reason: str | None = None
+    # True when a later page blocked but earlier pages already had real listings.
+    partial: bool = False
 
     @property
     def ok(self) -> bool:
@@ -113,9 +115,19 @@ class _HtmlConnector:
                 except Exception:
                     return ConnectorResult(self.platform, failure_reason="unexpected_error")
                 if looks_blocked(html, status_code):
-                    return ConnectorResult(
-                        self.platform, failure_reason=f"blocked_http_{status_code}"
+                    reason = f"blocked_http_{status_code}"
+                    logger.warning(
+                        "%s page %d blocked (%s) after %d listings",
+                        self.platform,
+                        page,
+                        reason,
+                        len(listings),
                     )
+                    if listings:
+                        return ConnectorResult(
+                            self.platform, tuple(listings), partial=True
+                        )
+                    return ConnectorResult(self.platform, failure_reason=reason)
                 try:
                     listings.extend(self.parse(html))
                 except Exception:
