@@ -13,7 +13,8 @@ from time import monotonic
 
 from app.config import Settings
 from app.mcp.analysis_query import build_platform_search_url
-from app.mcp.browser.session import BrowserSessionManager, BrowserUnavailableError
+from app.mcp.browser.pool import BrowserSessionPool
+from app.mcp.browser.session import BrowserUnavailableError
 from app.mcp.browser.sources.base import BrowserSourceProtocol
 from app.mcp.browser.sources.ebay import EbaySource
 from app.mcp.browser.sources.milanuncios import MilanunciosSource
@@ -33,12 +34,12 @@ FETCHED_STATUSES = frozenset({"blocked", "timeout", "error"})
 
 
 class BrowserSourceRunner:
-    """Runs every requested source sequentially on the single locked page."""
+    """Runs one browser source on a pool slot."""
 
     def __init__(
         self,
         settings: Settings,
-        browser: BrowserSessionManager,
+        browser: BrowserSessionPool,
         sources: Mapping[MarketPlatform, BrowserSourceProtocol],
     ) -> None:
         self._settings = settings

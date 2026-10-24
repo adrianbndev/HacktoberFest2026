@@ -1,7 +1,7 @@
 """Deep browser-backed market analysis orchestrator (brief §5.1).
 
 The fast `/valuate` path is untouched. This engine runs real browser sources
-through `BrowserSessionManager`, emits progress events for SSE, computes the
+through `BrowserSessionPool`, emits progress events for SSE, computes the
 price triplet from a single IQR pass and caches only real results.
 """
 
@@ -24,7 +24,7 @@ from app.mcp.analysis_events import (
     ValuationReady,
 )
 from app.mcp.analysis_query import build_analysis_query, build_relevance_query
-from app.mcp.browser.session import BrowserSessionManager
+from app.mcp.browser.pool import BrowserSessionPool
 from app.mcp.browser.sources.base import BrowserSourceProtocol
 from app.mcp.cache import MarketAnalysisCache, build_cache_key
 from app.mcp.deep_cache import now_iso, read_cached, write_cached
@@ -61,13 +61,13 @@ class DeepMarketAnalyzer:
         self,
         settings: Settings,
         *,
-        browser: BrowserSessionManager | None = None,
+        browser: BrowserSessionPool | None = None,
         cache: MarketAnalysisCache | None = None,
         sources: Mapping[MarketPlatform, BrowserSourceProtocol] | None = None,
         recommender: RecommenderProtocol | None = None,
     ) -> None:
         self._settings = settings
-        self.browser = browser or BrowserSessionManager(settings)
+        self.browser = browser or BrowserSessionPool(settings)
         self.cache = cache or MarketAnalysisCache(
             path=settings.market_cache_path, ttl_sec=settings.market_cache_ttl_sec
         )
@@ -207,7 +207,7 @@ _SHARED_SETTINGS: Settings | None = None
 
 
 def shared_analyzer(settings: Settings) -> DeepMarketAnalyzer:
-    """Process-wide analyzer so the browser lock/client and cache are reused."""
+    """Process-wide analyzer so the browser pool and cache are reused."""
     global _SHARED, _SHARED_SETTINGS
     if _SHARED is None or _SHARED_SETTINGS is not settings:
         _SHARED = DeepMarketAnalyzer(settings)
