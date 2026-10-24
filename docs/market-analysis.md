@@ -383,7 +383,7 @@ interface MarketValuationResult {
 
 ```bash
 cd backend
-pytest -q          # 153 tests
+pytest -q          # 162 tests
 ruff check app tests
 mypy app
 docker compose config

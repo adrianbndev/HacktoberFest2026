@@ -137,7 +137,7 @@ the demo architecture.
 
 ## Verification evidence (Phase 1)
 
-- 153 backend tests, `ruff check app tests`, `mypy app` green.
+- 162 backend tests, `ruff check app tests`, `mypy app` green.
 - `docker compose config` valid; `lifeos-backend` and `market-browser` healthy.
 - `/api/market/health` → 200; `/api/market/valuate` → 200 with `source=live_mcp`
   (Milanuncios) and 200 with fallback when all sources fail, plus a structured

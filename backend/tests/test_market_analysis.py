@@ -100,7 +100,7 @@ async def test_slow_connectors_are_cut_off_by_the_per_source_timeout() -> None:
     elapsed = time.monotonic() - started
 
     assert result.source == "live_mcp"
-    assert elapsed < 1.0
+    assert elapsed < 0.5
     assert any("milanuncios" in warning and "timeout" in warning for warning in result.warnings)
 
 
