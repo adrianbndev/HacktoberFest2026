@@ -98,9 +98,12 @@ class MilanunciosHybridRunner:
         remaining = deadline - started
         if remaining <= 0:
             return self._outcome("timeout", (), started, "deadline_exceeded")
-        timeout = min(self._settings.market_source_timeout_sec, remaining)
         try:
             async with self._browser.session() as page:
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    return self._outcome("timeout", (), started, "deadline_exceeded")
+                timeout = min(self._settings.market_source_timeout_sec, remaining)
                 return await asyncio.wait_for(
                     self._browser_source.collect(page, query), timeout=timeout
                 )

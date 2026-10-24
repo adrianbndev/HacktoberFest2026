@@ -122,9 +122,18 @@ class BrowserSourceRunner:
                 latency_ms=0,
                 error="deadline_exceeded",
             )
-        timeout = min(self._settings.market_source_timeout_sec, remaining)
         try:
             async with self._browser.session() as page:
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    return SourceOutcome(
+                        source=platform,
+                        status="timeout",
+                        listings=(),
+                        latency_ms=max(0, int((monotonic() - started) * 1000)),
+                        error="deadline_exceeded",
+                    )
+                timeout = min(self._settings.market_source_timeout_sec, remaining)
                 return await asyncio.wait_for(
                     source.collect(page, query), timeout=timeout
                 )
