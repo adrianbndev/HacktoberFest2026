@@ -488,19 +488,21 @@ Always run the fingerprint check on the architecture used for the demo.
 
 | Source | Fast `/valuate` path | Browser path |
 |---|---|---|
-| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | **14 usable** with up to 6 result pages (~21 s); PerimeterX/captcha would be reported as `blocked` |
-| eBay | HTTP 403 from this network | **58 usable** on a fresh client (~4.2 s); intermittent eBay error page is reported as `blocked` |
-| Wallapop | HTML is a JS shell (0 server-rendered items) | **38 usable** (~6.3–6.8 s) |
+| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | **12–15 usable** with up to 6 result pages (~18–22 s); PerimeterX/captcha would be reported as `blocked` |
+| eBay | HTTP 403 from this network | **58 usable** when not blocked (~4.2 s); the intermittent eBay error page is reported as `blocked` |
+| Wallapop | HTML is a JS shell (0 server-rendered items) | **37–40 usable** (~4.8–5.1 s after the render/scroll tuning) |
 
 Measured on 2026-10-24 in this worktree (arm64, Debian Chromium 156, Xvfb)
 with `scripts/smoke_analyze.py --query "iPhone 13 128GB"`:
 
-- per-source usable listings: eBay **58**, Wallapop **38**, Milanuncios **15**;
-- first `source_result`: **4.2 s** (eBay); full analysis: **31.9 s** (no
-  recommendation, no key);
-- valuation: `priceMin=200`, `priceAvg=268`, `priceMax=332`, `sampleSize=98`,
-  `confidence=0.72`; all three platforms present;
-- second identical run: `cached=true` in **0.00 s**;
+- per-source usable listings: eBay **58**, Wallapop **38**, Milanuncios **15**
+  when all three respond; another run had eBay `blocked`, Wallapop **40** and
+  Milanuncios **12**;
+- first `source_result`: **4.2 s** (eBay) and **4.8–5.1 s** (Wallapop warm);
+  full analysis: **25.5–31.9 s** without recommendation (no key);
+- valuation in the all-source run: `priceMin=200`, `priceAvg=268`,
+  `priceMax=332`, `sampleSize=98`, `confidence=0.72`;
+- second identical run: `cached=true` in **0.01 s**;
 - eBay alternates between working and its anti-bot error page across runs; when
   blocked it is reported explicitly, never replaced with synthetic prices.
 

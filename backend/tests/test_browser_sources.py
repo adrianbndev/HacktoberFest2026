@@ -200,7 +200,7 @@ async def test_wallapop_scrolls_before_extracting() -> None:
 
     outcome = await source.collect(page, "Silla de madera")
 
-    assert page.scroll_calls == [(4, 300)]
+    assert page.scroll_calls == [(3, 300)]
     assert outcome.status == "ok"
     assert outcome.listings[0].url == "https://es.wallapop.com/item/silla-1"
 
