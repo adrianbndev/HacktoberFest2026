@@ -413,7 +413,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ## 5. Usuarios y Datos: Firebase (plan gratuito Spark, coste cero)
 
 * **Proyecto:** `lifeos-recommerce-hf26`, en el plan **Spark sin cuenta de facturación**: no se puede cobrar nada. **Nunca pasarlo a Blaze.** Por eso no se usa Cloud Storage (desde febrero de 2026 exige Blaze): las fotos van en Firestore.
-* **Login (Firebase Auth, solo Google):** `src/lib/firebase.ts` (config pública de la app web) + `signInWithPopup`. Un único usuario por navegador, con botón *Salir*; no hay selector de perfiles ni usuarios de demo fijos. Dominios autorizados: `localhost` y `127.0.0.1` (cualquier otro, como un túnel, hay que añadirlo en Firebase Auth).
+* **Login (Firebase Auth, solo Google):** `src/lib/firebase.ts` (config pública de la app web) + `signInWithPopup`. Un único usuario por navegador, con botón *Salir*; no hay selector de perfiles ni usuarios de demo fijos. Dominios autorizados: `localhost`, `127.0.0.1`, `macbook-pro-de-matias.local` (el Mac de Matías en la Wi-Fi) y `10.88.7.127` (su IP actual; en otra red hay que autorizar la nueva). Cualquier otro, como un túnel, hay que añadirlo en Firebase Auth y, si es un nombre nuevo, también en `allowedDevOrigins` de `next.config.ts`.
+* **Entrar desde otro portátil (Ales, Adri o el jurado):** (a) a la web del Mac de Matías en la misma Wi-Fi, `http://macbook-pro-de-matias.local:3000`, sin instalar nada; o (b) con el repo en local en `http://localhost:3000`, para lo que su backend necesita la clave de servicio. Cada cuenta de Google tiene su propio inventario.
 * **Datos (Firestore, solo vía backend):** `backend/app/store/firestore_repository.py` con Firebase Admin y la clave de servicio, detrás de `StoreRepository`. `firestore.rules` bloquea cualquier acceso directo desde el navegador. Timeout de 5 s por llamada.
 * **Estructura y formato** (campos en camelCase, idénticos a `sdd.ts`; fechas como texto ISO 8601):
   * `users/{uid}` → `UserProfile`.
