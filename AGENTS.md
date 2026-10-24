@@ -75,6 +75,7 @@ Todos los agentes deben consultar y mantener sincronizados los siguientes docume
 ### 🧭 Gobernanza, Arquitectura y Decisiones (ADRs)
 * 📋 [`.agent/roadmap.md`](.agent/roadmap.md) — Checklist maestro por niveles (Niveles 1 a 4) y criterios de aceptación.
 * 🗼 [`.agent/modules/INDEX-control-tower.md`](.agent/modules/INDEX-control-tower.md) — **Control Tower de Módulos (`MOD-00` a `MOD-07`)**, estados, SLAs y dependencias.
+* ⚠️ [`.agent/known-issues.md`](.agent/known-issues.md) — Problemas conocidos pendientes (riesgos aceptados de momento y su responsable).
 * 🏗️ [`.agent/architecture.md`](.agent/architecture.md) — Modelos de datos TypeScript, endpoints REST/SSE y arquitectura de carpetas.
 * 🧭 [`.agent/decisions/001-tech-stack-and-options-matrix.md`](.agent/decisions/001-tech-stack-and-options-matrix.md) — Análisis de opciones tecnológicas, trade-offs y estrategia de fallbacks.
 * 🕵️ [`.agent/mcp/stealth-market-mcp.md`](.agent/mcp/stealth-market-mcp.md) — Especificación del motor MCP anti-bot, cálculo de $P_{\min}, P_{\text{avg}}, P_{\max}$ y fallback determinista.
