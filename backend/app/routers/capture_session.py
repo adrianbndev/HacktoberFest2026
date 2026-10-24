@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.models.sdd import CaptureSessionCreated, CaptureSessionRequest, CaptureSessionUpdate, MobileCaptureSession
+from app.models.domain import CaptureSessionCreated, CaptureSessionRequest, CaptureSessionUpdate, MobileCaptureSession
 from app.store.repository import StoreRepository, get_store
 
 router = APIRouter()

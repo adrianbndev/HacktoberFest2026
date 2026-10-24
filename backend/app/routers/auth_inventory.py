@@ -3,8 +3,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.models.sdd import AuthRequest, AuthSession, InventoryItem, InventoryResponse, InventoryTotals, TeamMemberId
-from app.models.sdd import UserProfile
+from app.models.domain import AuthRequest, AuthSession, InventoryItem, InventoryResponse, InventoryTotals, TeamMemberId
+from app.models.domain import UserProfile
 from app.store.repository import StoreRepository, get_store
 
 router = APIRouter()

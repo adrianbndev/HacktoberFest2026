@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 from app.mcp.pricing_math import triplet_from_base
-from app.models.sdd import AppStoreState, InventoryItem, MarketListingSample, PricePoint, UserProfile
+from app.models.domain import AppStoreState, InventoryItem, MarketListingSample, PricePoint, UserProfile
 
 PLATFORMS = ["wallapop", "vinted", "milanuncios", "ebay"]
 SEARCH_URLS = {

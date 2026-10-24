@@ -1,32 +1,32 @@
-"""STUB de MOD-00: respuesta fija para probar el flujo de punta a punta. Track B (Adri) lo sustituye en MOD-03."""
-from fastapi import APIRouter
+"""FastAPI Router for Vision AI Recognition (POST /api/vision/analyze)."""
 
-from app.models.sdd import VisionAnalysisResult, VisionAnalyzeRequest, VisionFollowUpQuestion
+from __future__ import annotations
 
-router = APIRouter()
+from typing import Any
+from fastapi import APIRouter, HTTPException
 
-FOLLOW_UP_QUESTIONS = [
-    VisionFollowUpQuestion(id="capacidad", question="¿Qué capacidad de almacenamiento tiene?",
-                           reason="Entre 64 GB y otras versiones el precio cambia mucho.", affects="identification",
-                           options=["64 GB", "32 GB", "No lo sé"]),
-    VisionFollowUpQuestion(id="joycon", question="¿Los Joy-Con tienen drift o algún botón falla?",
-                           reason="Es el defecto más habitual y no se ve en la foto.", affects="condition",
-                           options=["Funcionan perfectos", "Drift leve", "Fallan"]),
-    VisionFollowUpQuestion(id="accesorios", question="¿Qué incluye: caja, dock y cargador?",
-                           reason="Venderla completa sube el precio medio.", affects="condition",
-                           options=["Todo con caja", "Sin caja", "Solo la consola"]),
-]
+from app.models.sdd import VisionAnalysisResult, VisionAnalyzeRequest
+from app.vision.ollama_provider import OllamaVisionProvider
+from app.vision.orchestrator import ResilientVisionOrchestrator
+
+router = APIRouter(prefix="/api/vision", tags=["vision"])
+_orchestrator = ResilientVisionOrchestrator()
 
 
-@router.post("/vision/analyze", response_model=VisionAnalysisResult, response_model_exclude_none=True)
-def analyze(body: VisionAnalyzeRequest) -> VisionAnalysisResult:
-    answered = bool(body.answers)
-    return VisionAnalysisResult(
-        name="Nintendo Switch OLED 64GB Blanca", category="Consolas y Videojuegos", brand="Nintendo",
-        model="Switch OLED HEG-001", condition_score=88 if answered else 80, condition_label="Como nuevo",
-        condition_reasoning="Pantalla sin arañazos visibles y carcasa limpia; leve desgaste en el dock.",
-        seo_title="Nintendo Switch OLED Blanca 64GB como nueva + dock",
-        seo_description="✅ Nintendo Switch OLED blanca en muy buen estado.\n📦 Envío por Wallapop o entrega en mano.",
-        confidence=0.92 if answered else 0.64, follow_up_questions=[] if answered else FOLLOW_UP_QUESTIONS,
-        source="deterministic_fallback",
-    )
+@router.post("/analyze", response_model=VisionAnalysisResult, response_model_by_alias=True)
+async def analyze_product_image(payload: VisionAnalyzeRequest) -> VisionAnalysisResult:
+    """Analyzes a captured product photo and returns structured fields for the user form."""
+    try:
+        return await _orchestrator.analyze_photo(
+            photo_source=payload.photo_data_url,
+            user_hint=payload.user_hint,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid image payload: {exc}") from exc
+
+
+@router.get("/node-status")
+async def get_vision_node_status() -> dict[str, Any]:
+    """Checks connectivity with Matías's Mac Ollama Vision node in the LAN."""
+    provider = OllamaVisionProvider()
+    return await provider.check_node_health()

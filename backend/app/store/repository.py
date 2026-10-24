@@ -12,7 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Protocol
 
-from app.models.sdd import AppStoreState
+from app.models.domain import AppStoreState
 from app.store.seed_data import build_seed_state
 
 DEFAULT_STORE_PATH = Path(__file__).resolve().parents[3] / "data" / "store.json"

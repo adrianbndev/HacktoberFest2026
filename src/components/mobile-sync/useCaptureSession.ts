@@ -4,8 +4,8 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { requestJson } from "@/lib/api";
 import { compressImageFileToDataUrl } from "@/lib/mobile-sync/image-compressor";
 import type {
-  CaptureSessionCreated, CaptureSessionUpdate, InventoryItem, MarketValuationRequest, MarketValuationResult,
-  MobileCaptureSession, TeamMemberId, VisionAnalysisResult, VisionAnalyzeRequest,
+  CaptureSessionCreated, CaptureSessionUpdate, InventoryItem, MarketValuationResult,
+  MobileCaptureSession, TeamMemberId, ValuationRequest, VisionAnalysisResult, VisionAnalyzeRequest,
 } from "@/types/sdd";
 
 const POLL_INTERVAL_MS = 1200; // .agent/rules/hackathon-guardrails.md §1.4
@@ -53,7 +53,7 @@ export function useCaptureSession(userId: TeamMemberId, onItemCreated: (item: In
       const visionRequest: VisionAnalyzeRequest = { photoDataUrl };
       const vision = await requestJson<VisionAnalysisResult>("/api/vision/analyze", "POST", visionRequest);
       setStep("market");
-      const valuationRequest: MarketValuationRequest = {
+      const valuationRequest: ValuationRequest = {
         query: vision.name, brand: vision.brand, model: vision.model, category: vision.category,
         conditionScore: vision.conditionScore, conditionLabel: vision.conditionLabel,
       };

@@ -2,13 +2,13 @@
 from fastapi import APIRouter
 
 from app.mcp.pricing_math import triplet_from_base
-from app.models.sdd import MarketValuationRequest, MarketValuationResult
+from app.models.sdd import MarketValuationResult, ValuationRequest
 
 router = APIRouter()
 
 
 @router.post("/market/valuate", response_model=MarketValuationResult, response_model_exclude_none=True)
-def valuate(body: MarketValuationRequest) -> MarketValuationResult:
+def valuate(body: ValuationRequest) -> MarketValuationResult:
     price_min, price_avg, price_max = triplet_from_base(200, body.condition_score)
     return MarketValuationResult(
         price_min=price_min, price_avg=price_avg, price_max=price_max, sample_size=0,

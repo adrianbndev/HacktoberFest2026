@@ -60,16 +60,9 @@ def test_api_de_punta_a_punta(tmp_path) -> None:
         assert client.delete("/api/inventory", params={"id": "nuevo"}).status_code == 204
         assert client.delete("/api/inventory", params={"id": "nuevo"}).status_code == 404
 
-        first = client.post("/api/vision/analyze", json={"photoDataUrl": "data:image/jpeg;base64,AA=="}).json()
-        assert first["followUpQuestions"] and 0 <= first["confidence"] <= 1
-        answers = [{"questionId": q["id"], "question": q["question"], "answer": q["options"][0]}
-                   for q in first["followUpQuestions"]]
-        refined = client.post("/api/vision/analyze", json={"photoDataUrl": "x", "answers": answers}).json()
-        assert refined["confidence"] > first["confidence"]
-
         valuation = client.post("/api/market/valuate", json={
-            "query": refined["name"], "category": refined["category"],
-            "conditionScore": refined["conditionScore"], "conditionLabel": refined["conditionLabel"],
+            "query": "Nintendo Switch OLED", "category": "Consolas y Videojuegos",
+            "conditionScore": 88, "conditionLabel": "Como nuevo",
         }).json()
         assert 0 < valuation["priceMin"] < valuation["priceAvg"] < valuation["priceMax"]
 

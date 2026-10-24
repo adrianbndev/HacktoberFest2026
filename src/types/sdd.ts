@@ -1,7 +1,8 @@
-// Contratos compartidos por los 3 Tracks (.agent/architecture.md §2).
-// Espejo 1:1 de backend/app/models/sdd.py: si cambias uno, cambia el otro en el mismo commit.
+// ============================================================================
+// SDD Official Data Contracts (src/types/sdd.ts)
+// Mirror 1:1 with backend/app/models/sdd.py
+// ============================================================================
 
-// ---------- 1. Usuario y perfil ----------
 export type TeamMemberId = 'ales' | 'adri' | 'matias';
 
 export interface UserProfile {
@@ -14,15 +15,20 @@ export interface UserProfile {
   createdAt: string;
 }
 
-// ---------- 2. Producto, salud IA y 3 precios MCP ----------
-export type ConditionLabel = 'Nuevo' | 'Como nuevo' | 'Buen estado' | 'Desgaste visible' | 'Para piezas';
+export type ConditionLabel =
+  | 'Nuevo'
+  | 'Como nuevo'
+  | 'Buen estado'
+  | 'Desgaste visible'
+  | 'Para piezas';
+
 export type MarketPlatform = 'wallapop' | 'vinted' | 'milanuncios' | 'ebay';
 
 export interface PricePoint {
-  timestamp: string;              // ISO 8601
-  priceMin: number;               // P_min: venta inmediata (EUR)
-  priceAvg: number;               // P_avg: valor real de mercado (EUR)
-  priceMax: number;               // P_max: techo de mercado (EUR)
+  timestamp: string;
+  priceMin: number;
+  priceAvg: number;
+  priceMax: number;
   sampleSize: number;
   platforms: MarketPlatform[];
 }
@@ -43,12 +49,12 @@ export interface InventoryItem {
   category: string;
   brand: string;
   model: string;
-  conditionScore: number;         // 0 a 100
+  conditionScore: number;
   conditionLabel: ConditionLabel;
   conditionReasoning: string;
   seoTitle: string;
   seoDescription: string;
-  priceMin: number;               // Invariante: 0 < priceMin < priceAvg < priceMax
+  priceMin: number;
   priceAvg: number;
   priceMax: number;
   priceTrend: 'up' | 'down' | 'stable';
@@ -61,7 +67,6 @@ export interface InventoryItem {
   lastUpdatedAt: string;
 }
 
-// ---------- 3. Sincronización móvil <-> PC ----------
 export type CaptureSessionStatus =
   | 'waiting_for_mobile'
   | 'mobile_connected'
@@ -87,8 +92,12 @@ export interface CaptureSessionUpdate {                                     // P
   photoDataUrl?: string;          // data:image/... comprimida en el móvil (<= 800 px, JPEG 0.75)
 }
 
-// ---------- 4. Notificaciones de mercado ----------
-export type NotificationType = 'price_up' | 'price_down' | 'sell_opportunity' | 'delivery_reminder';
+export type NotificationType =
+  | 'price_up'
+  | 'price_down'
+  | 'sell_opportunity'
+  | 'delivery_reminder';
+
 export type MetricChanged = 'priceMin' | 'priceAvg' | 'priceMax';
 
 export interface MarketNotification {
@@ -106,16 +115,18 @@ export interface MarketNotification {
   createdAt: string;
 }
 
-// ---------- 5. LifeOS: clima, planes, calendario y GitHub ----------
-export type WeatherCondition = 'sunny' | 'cloudy' | 'rainy' | 'windy';
-
 export interface WeatherForecast {
   city: string;
   currentTempC: number;
-  condition: WeatherCondition;
+  condition: 'sunny' | 'cloudy' | 'rainy' | 'windy';
   conditionText: string;
   recommendIndoor: boolean;
-  daily: Array<{ day: string; tempMaxC: number; tempMinC: number; condition: WeatherCondition }>;
+  daily: Array<{
+    day: string;
+    tempMaxC: number;
+    tempMinC: number;
+    condition: 'sunny' | 'cloudy' | 'rainy' | 'windy';
+  }>;
 }
 
 export interface LocalPlan {
@@ -134,8 +145,8 @@ export interface CalendarEvent {
   id: string;
   userId: TeamMemberId;
   title: string;
-  date: string;                   // YYYY-MM-DD
-  time: string;                   // HH:mm
+  date: string;
+  time: string;
   type: 'personal' | 'wallapop_delivery' | 'local_plan' | 'hacktoberfest';
   relatedItemId?: string;
   location?: string;
@@ -154,28 +165,18 @@ export interface HacktoberfestRepo {
   aiQuickStartGuide: string;
 }
 
-// ---------- 6. DTOs entre Tracks y estado global ----------
-export interface VisionFollowUpQuestion {
-  id: string;
-  question: string;               // Ej. "¿Qué capacidad de almacenamiento tiene?"
-  reason: string;                 // Por qué importa para identificar o tasar
-  affects: 'identification' | 'condition';
-  options: string[];              // Respuestas rápidas (vacío = respuesta libre)
-}
+export type VisionProviderSource =
+  | 'ollama_local'
+  | 'gemini'
+  | 'openai'
+  | 'deterministic_fallback';
 
-export interface VisionAnswer {
-  questionId: string;
-  question: string;
-  answer: string;
-}
-
-export interface VisionAnalyzeRequest {           // POST /api/vision/analyze (body)
+export interface VisionAnalyzeRequest {
   photoDataUrl: string;
   userHint?: string;
-  answers?: VisionAnswer[];       // Respuestas a followUpQuestions anteriores para refinar
 }
 
-export interface VisionAnalysisResult {           // POST /api/vision/analyze (respuesta)
+export interface VisionAnalysisResult {
   name: string;
   category: string;
   brand: string;
@@ -185,12 +186,14 @@ export interface VisionAnalysisResult {           // POST /api/vision/analyze (r
   conditionReasoning: string;
   seoTitle: string;
   seoDescription: string;
-  confidence: number;             // 0 a 1
-  followUpQuestions: VisionFollowUpQuestion[];   // Vacío = la IA no necesita más datos
-  source?: 'llm' | 'deterministic_fallback';      // llm = el modelo de AI_MODEL (local o cloud)
+  source?: VisionProviderSource;
+  latencyMs?: number;
+  modelUsed?: string;
 }
 
-export interface MarketValuationRequest {         // POST /api/market/valuate (body)
+export type VisionAnalysis = VisionAnalysisResult;
+
+export interface ValuationRequest {
   query: string;
   brand?: string;
   model?: string;
@@ -199,7 +202,7 @@ export interface MarketValuationRequest {         // POST /api/market/valuate (b
   conditionLabel: ConditionLabel;
 }
 
-export interface MarketValuationResult {          // POST /api/market/valuate (respuesta)
+export interface MarketValuationResult {
   priceMin: number;
   priceAvg: number;
   priceMax: number;
@@ -209,28 +212,21 @@ export interface MarketValuationResult {          // POST /api/market/valuate (r
   source: 'live_mcp' | 'stealth_fallback';
 }
 
+export type ValuationResult = MarketValuationResult;
+
 export interface InventoryTotals {
   totalMin: number;
   totalAvg: number;
   totalMax: number;
-  dailyGainEur: number;           // Suma de subidas recientes > 0 €
-  itemCount: number;              // Los artículos vendidos no cuentan
+  dailyGainEur: number;
+  itemCount: number;
 }
 
-export interface MarketRefreshResponse {          // POST /api/market/refresh
+export interface MarketRefreshResponse {
   updatedItems: InventoryItem[];
   newNotifications: MarketNotification[];
   totals: InventoryTotals;
   refreshedAt: string;
-}
-
-export interface AuthRequest { userId: TeamMemberId }                    // POST /api/auth
-export interface AuthSession { activeUserId: TeamMemberId; profiles: UserProfile[] }  // GET /api/auth
-
-export interface InventoryResponse {              // GET /api/inventory?userId=
-  profile: UserProfile;
-  items: InventoryItem[];         // Más recientes primero
-  totals: InventoryTotals;
 }
 
 export interface AppStoreState {
@@ -242,3 +238,9 @@ export interface AppStoreState {
   calendarEvents: CalendarEvent[];
   lastUpdatedAt: string;
 }
+
+// ---------- Sesión e inventario de la web (MOD-00 / MOD-01, Track de Matías) ----------
+export interface AuthRequest { userId: TeamMemberId }                    // POST /api/auth
+export interface AuthSession { activeUserId: TeamMemberId; profiles: UserProfile[] }  // GET /api/auth
+// GET /api/inventory?userId= (items: más recientes primero)
+export interface InventoryResponse { profile: UserProfile; items: InventoryItem[]; totals: InventoryTotals }
