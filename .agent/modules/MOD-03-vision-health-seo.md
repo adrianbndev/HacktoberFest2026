@@ -2,8 +2,8 @@
 
 * **Nivel SDD:** 🟢 Nivel 1.3
 * **Responsable:** **Track B (Adri)**
-* **Estado Actual:** `⏳ READY`
-* **SLA de Latencia:** $\le 2800\text{ ms}$ (con timeout de $3500\text{ ms}$ hacia fallback determinista)
+* **Estado Actual:** `✅ DONE`
+* **SLA de Latencia:** $\le 2800\text{ ms}$ (con timeout hacia fallback determinista)
 
 ---
 
@@ -70,7 +70,7 @@ El resultado incluye obligatoriamente:
 
 ## 5. Checklist de Control y Calidad (MOD-03)
 
-- [ ] Función pura `mapScoreToConditionLabel(score: number): ConditionLabel` testeada al 100% para todos los bordes ($0, 39, 40, 64, 65, 79, 80, 89, 90, 100$).
-- [ ] Esquema Zod garantiza que `conditionScore` siempre se recorta (*clamp*) al intervalo $[0, 100]$.
-- [ ] `ResilientVisionOrchestrator` hace fallback automático en $< 3.5\text{ s}$ si no hay API key configurada o si la red falla.
-- [ ] `seoTitle` y `seoDescription` generados en español natural, persuasivo y sin placeholders vacíos.
+- [x] Función pura `map_score_to_condition_label(score: int): ConditionLabel` testeada al 100% para todos los bordes ($0, 39, 40, 64, 65, 79, 80, 89, 90, 100$).
+- [x] Esquema Pydantic v2 garantiza que `conditionScore` siempre se recorta (*clamp*) al intervalo $[0, 100]$.
+- [x] `ResilientVisionOrchestrator` conecta con el nodo Ollama del Mac de Matías (`qwen2.5-vl:7b-q8_0` / `gemma3:12b-it-qat`) y hace fallback automático en $< 3.5\text{ s}$ si el nodo remoto no responde.
+- [x] `seoTitle` y `seoDescription` generados en español natural, persuasivo y sin placeholders vacíos.

@@ -1,6 +1,7 @@
 # 🚀 AGENTS.md — Constitución SDD: LifeOS & ReCommerce AI (Hacktoberfest 2026)
 
 > **COMPATIBILIDAD MULTI-AGENTE:** Este archivo es la fuente de verdad principal para **Antigravity CLI**, **OpenCode** y **Claude Code** (vía `CLAUDE.md`). Todo agente debe regirse por esta especificación bajo la metodología **SDD (Spec-Driven Development)**.
+> **SCRATCHPAD ACTIVO:** El archivo [`user-taks-prompt.md`](user-taks-prompt.md) (ignorado en Git) es el scratchpad de trabajo para la tarea que estamos desarrollando ahora mismo.
 
 ---
 
