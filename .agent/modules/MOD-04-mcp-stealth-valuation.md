@@ -3,7 +3,7 @@
 * **Nivel SDD:** 🟢 Nivel 1.4
 * **Responsable:** **Track C (Matías)**
 * **Estado Actual:** `🚧 IN_PROGRESS` (Fase 1 — fast valuation core)
-* **SLA de Latencia:** $\le 3000\text{ ms}$ (incluyendo *jitter* humano de $800\text{ ms} - 2200\text{ ms}$)
+* **SLA de Latencia:** $\le 2800\text{ ms}$ (incluyendo *jitter* humano de $650\text{ ms} - 1200\text{ ms}$; $200-600\text{ ms}$ en `/valuate`)
 
 ---
 
@@ -79,7 +79,7 @@
 
 ### Evidencia
 
-* `pytest -q`: **162 tests** verdes; `ruff check app tests` y `mypy app` limpios.
+* `pytest -q`: **177 tests** verdes; `ruff check app tests` y `mypy app` limpios.
 * `docker compose config` válido; `lifeos-backend` y `market-browser` en estado `healthy`.
 * `POST /api/market/valuate` medido en Docker: **1.79 s** con anuncios reales de Milanuncios (`source=live_mcp`) y **1.8–2.3 s** con fallback determinista cuando eBay/Wallapop bloquean; SLA interna ≤ 2.8 s con conectores mockeados.
 * `503` estructurado verificado por tests de API cuando `MARKET_ALLOW_FALLBACK=false`.

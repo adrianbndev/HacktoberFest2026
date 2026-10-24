@@ -1,29 +1,30 @@
-"""FastAPI application factory for the Track C market backend."""
+"""Entrypoint FastAPI: monta bajo /api todos los routers de app/routers."""
 
-from __future__ import annotations
+import importlib
+import pkgutil
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import get_settings
-from app.routers import market
+from app import routers
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
-    application = FastAPI(
-        title=settings.app_name,
-        version=settings.app_version,
-        description="Stealth market valuation API (MOD-04).",
-    )
+    """Build the app with dynamic router discovery (each Track owns one file)."""
+    application = FastAPI(title="LifeOS & ReCommerce AI")
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
+        allow_origins=["*"],
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    application.include_router(market.router, prefix="/api")
+    # Cada Track añade su archivo en app/routers/ exportando `router`; no hace
+    # falta tocar este archivo (así nadie compite por editarlo en paralelo).
+    for module in pkgutil.iter_modules(routers.__path__):
+        router = importlib.import_module(f"{routers.__name__}.{module.name}").router
+        application.include_router(
+            router, prefix="" if router.prefix.startswith("/api") else "/api"
+        )
     return application
 
 

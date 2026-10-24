@@ -5,9 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).parents[2]
+pytestmark = pytest.mark.skipif(
+    not (ROOT / "docker-compose.yml").exists(),
+    reason="docker-compose.yml is not available inside the backend image",
+)
 
 
 def _compose() -> dict[str, Any]:

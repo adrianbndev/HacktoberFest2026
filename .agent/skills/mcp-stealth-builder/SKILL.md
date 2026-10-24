@@ -12,11 +12,11 @@ This skill guides the implementation and mathematical verification of the **Stea
 
 ## Core Responsibilities
 
-1. **Human-Like Stealth Navigation:**
-   * Random jitter delay between $800\text{ ms}$ and $2200\text{ ms}$ (`humanJitter(800, 2200)`).
+1. **Human-Like Stealth Navigation (`backend/app/mcp/stealth_http.py`):**
+   * Random jitter between $650\text{ ms}$ and $1200\text{ ms}$ (`await human_jitter(0.65, 1.20)`, `0.0` in `pytest`).
    * Rotating realistic desktop/mobile Spanish browser headers (`Accept-Language: es-ES,es;q=0.9`).
-   * Hard timeout of $3500\text{ ms}$ per platform using `AbortSignal.timeout(3500)`.
-2. **Mathematical Pricing & Health Weighting (`pricing-math.ts`):**
+   * Platforms queried in parallel (`asyncio.gather`) with a hard `httpx.Timeout(1.6)`, $\le 2.8\text{ s}$ in total.
+2. **Mathematical Pricing & Health Weighting (`backend/app/mcp/pricing_math.py`):**
    * Interquartile Range (IQR) outlier removal to discard $1\text{ €}$ spam listings or overpriced outliers.
    * Health weighting factor:
      $$W_{\text{health}}(\text{score}) = 0.65 + 0.50 \times \left(\frac{\text{clamp}(\text{score}, 0, 100)}{100}\right)$$
@@ -29,14 +29,18 @@ This skill guides the implementation and mathematical verification of the **Stea
 
 ## Verification Workflow
 
-### Step 1: Run the Standalone Pricing Math & Invariant Harness
-Run the reference verification script to validate all mathematical invariants before integrating into Next.js:
+### Step 1: Run the Pricing Math & Invariant Tests
+Once `backend/app/mcp/pricing_math.py` exists, the real check is:
+```bash
+pytest backend/tests/test_pricing_math.py
+```
+Before that, the reference script validates the formulas on their own (it tests its own JS copy, not the Python code):
 ```bash
 node .agent/skills/mcp-stealth-builder/scripts/test-mcp-math.mjs
 ```
 *(See [test-mcp-math.mjs](./scripts/test-mcp-math.mjs)).*
 
 ### Step 2: Verify MCP Stdio Server Registration
-When `src/mcp/server.ts` is implemented, verify that it responds to MCP `tools/list` and `tools/call` for:
+When `backend/mcp_server.py` (`FastMCP`) is implemented, verify that it responds to MCP `tools/list` and `tools/call` for:
 * `search_secondhand_market`
 * `simulate_market_tick`

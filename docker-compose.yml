@@ -4,8 +4,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     image: lifeos-backend:local
-    ports:
-      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
     environment:
       MARKET_ALLOW_FALLBACK: ${MARKET_ALLOW_FALLBACK:-true}
       MARKET_JITTER_MIN_SEC: ${MARKET_JITTER_MIN_SEC:-0.2}
@@ -17,6 +18,11 @@ services:
       DEEPSEEK_REASONING_MODEL: ${DEEPSEEK_REASONING_MODEL:-deepseek-v4-pro}
       DEEPSEEK_FAST_MODEL: ${DEEPSEEK_FAST_MODEL:-deepseek-flash}
       CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
+      CDP_URL: ${CDP_URL:-http://market-browser:9222}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
     healthcheck:
       test:
         - CMD
@@ -26,8 +32,32 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 15s
+      start_period: 20s
     restart: unless-stopped
+
+  lifeos-web:
+    image: node:24-slim
+    working_dir: /app
+    command: sh -c "npm ci && npx next dev -H 0.0.0.0"
+    environment:
+      FASTAPI_INTERNAL_URL: http://lifeos-backend:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - lifeos-backend
+
+  # Opcional, si el Wi-Fi aísla los dispositivos: docker compose --profile tunnel up
+  # La URL pública https://*.trycloudflare.com aparece en los logs de este servicio.
+  mobile-tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://lifeos-web:3000
+    depends_on:
+      - lifeos-web
+    profiles: ["tunnel"]
 
   market-browser:
     profiles: ["browser"]

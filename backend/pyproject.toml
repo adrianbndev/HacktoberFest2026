@@ -1,6 +1,6 @@
 [tool.ruff]
-line-length = 100
-target-version = "py313"
+line-length = 130
+target-version = "py311"
 src = ["app", "tests"]
 
 [tool.ruff.lint]
@@ -9,6 +9,11 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+"app/models/domain.py" = ["RUF012"]
+"app/models/sdd.py" = ["RUF046"]
+"app/routers/capture_session.py" = ["SIM105"]
+"app/vision/cli_test.py" = ["ASYNC240"]
+"app/vision/orchestrator.py" = ["RUF046"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -17,7 +22,7 @@ asyncio_mode = "auto"
 addopts = "-q"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.11"
 plugins = ["pydantic.mypy"]
 files = ["app"]
 disallow_untyped_defs = true
@@ -28,3 +33,15 @@ warn_return_any = true
 no_implicit_optional = true
 strict_equality = true
 show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["firebase_admin", "firebase_admin.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["app.firebase", "app.store.firestore_repository", "app.vision.ollama_provider"]
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = ["app.vision.openai_provider"]
+disable_error_code = ["arg-type"]

@@ -1,32 +1,82 @@
-# Python
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# python
+.venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
-.venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
 
-# Environment & secrets
-.env
-.env.*
-!.env.example
-
-# Runtime data and demo artifacts
-data/
+# datos de la demo (se regeneran desde la semilla con POST /api/store/reset)
+/data/
 backend/data/
 *.sqlite
 *.sqlite3
-chrome-profile/
-artifacts/
 
-# Node / Next.js
-node_modules/
-.next/
-out/
+# artefactos locales de la demo / spike
+artifacts/
+chrome-profile/
+
+# Scratchpad de tarea actual (local)
+user-taks-prompt.md
+
+# Entornos y variables secretas
+.env
+.env.local
+.env.*.local
+
+# Clave privada de la cuenta de servicio de Firebase (nunca al repo)
+firebase-service-account.json
+
+# Local
+.local/
 
 # OS / editors
-.DS_Store
 .idea/
 .vscode/

@@ -131,7 +131,7 @@ def filter_usable_listings(
 
 def dedupe_listings(listings: Iterable[MarketListingSample]) -> list[MarketListingSample]:
     """Drop exact duplicates, keeping the first occurrence (order preserved)."""
-    seen: set[tuple[str, str, int]] = set()
+    seen: set[tuple[str, str, float]] = set()
     unique: list[MarketListingSample] = []
     for listing in listings:
         key = (listing.platform, strip_accents(squeeze(listing.title).lower()), listing.price)
@@ -155,10 +155,11 @@ def parse_price_eur(text: str) -> int | None:
 
 def _to_decimal(raw: str) -> float | None:
     if "," in raw and "." in raw:
-        if raw.rfind(",") > raw.rfind("."):
-            raw = raw.replace(".", "").replace(",", ".")
-        else:
-            raw = raw.replace(",", "")
+        raw = (
+            raw.replace(".", "").replace(",", ".")
+            if raw.rfind(",") > raw.rfind(".")
+            else raw.replace(",", "")
+        )
     elif "," in raw:
         head, _, tail = raw.rpartition(",")
         raw = f"{head}.{tail}" if len(tail) == 2 else raw.replace(",", "")

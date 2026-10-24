@@ -12,15 +12,21 @@
 ├── CLAUDE.md                           # Entrypoint SDD para Claude Code (@imports)
 ├── docker-compose.yml                  # Orquestación: Python Backend (:8000) + Next.js (:3000) + Cloudflared Tunnel
 ├── .env.example                        # Variables de entorno estandarizadas para los 3 Tracks
+├── firebase.json / .firebaserc         # Proyecto Firebase lifeos-recommerce-hf26 (plan gratuito Spark)
+├── firestore.rules                     # Reglas: ningún acceso directo desde el navegador (solo el backend)
+├── firebase-service-account.json       # Clave del backend (NO va al repo: .gitignore; se comparte en privado)
 ├── .agent/                             # Especificaciones SDD, Módulos, Reglas y Skills Agénticas
 ├── src/                                # FRONTEND: Next.js (App Router + TypeScript + Tailwind + Lucide)
 │   ├── types/
-│   │   └── sdd.ts                      # Contratos TypeScript inmutables (espejo 1:1 de backend/app/models/sdd.py)
+│   │   ├── sdd.ts                      # Contratos TypeScript (espejo de backend/app/models/)
+│   │   └── vision-follow-up.ts         # Amplía VisionAnalyzeRequest/Result con preguntas de seguimiento
 │   ├── lib/
+│   │   ├── firebase.ts                 # Firebase Auth en el navegador (config pública) + proveedor de Google
+│   │   ├── api.ts                      # fetch JSON que añade el ID token de Firebase (Authorization: Bearer)
 │   │   └── mobile-sync/
 │   │       └── image-compressor.ts     # Track B: Compresión cliente en <canvas> (<200KB JPEG) antes de subir
 │   ├── components/
-│   │   ├── dashboard/                  # Track A: Layout Bento Grid, Header, Selector de Perfil
+│   │   ├── dashboard/                  # Login con Google, barra superior (usuario + Salir), Bento Grid
 │   │   ├── inventory/                  # Track A: Tarjetas de Producto, 3 Precios, Sparklines SVG
 │   │   ├── notifications/              # Track A: Centro de Alertas y Badges de tendencia
 │   │   ├── mobile-sync/                # Track B: Modal QR, Estado de Conexión SSE/Polling
@@ -31,17 +37,22 @@
 │           └── [sessionId]/page.tsx    # Track B: Vista móvil de captura directa de cámara (capture="environment")
 │   # Nota: next.config.ts redirige /api/:path* -> http://127.0.0.1:8000/api/:path* (Cero problemas CORS en móvil)
 └── backend/                            # BACKEND PYTHON: FastAPI + Reconocimiento Imágenes + Motor MCP Stealth
-    ├── Dockerfile                      # Imagen Python 3.11-slim con Pillow, FastAPI, httpx, google-genai, mcp
+    ├── Dockerfile                      # Imagen Python 3.11-slim con FastAPI, Pillow, httpx, mcp, firebase-admin
     ├── requirements.txt                # Dependencias Python fijadas
     ├── mcp_server.py                   # Track C: Servidor MCP oficial en Python (FastMCP stdio/SSE)
     ├── tests/                          # Tests unitarios con pytest (invariantes MCP, Visión y Store)
     └── app/
-        ├── main.py                     # Entrypoint FastAPI (CORS, montaje de routers en /api/*)
+        ├── main.py                     # Entrypoint FastAPI (CORS, monta todos los routers de app/routers en /api/*)
+        ├── firebase.py                 # Conexión con Firebase Admin (clave de servicio)
+        ├── auth.py                     # CurrentUser: verifica el ID token de Firebase (401 si falta o no es válido)
         ├── models/
-        │   └── sdd.py                  # Esquemas Pydantic v2 (camelCase alias = validación estricta runtime)
+        │   ├── base.py                 # CamelModel, literales, PriceTriplet (0 < P_min < P_avg < P_max)
+        │   ├── domain.py               # Usuarios, inventario, sesiones de captura, LifeOS (+ preguntas de seguimiento)
+        │   └── sdd.py                  # Track B: contratos de Visión IA y tasación
         ├── store/
-        │   ├── seed_data.py            # Perfiles semilla (Ales, Adri, Matías, Jurado) + inventario inicial
-        │   └── repository.py           # Persistencia JSON atómica (/data/store.json con RLock + .tmp + os.replace)
+        │   ├── repository.py           # StoreRepository (interfaz) + get_store() -> Firestore (503 sin clave)
+        │   ├── firestore_repository.py # users/{uid}, users/{uid}/items/{id}, captureSessions/{id}
+        │   └── seed_data.py            # Perfil del primer login desde Google + 3 productos de demo
         ├── vision/                     # Track B (Adri): Reconocimiento de Imágenes en Python + Salud + SEO
         │   ├── image_processor.py      # Decodificación Base64, validación y análisis visual con Pillow (PIL)
         │   ├── gemini_provider.py      # Reconocimiento multimodal con google-genai (Gemini 2.5 Flash)
@@ -61,7 +72,7 @@
         │   ├── calendar_service.py     # Gestión de agenda personal y citas de entrega de Wallapop
         │   └── github_service.py       # Buscador GitHub API Hacktoberfest 2026 + Resumen IA 2 líneas
         └── routers/                    # Controladores HTTP FastAPI (<= 60 líneas por archivo)
-            ├── auth_inventory.py       # GET/POST/DELETE /api/inventory, POST /api/auth, POST /api/store/reset
+            ├── auth_inventory.py       # POST /api/auth, GET/POST/DELETE /api/inventory, POST /api/store/reset (con token)
             ├── capture_session.py      # Track B: POST /api/capture-session, GET/PUT /api/capture-session/{id}
             ├── vision.py               # Track B: POST /api/vision/analyze
             ├── market.py               # Track C: POST /api/market/valuate, POST /api/market/refresh
@@ -72,13 +83,13 @@
 
 ## 2. Modelos de Datos Oficiales (`src/types/sdd.ts`)
 
-Todo agente debe respetar exactamente estas interfaces TypeScript:
+Todo agente debe respetar exactamente estas interfaces TypeScript (espejo de los modelos Pydantic v2 de `backend/app/models/`: `domain.py`, `sdd.py` y `base.py`):
 
 ```typescript
 // ==========================================
 // 1. USUARIO Y PERFIL (Nivel 1 & Nivel 4)
 // ==========================================
-export type TeamMemberId = 'ales' | 'adri' | 'matias' | 'jurado';
+export type TeamMemberId = string;  // uid de Firebase Auth (login con Google)
 
 export interface UserProfile {
   id: TeamMemberId;
@@ -88,6 +99,7 @@ export interface UserProfile {
   city: string;                   // Ej. "Madrid", "Barcelona", "Valencia"
   favoriteLanguages: string[];    // Para Nivel 4 (ej. ["TypeScript", "Python", "Rust"])
   createdAt: string;
+  email?: string;                 // De la cuenta de Google
 }
 
 // ==========================================
@@ -143,6 +155,7 @@ export interface InventoryItem {
   status: 'in_stock' | 'listed' | 'reserved' | 'sold';
   createdAt: string;
   lastUpdatedAt: string;
+  details?: string;               // Texto libre del usuario para identificar mejor el producto
 }
 
 // ==========================================
@@ -241,31 +254,6 @@ export interface HacktoberfestRepo {
 }
 
 // ==========================================
-// 6. CUERPOS Y RESPUESTAS DE ENDPOINTS (contratos entre Tracks)
-// ==========================================
-export type VisionAnalysis = Pick<InventoryItem,          // POST /api/vision/analyze
-  'name' | 'category' | 'brand' | 'model' | 'conditionScore' | 'conditionLabel' |
-  'conditionReasoning' | 'seoTitle' | 'seoDescription'>;
-
-export interface ValuationRequest {                      // POST /api/market/valuate (body)
-  query: string;
-  category: string;
-  conditionScore: number;
-  conditionLabel: ConditionLabel;
-}
-
-export type ValuationResult =                            // POST /api/market/valuate (respuesta)
-  Pick<PricePoint, 'priceMin' | 'priceAvg' | 'priceMax' | 'sampleSize' | 'platforms'> & {
-    comparableListings: MarketListingSample[];
-    source: 'live_mcp' | 'stealth_fallback';
-  };
-
-export interface MarketRefreshResponse {                 // POST /api/market/refresh
-  items: InventoryItem[];
-  notifications: MarketNotification[];                  // Solo las nuevas de este refresco
-}
-
-// ==========================================
 // 6. DTOs DE INTERCAMBIO ENTRE TRACKS & ESTADO GLOBAL DEL STORE
 // ==========================================
 export interface VisionAnalysisResult {
@@ -279,6 +267,15 @@ export interface VisionAnalysisResult {
   seoTitle: string;
   seoDescription: string;
   source?: 'gemini' | 'openai' | 'deterministic_fallback';
+}
+
+export interface MarketValuationRequest {        // POST /api/market/valuate (body)
+  query: string;
+  brand?: string;
+  model?: string;
+  category: string;
+  conditionScore: number;
+  conditionLabel: ConditionLabel;
 }
 
 export interface MarketValuationResult {
@@ -306,8 +303,7 @@ export interface MarketRefreshResponse {
   refreshedAt: string;
 }
 
-export interface AppStoreState {
-  activeUserId: TeamMemberId;
+export interface AppStoreState {        // Referencia del contrato: los datos viven en Firestore (§5)
   profiles: Record<TeamMemberId, UserProfile>;
   inventory: InventoryItem[];
   captureSessions: Record<string, MobileCaptureSession>;
@@ -315,17 +311,35 @@ export interface AppStoreState {
   calendarEvents: CalendarEvent[];
   lastUpdatedAt: string;
 }
+
+export interface InventoryResponse { profile: UserProfile; items: InventoryItem[]; totals: InventoryTotals }
+export interface CaptureSessionCreated { sessionId: string; mobileUrl: string; lanIps: string[] }
+export interface CaptureSessionUpdate { status: CaptureSessionStatus; photoDataUrl?: string }
+
+// src/types/vision-follow-up.ts amplía (module augmentation) los contratos de Visión de Track B:
+//   VisionAnalyzeRequest.answers?: VisionAnswer[]
+//   VisionAnalysisResult.confidence?: number; VisionAnalysisResult.followUpQuestions?: VisionFollowUpQuestion[]
+// En Python: VisionAnalyzeRequestWithAnswers y VisionAnalysisWithFollowUp en backend/app/models/domain.py.
 ```
 
 ---
 
 ## 3. Contratos de Endpoints REST / SSE
 
+> **Usuario de cada petición:** el navegador envía `Authorization: Bearer <ID token de Firebase>` (lo añade `requestJson` de `src/lib/api.ts`). El backend lo verifica y usa su `uid`; **ningún endpoint recibe `userId` del cliente**. Sin token o con uno inválido: `401`. Sin la clave de servicio de Firebase en el backend: `503`.
+
+### 3.0 Sesión e Inventario (con token)
+* **`POST /api/auth`** $\rightarrow$ `UserProfile`. En el primer acceso crea el perfil desde la cuenta de Google y le carga 3 productos de demo.
+* **`GET /api/inventory`** $\rightarrow$ `InventoryResponse` (productos del usuario, más recientes primero, y `InventoryTotals` sin los vendidos).
+* **`POST /api/inventory`** · Body `InventoryItem` $\rightarrow$ crea o reemplaza (mismo `id`); `userId` siempre queda como el `uid` del token.
+* **`DELETE /api/inventory?id=…`** $\rightarrow$ `204`, o `404` si no existe o es de otro usuario.
+* **`POST /api/store/reset`** $\rightarrow$ `InventoryResponse`: restaura los 3 productos de demo del usuario antes de presentar.
+
 ### 3.1 Sincronización Móvil-PC (`/api/capture-session/[sessionId]`)
-* **`POST /api/capture-session`**
-  * Crea una nueva sesión con `sessionId` único para el usuario activo y devuelve `{ sessionId, mobileUrl, lanIps }`.
-* **`GET /api/capture-session/[sessionId]`**
-  * Devuelve el estado actual `MobileCaptureSession` (usado tanto por el móvil al abrir el QR como por el PC en polling cada $1\text{ s}$ o stream SSE).
+* **`POST /api/capture-session`** (con token, sin body)
+  * Crea la sesión a nombre del usuario del token y devuelve `CaptureSessionCreated` (`sessionId` de 32 hex: es la única credencial del móvil, que no inicia sesión).
+* **`GET /api/capture-session/[sessionId]`** (sin token)
+  * Devuelve el estado actual `MobileCaptureSession` (usado tanto por el móvil al abrir el QR como por el PC en polling cada $1.2\text{ s}$ o stream SSE).
 * **`PUT /api/capture-session/[sessionId]`**
   * El móvil envía `{ status: 'photo_uploaded', photoDataUrl: 'data:image/jpeg;base64,...' }` ($\le 200\text{ KB}$ comprimido en `<canvas>`).
   * El PC detecta `photo_uploaded` en $<1.5\text{ s}$ y lanza automáticamente el pipeline Visión IA $\rightarrow$ MCP Stealth.
@@ -334,25 +348,22 @@ export interface AppStoreState {
 * **`POST /api/vision/analyze`**
   * **Body:** `{ photoDataUrl: string, userHint?: string }`
   * **Response:** `VisionAnalysisResult` (SLA $\le 2.5\text{ s}$)
-  * **Body:** `{ photoDataUrl: string }`
-  * **Response:** `VisionAnalysis`
 * **`POST /api/market/valuate`**
-  * **Body:** `{ query: string, brand?: string, model?: string, category: string, conditionScore: number, conditionLabel: ConditionLabel }`
+  * **Body:** `MarketValuationRequest`
   * **Response:** `MarketValuationResult` (SLA $\le 2.8\text{ s}$)
 
 ### 3.3 Rastreo de Precios y Notificaciones (Nivel 2)
 * **`POST /api/market/refresh`**
-  * **Body:** `{ userId: TeamMemberId, demoMode?: boolean }`
-  * **Response:** `MarketRefreshResponse`
+  * **Body:** `{ demoMode?: boolean }` (usuario del token)
   * **Acción:** Recorre los artículos del usuario, consulta el MCP (o aplica variación realista de mercado en `demoMode: true` si se invoca desde el botón *"Forzar Actualización de Mercado"*), añade un nuevo `PricePoint` a `priceHistory`, recalcula `priceTrend`, `priceDeltaPercent`, `priceDeltaEur` y genera objetos `MarketNotification` para subidas o bajadas significativas ($\ge 4\%$ o $\ge 5\text{ €}$), **como máximo una por artículo** (la métrica con mayor variación %).
   * **Response:** `MarketRefreshResponse` (inventario actualizado + solo las notificaciones nuevas).
-* **`GET /api/notifications?userId=ales`** $\rightarrow$ `MarketNotification[]` (más recientes primero).
+* **`GET /api/notifications`** (usuario del token) $\rightarrow$ `MarketNotification[]` (más recientes primero).
 * **`PATCH /api/notifications`**
   * **Body:** `{ id: string, read: true }` $\rightarrow$ `MarketNotification` actualizada.
 
 ### 3.4 Módulos LifeOS (Niveles 3 y 4)
 * **`GET /api/lifeos/weather?city=Madrid&simulate=rainy|sunny`** $\rightarrow$ `WeatherForecast`
-* **`GET /api/lifeos/plans?userId=ales&condition=rainy|sunny`** $\rightarrow$ Cruza el `WeatherForecast` + el valor total y variación $\Delta\text{ €}$ del inventario del usuario para devolver `{ plans: LocalPlan[], budgetSummary: { dailyGainEur: number, readyToSellTotalEur: number, bannerText: string } }`.
+* **`GET /api/lifeos/plans?condition=rainy|sunny`** (usuario del token) $\rightarrow$ Cruza el `WeatherForecast` + el valor total y variación $\Delta\text{ €}$ del inventario del usuario para devolver `{ plans: LocalPlan[], budgetSummary: { dailyGainEur: number, readyToSellTotalEur: number, bannerText: string } }`.
 * **`GET / POST / DELETE /api/lifeos/calendar`** $\rightarrow$ Lista, agenda o elimina eventos personales y citas de entrega de Wallapop.
 * **`GET /api/lifeos/github?language=TypeScript&hacktoberfest=true&query=...`** $\rightarrow$ Devuelve `HacktoberfestRepo[]` con el resumen IA de 2 líneas.
 
@@ -379,20 +390,35 @@ const nextConfig = {
 
 ### 4.2 Variables de Entorno Estándar (`.env.example`)
 ```env
-# Proveedores de Reconocimiento de Imágenes en Python (Track B - Opcionales gracias al Fallback con Pillow)
-GEMINI_API_KEY=
-OPENAI_API_KEY=
+# Visión IA (Track B): variables VISION_* (ver .env.example, que es la fuente de verdad)
 
 # GitHub API para Nivel 4 en Python (Track C - Sube el rate-limit de 60 a 5000 req/h)
 GITHUB_TOKEN=
 
-# Conexión Frontend Next.js <-> Backend Python FastAPI y Persistencia
+# Conexión Frontend Next.js <-> Backend Python FastAPI
 FASTAPI_INTERNAL_URL=http://127.0.0.1:8000
-STORE_FILE_PATH=./data/store.json
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Firebase: el backend lee firebase-service-account.json de la raíz del repo; solo si está en otro sitio:
+# FIREBASE_SERVICE_ACCOUNT=/ruta/absoluta/firebase-service-account.json
 ```
 
 ### 4.3 Reglas de Dockerización (`docker-compose.yml`)
-1. **Servicio `lifeos-backend` (Python 3.11 + FastAPI + Pillow + FastMCP):** Expone el puerto `8000` internamente (y en host para Swagger UI `/docs`) y monta `./data:/app/data` para persistir `/data/store.json`.
+1. **Servicio `lifeos-backend` (Python 3.11 + FastAPI + Pillow + FastMCP):** Expone el puerto `8000` internamente (y en host para Swagger UI `/docs`) y monta `./firebase-service-account.json` en modo solo lectura (los datos están en Firestore).
 2. **Servicio `lifeos-web` (Next.js Frontend):** Expone el puerto `3000` con `FASTAPI_INTERNAL_URL=http://lifeos-backend:8000`.
 3. **Servicio `mobile-tunnel` (Opcional Anti-AP-Isolation):** `cloudflare/cloudflared:latest` apuntando a `http://lifeos-web:3000` para dar HTTPS público instantáneo al móvil si el Wi-Fi del recinto bloquea tráfico LAN.
+
+---
+
+## 5. Usuarios y Datos: Firebase (plan gratuito Spark, coste cero)
+
+* **Proyecto:** `lifeos-recommerce-hf26`, en el plan **Spark sin cuenta de facturación**: no se puede cobrar nada. **Nunca pasarlo a Blaze.** Por eso no se usa Cloud Storage (desde febrero de 2026 exige Blaze): las fotos van en Firestore.
+* **Login (Firebase Auth, solo Google):** `src/lib/firebase.ts` (config pública de la app web) + `signInWithPopup`. Un único usuario por navegador, con botón *Salir*; no hay selector de perfiles ni usuarios de demo fijos. Dominios autorizados: `localhost` y `127.0.0.1` (cualquier otro, como un túnel, hay que añadirlo en Firebase Auth).
+* **Datos (Firestore, solo vía backend):** `backend/app/store/firestore_repository.py` con Firebase Admin y la clave de servicio, detrás de `StoreRepository`. `firestore.rules` bloquea cualquier acceso directo desde el navegador. Timeout de 5 s por llamada.
+* **Estructura y formato** (campos en camelCase, idénticos a `sdd.ts`; fechas como texto ISO 8601):
+  * `users/{uid}` → `UserProfile`.
+  * `users/{uid}/items/{itemId}` → `InventoryItem` completo: precios, `priceHistory`, `comparableListings`, `details` y `photoUrl` (JPEG ≤ 800 px en data URL base64, ~150-200 KB; límite de Firestore: 1 MiB por documento).
+  * `captureSessions/{sessionId}` → `MobileCaptureSession` (con la foto subida desde el móvil).
+* **Propiedad:** cada producto pertenece al usuario de la sesión (ruta `users/{uid}` y campo `userId`, que el backend fuerza con el `uid` del token). Un usuario no ve, edita ni borra productos ajenos.
+* **Clave de servicio:** `firebase-service-account.json` en la raíz del repo (ignorada por git). Sin ella la API responde `503` con el motivo. Se comparte en privado, nunca por el repo.
+* **Tests:** `backend/tests/conftest.py` da un almacén en memoria con la misma interfaz (sin red ni credenciales).

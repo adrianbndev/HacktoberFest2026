@@ -1,1 +1,1 @@
-"""FastAPI backend for LifeOS & ReCommerce AI (Track C: market valuation)."""
+"""Backend package for LifeOS & ReCommerce AI."""

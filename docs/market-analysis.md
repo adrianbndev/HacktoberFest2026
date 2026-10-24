@@ -266,7 +266,7 @@ docker compose --profile browser up --build market-browser
 curl -s http://127.0.0.1:9222/json/version
 ```
 
-- `lifeos-backend`: Python 3.13 + Node 22 + `chrome-devtools-mcp@1.10.1`,
+- `lifeos-backend`: Python 3.11 + Node 22 + `chrome-devtools-mcp@1.10.1`,
   port `8000`, non-root user, healthcheck on `/api/market/health`.
 - `market-browser`: Debian + headful Chromium/Chrome under Xvfb, port `9222`,
   persistent `chrome-profile` volume, `shm_size: 2g`, no host display needed.
@@ -383,7 +383,7 @@ interface MarketValuationResult {
 
 ```bash
 cd backend
-pytest -q          # 162 tests
+pytest -q          # 177 tests
 ruff check app tests
 mypy app
 docker compose config

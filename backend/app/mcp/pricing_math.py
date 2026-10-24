@@ -126,3 +126,14 @@ def _round_finite(value: float) -> int:
 
 def _finite(values: Iterable[float]) -> list[float]:
     return [float(value) for value in values if math.isfinite(value)]
+
+
+def health_weight(condition_score: float) -> float:
+    """W_health = 0.65 + 0.50 * score/100 (score 70 -> 1.00)."""
+    return w_health(condition_score)
+
+
+def triplet_from_base(base_price: float, condition_score: float) -> tuple[int, int, int]:
+    """(P_min, P_avg, P_max) sin muestra de mercado: P_avg ponderado por salud, -18 % y +24 %."""
+    avg = max(3, round(base_price * health_weight(condition_score)))
+    return min(avg - 1, round(avg * 0.82)), avg, max(avg + 1, round(avg * 1.24))

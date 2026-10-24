@@ -1,6 +1,7 @@
 # 🚀 AGENTS.md — Constitución SDD: LifeOS & ReCommerce AI (Hacktoberfest 2026)
 
 > **COMPATIBILIDAD MULTI-AGENTE:** Este archivo es la fuente de verdad principal para **Antigravity CLI**, **OpenCode** y **Claude Code** (vía `CLAUDE.md`). Todo agente debe regirse por esta especificación bajo la metodología **SDD (Spec-Driven Development)**.
+> **SCRATCHPAD ACTIVO:** El archivo [`user-taks-prompt.md`](user-taks-prompt.md) (ignorado en Git) es el scratchpad de trabajo para la tarea que estamos desarrollando ahora mismo.
 
 ---
 
@@ -39,7 +40,7 @@ Ningún agente debe escribir código de implementación a ciegas. Todo desarroll
 * **Frontend Web (`src/`):** Next.js (App Router, TypeScript `strict: true`, Tailwind CSS + diseño **Bento Grid** moderno + `lucide-react`). Configura `rewrites` en `next.config.ts` (`/api/:path*` $\rightarrow$ `http://127.0.0.1:8000/api/:path*`) para operar bajo un único puerto (`:3000`) sin errores CORS en el móvil.
 * **Backend & API (`backend/`):** **Python 3.11+ con FastAPI + Uvicorn + Pydantic v2** (`camelCase` serializado 1:1 con `src/types/sdd.ts`).
 * **Sincronización Móvil $\leftrightarrow$ PC:** Endpoints FastAPI en `/api/capture-session/{session_id}` con Server-Sent Events (SSE) y/o *short-polling* rápido cada $1.2\text{ s}$ (garantizando compatibilidad total en redes de hackathon).
-* **Persistencia:** Repositorio Python JSON Atómico (`backend/app/store/repository.py` sobre `/data/store.json` con `threading.RLock` + escritura atómica `.tmp` + `os.replace`) con usuarios preconfigurados para demo (**Ales, Adri, Matías y Jurado**).
+* **Usuarios y Persistencia (Firebase, plan gratuito Spark sin facturación):** login con **Google** mediante Firebase Auth (el backend verifica el ID token en `backend/app/auth.py`) y datos en **Firestore** solo a través del backend (`backend/app/store/`, `users/{uid}/items/{itemId}` con la foto comprimida dentro). Cada usuario empieza con 3 productos de demo. Ver [`.agent/architecture.md`](.agent/architecture.md) §5.
 * **Reconocimiento de Imágenes & Visión IA (Python — `backend/app/vision/`):** Procesamiento de imagen con **Pillow (`PIL`)** + SDK multimodal en Python (`google-genai` Gemini 2.5 Flash / `openai` Vision) con validación **Pydantic v2** estructurada (nombre, marca, categoría, `conditionScore` $0-100$, `conditionLabel`, `seoTitle`, `seoDescription`) y fallback determinista en Python con análisis visual de imagen.
 * **MCP (Model Context Protocol en Python — `backend/app/mcp/` & `backend/mcp_server.py`):** Servidor MCP estándar con **`FastMCP` (`mcp` Python SDK)** y motor asíncrono `httpx` + `beautifulsoup4` (`stealth-market-mcp`) con cabeceras humanas rotativas, *jitter* aleatorio ($650\text{ ms} - 1200\text{ ms}$), ponderación por salud del artículo y **capa de fallback determinista blindada** ante bloqueos de red.
 
@@ -74,6 +75,7 @@ Todos los agentes deben consultar y mantener sincronizados los siguientes docume
 ### 🧭 Gobernanza, Arquitectura y Decisiones (ADRs)
 * 📋 [`.agent/roadmap.md`](.agent/roadmap.md) — Checklist maestro por niveles (Niveles 1 a 4) y criterios de aceptación.
 * 🗼 [`.agent/modules/INDEX-control-tower.md`](.agent/modules/INDEX-control-tower.md) — **Control Tower de Módulos (`MOD-00` a `MOD-07`)**, estados, SLAs y dependencias.
+* ⚠️ [`.agent/known-issues.md`](.agent/known-issues.md) — Problemas conocidos pendientes (riesgos aceptados de momento y su responsable).
 * 🏗️ [`.agent/architecture.md`](.agent/architecture.md) — Modelos de datos TypeScript, endpoints REST/SSE y arquitectura de carpetas.
 * 🧭 [`.agent/decisions/001-tech-stack-and-options-matrix.md`](.agent/decisions/001-tech-stack-and-options-matrix.md) — Análisis de opciones tecnológicas, trade-offs y estrategia de fallbacks.
 * 🕵️ [`.agent/mcp/stealth-market-mcp.md`](.agent/mcp/stealth-market-mcp.md) — Especificación del motor MCP anti-bot, cálculo de $P_{\min}, P_{\text{avg}}, P_{\max}$ y fallback determinista.
@@ -81,11 +83,11 @@ Todos los agentes deben consultar y mantener sincronizados los siguientes docume
 
 ### 🛡️ Reglas Activas (`always_on` en `.agent/rules/`)
 * [`.agent/rules/hackathon-guardrails.md`](.agent/rules/hackathon-guardrails.md) — Rendimiento ($<6\text{ s}$), captura móvil sin bloqueo HTTPS/CORS y resiliencia en demo.
-* [`.agent/rules/clean-code-solid.md`](.agent/rules/clean-code-solid.md) — Principios SOLID, Clean Architecture en 4 capas, límite de 220 líneas por archivo y Zod estricto.
+* [`.agent/rules/clean-code-solid.md`](.agent/rules/clean-code-solid.md) — Principios SOLID, Clean Architecture en 4 capas, límite de 220 líneas por archivo y validación estricta con Pydantic v2.
 * [`.agent/rules/testing-and-quality-gates.md`](.agent/rules/testing-and-quality-gates.md) — Invariantes matemáticas obligatorias y protocolo del Harness de Verificación.
 
 ### 📦 Fichas de Seguimiento y Control por Módulo (`.agent/modules/`)
-* [`.agent/modules/MOD-00-foundation-store-types.md`](.agent/modules/MOD-00-foundation-store-types.md) — Tipos `sdd.ts`, esquemas Zod y Repositorio JSON Atómico.
+* [`.agent/modules/MOD-00-foundation-store-types.md`](.agent/modules/MOD-00-foundation-store-types.md) — Tipos `sdd.ts`, modelos Pydantic v2, login con Google y datos en Firestore.
 * [`.agent/modules/MOD-01-auth-and-inventory-ui.md`](.agent/modules/MOD-01-auth-and-inventory-ui.md) — Login rápido, Bento Grid UI y "Mi Inventario" (`Track A`).
 * [`.agent/modules/MOD-02-mobile-pc-sync.md`](.agent/modules/MOD-02-mobile-pc-sync.md) — Sync Cámara Móvil $\leftrightarrow$ PC vía QR + compresión Canvas + SSE/Polling (`Track B`).
 * [`.agent/modules/MOD-03-vision-health-seo.md`](.agent/modules/MOD-03-vision-health-seo.md) — Visión IA Multimodal, diagnóstico de Salud ($0-100\%$) y generador SEO (`Track B`).
@@ -99,3 +101,13 @@ Todos los agentes deben consultar y mantener sincronizados los siguientes docume
 * **`mcp-stealth-builder`** ([`SKILL.md`](.agent/skills/mcp-stealth-builder/SKILL.md)) $\rightarrow$ Script: `node .agent/skills/mcp-stealth-builder/scripts/test-mcp-math.mjs`
 * **`mobile-sync-debugger`** ([`SKILL.md`](.agent/skills/mobile-sync-debugger/SKILL.md)) $\rightarrow$ Script: `node .agent/skills/mobile-sync-debugger/scripts/detect-lan-and-simulate.mjs`
 * **`solid-module-scaffolder`** ([`SKILL.md`](.agent/skills/solid-module-scaffolder/SKILL.md)) $\rightarrow$ Receta de 6 pasos para implementar módulos bajo SOLID y Liskov.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

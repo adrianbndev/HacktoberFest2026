@@ -1,18 +1,18 @@
-# 🧱 MOD-00: Foundation — Tipos, Validación Zod & Persistencia Atómica
+# 🧱 MOD-00: Foundation — Tipos, Validación Pydantic v2, Login con Google y Datos en Firestore
 
 * **Nivel SDD:** 🟢 Nivel 1.0 (Prerrequisito común para Tracks A, B y C)
-* **Responsable:** Compartido (Ales / Adri / Matías)
-* **Estado Actual:** `⏳ READY`
-* **SLA de Latencia:** Lectura $< 2\text{ ms}$ (RAM Cache) | Escritura atómica $< 15\text{ ms}$
+* **Responsable:** Compartido (implementado por Matías)
+* **Estado Actual:** `✅ DONE` (Docker sin probar: ver checklist)
+* **Latencia:** Firestore en `nam5`; la primera carga tras arrancar el backend tarda ~4 s (conexión + certificados)
 
 ---
 
 ## 1. Responsabilidad Única (SRP) y Diseño SOLID
 
-Este módulo establece los cimientos desacoplados del proyecto (Frontend Next.js + Backend Python FastAPI) para que los tres Tracks trabajen en paralelo sin bloqueos:
-* **`src/types/sdd.ts`**: Contratos de dominio inmutables en TypeScript para el Frontend.
-* **`backend/app/models/sdd.py`**: Modelos **Pydantic v2** (`camelCase` aliases) para validar entradas/salidas en tiempo de ejecución en Python (respuestas de IA, bodies de APIs, archivo JSON en disco).
-* **`backend/app/store/repository.py`**: Implementación en Python del patrón **Repository** (`AppStoreRepository`) con bloqueo thread-safe (`threading.RLock`), escritura atómica (`store.json.tmp` + `os.replace`) y datos semilla ricos para **Ales, Adri, Matías y Jurado**.
+Cimientos del proyecto (Frontend Next.js + Backend Python FastAPI) para que los tres Tracks trabajen en paralelo:
+* **Contratos:** `src/types/sdd.ts` (+ `src/types/vision-follow-up.ts`) en el frontend y `backend/app/models/` en Python: `base.py` (CamelModel, literales, `PriceTriplet` con la invariante $0 < P_{\min} < P_{\text{avg}} < P_{\max}$), `domain.py` (usuarios, inventario, sesiones de captura, LifeOS, preguntas de seguimiento) y `sdd.py` (Visión IA y tasación, Track B).
+* **Usuarios:** Firebase Auth con Google. El backend verifica el ID token en `backend/app/auth.py` (`CurrentUser`) y nunca acepta `userId` del cliente.
+* **Datos:** patrón **Repository**: `StoreRepository` (`backend/app/store/repository.py`) con la implementación de Firestore (`firestore_repository.py`). Detalle de colecciones y formato en [`.agent/architecture.md`](../architecture.md) §5.
 
 ---
 
@@ -20,35 +20,29 @@ Este módulo establece los cimientos desacoplados del proyecto (Frontend Next.js
 
 | Archivo | Propósito | Límite Líneas |
 | :--- | :--- | :---: |
-| `src/types/sdd.ts` | Interfaces globales del dominio en TypeScript (Frontend) | $\le 220$ |
-| `backend/app/models/sdd.py` | Esquemas Pydantic v2 con serialización `camelCase` (Backend Python) | $\le 220$ |
-| `backend/app/store/seed_data.py` | Perfiles de Ales, Adri, Matías y Jurado + inventario inicial realista | $\le 220$ |
-| `backend/app/store/repository.py` | Singleton en memoria + CRUD atómico sobre `/data/store.json` + `reset_to_seed()` | $\le 180$ |
-| `backend/app/main.py` & `backend/app/routers/auth_inventory.py` | Aplicación FastAPI base + CRUD de inventario y reset | $\le 120$ |
-| `backend/Dockerfile` & `docker-compose.yml` | Contenedores Python FastAPI + Next.js + volumen `./data` + túnel `cloudflared` | $\le 100$ |
-| `.env.example` | Plantilla de variables (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `GITHUB_TOKEN`, `FASTAPI_INTERNAL_URL`) | $\le 30$ |
+| `src/types/sdd.ts` | Interfaces globales del dominio en TypeScript (Frontend) | $\le 250$ |
+| `backend/app/models/base.py` & `domain.py` | Modelos Pydantic v2 con serialización `camelCase` | $\le 250$ |
+| `backend/app/firebase.py` & `auth.py` | Conexión con Firebase Admin y verificación del token de login | $\le 60$ |
+| `backend/app/store/repository.py` & `firestore_repository.py` | Interfaz de almacenamiento + Firestore (503 sin clave de servicio) | $\le 120$ |
+| `backend/app/store/seed_data.py` | Perfil del primer login desde Google + 3 productos de demo | $\le 120$ |
+| `backend/app/main.py` & `backend/app/routers/auth_inventory.py` | FastAPI base (monta todos los routers de `app/routers`) + perfil, inventario y reset | $\le 80$ |
+| `backend/tests/conftest.py` | Almacén en memoria para probar la API sin red ni credenciales | $\le 60$ |
+| `backend/Dockerfile` & `docker-compose.yml` | Contenedores FastAPI + Next.js + clave de servicio montada + túnel `cloudflared` | $\le 100$ |
 
 ---
 
-## 3. Datos Semilla Obligatorios (`seed-data.ts`)
+## 3. Datos de Demo
 
-Para que cualquier prueba de Nivel 1, 2, 3 o 4 sea inmediata:
-1. **Perfiles:**
-   * `ales` (Madrid — Favoritos: `TypeScript`, `React`, `Next.js`)
-   * `adri` (Barcelona — Favoritos: `Python`, `TypeScript`, `AI/Vision`)
-   * `matias` (Valencia — Favoritos: `Rust`, `TypeScript`, `Node.js`)
-   * `jurado` (Madrid — Favoritos: `TypeScript`, `Python`, `Go`)
-2. **Inventario Inicial por Defecto:**
-   * Al menos 3 productos por perfil con su `conditionScore`, descripción SEO y `priceHistory` de 3 puntos previos para que las gráficas y tendencias se vean pobladas desde el segundo cero, además de los productos nuevos que se fotografíen en vivo con el móvil.
+* **Primer login de cada usuario:** `POST /api/auth` crea su perfil desde la cuenta de Google (nombre, foto, email; ciudad `Madrid` y lenguajes `TypeScript`, `Python` por defecto) y le carga **3 productos de demo** con `priceHistory` de 3 escaneos: una subida, una bajada y uno estable, para que el Nivel 2 se vea poblado desde el segundo cero.
+* **Antes de presentar:** `POST /api/store/reset` restaura los 3 productos de demo del usuario de la sesión.
 
 ---
 
 ## 4. Checklist de Control y Calidad (MOD-00)
 
-- [ ] Crear `src/types/sdd.ts` cumpliendo el 100% del contrato de [`.agent/architecture.md`](../architecture.md).
-- [ ] Crear validadores Zod en `src/lib/schema/sdd-schema.ts`.
-- [ ] Implementar `FileJsonRepository` con singleton en `globalThis.__LIFEOS_STORE__` y escritura atómica (`.tmp` + `renameSync`) que evita corrupción de JSON ante peticiones concurrentes de polling y subida móvil.
-- [ ] Crear `src/lib/store/seed-data.ts` con productos cuyas métricas cumplan $0 < P_{\min} < P_{\text{avg}} < P_{\max}$.
-- [ ] Añadir endpoint `POST /api/store/reset` para restaurar el estado de demo en 1 clic si se desea repetir el ensayo.
-- [ ] Crear `.env.example`, `Dockerfile` y `docker-compose.yml` (con volumen `./data:/app/data` y servicio opcional `mobile-tunnel` con `cloudflared`).
-- [ ] Verificar con test unitario que la lectura/escritura y las invariantes de `seed-data.ts` pasan al 100%.
+- [x] `src/types/sdd.ts` y los modelos Pydantic v2 espejo en `backend/app/models/` cumplen el contrato de [`.agent/architecture.md`](../architecture.md).
+- [x] Login con Google (Firebase Auth) verificado en el backend: sin token o con uno inválido, `401`.
+- [x] Datos en Firestore detrás de `StoreRepository`; cada producto pertenece al `uid` del token (un usuario no ve ni borra los ajenos).
+- [x] Productos de demo que cumplen $0 < P_{\min} < P_{\text{avg}} < P_{\max}$ y endpoint `POST /api/store/reset`.
+- [x] `pytest backend/tests` en verde con el almacén en memoria, y prueba manual contra Firebase real con usuarios temporales.
+- [ ] `docker compose up` probado de punta a punta (Docker no estaba instalado al escribir esto).

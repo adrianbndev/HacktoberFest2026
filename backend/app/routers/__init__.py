@@ -1,1 +1,1 @@
-"""HTTP routers for the Track C market backend."""
+"""FastAPI routers package."""
