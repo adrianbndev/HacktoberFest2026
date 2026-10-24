@@ -34,15 +34,14 @@ Ningún agente debe escribir código de implementación a ciegas. Todo desarroll
 
 ---
 
-## 3. Stack Tecnológico Oficial
+## 3. Stack Tecnológico Oficial (Frontend Next.js + Backend Python FastAPI & Visión IA)
 
-* **Framework Web:** Next.js (App Router, Server Actions & Route Handlers para REST/SSE).
-* **Lenguaje:** TypeScript estricto (`strict: true`), interfaces compartidas en `src/types/sdd.ts`.
-* **Estilos y UI:** Tailwind CSS + diseño **Bento Grid** moderno (modo oscuro/claro pulido, micro-interacciones fluidas) + `lucide-react` para iconografía.
-* **Sincronización Móvil $\leftrightarrow$ PC:** Route Handlers en `/api/capture-session/[sessionId]` con Server-Sent Events (SSE) y/o *short-polling* rápido cada $1\text{ s}$ (garantizando compatibilidad total en redes de hackathon).
-* **Persistencia:** Almacenamiento híbrido sin fricción (JSON local persistente en disco `/data/store.json` + caché en memoria / SQLite / Supabase opcional) con usuarios preconfigurados para demo (**Ales, Adri, Matías y Jurado**).
-* **IA & Visión:** SDK multimodal (Gemini Flash / Pro o OpenAI Vision compatible) con salida estructurada JSON (nombre, marca, categoría, `conditionScore` $0-100$, `conditionLabel`, `seoTitle`, `seoDescription`) y fallback inteligente.
-* **MCP (Model Context Protocol):** Servidor y adaptador MCP Stealth (`stealth-market-mcp`) con cabeceras humanas rotativas, *jitter* aleatorio ($800\text{ ms} - 2200\text{ ms}$), ponderación por salud del artículo y **capa de fallback determinista blindada** ante bloqueos de red.
+* **Frontend Web (`src/`):** Next.js (App Router, TypeScript `strict: true`, Tailwind CSS + diseño **Bento Grid** moderno + `lucide-react`). Configura `rewrites` en `next.config.ts` (`/api/:path*` $\rightarrow$ `http://127.0.0.1:8000/api/:path*`) para operar bajo un único puerto (`:3000`) sin errores CORS en el móvil.
+* **Backend & API (`backend/`):** **Python 3.11+ con FastAPI + Uvicorn + Pydantic v2** (`camelCase` serializado 1:1 con `src/types/sdd.ts`).
+* **Sincronización Móvil $\leftrightarrow$ PC:** Endpoints FastAPI en `/api/capture-session/{session_id}` con Server-Sent Events (SSE) y/o *short-polling* rápido cada $1.2\text{ s}$ (garantizando compatibilidad total en redes de hackathon).
+* **Persistencia:** Repositorio Python JSON Atómico (`backend/app/store/repository.py` sobre `/data/store.json` con `threading.RLock` + escritura atómica `.tmp` + `os.replace`) con usuarios preconfigurados para demo (**Ales, Adri, Matías y Jurado**).
+* **Reconocimiento de Imágenes & Visión IA (Python — `backend/app/vision/`):** Procesamiento de imagen con **Pillow (`PIL`)** + SDK multimodal en Python (`google-genai` Gemini 2.5 Flash / `openai` Vision) con validación **Pydantic v2** estructurada (nombre, marca, categoría, `conditionScore` $0-100$, `conditionLabel`, `seoTitle`, `seoDescription`) y fallback determinista en Python con análisis visual de imagen.
+* **MCP (Model Context Protocol en Python — `backend/app/mcp/` & `backend/mcp_server.py`):** Servidor MCP estándar con **`FastMCP` (`mcp` Python SDK)** y motor asíncrono `httpx` + `beautifulsoup4` (`stealth-market-mcp`) con cabeceras humanas rotativas, *jitter* aleatorio ($650\text{ ms} - 1200\text{ ms}$), ponderación por salud del artículo y **capa de fallback determinista blindada** ante bloqueos de red.
 
 ---
 
@@ -52,11 +51,11 @@ Para que **Ales, Adri y Matías** (y sus respectivos agentes en Antigravity CLI,
 
 | Track | Responsable Sugerido | Dominio y Directorios Exclusivos |
 | :--- | :--- | :--- |
-| **Track A** | **Ales** | **Frontend, Bento Grid UI, Auth/Perfil & Centro de Notificaciones:** `src/components/dashboard/`, `src/components/inventory/`, `src/components/notifications/`, `src/app/(dashboard)/` |
-| **Track B** | **Adri** | **Sync Móvil-PC (QR/Cámara) & Visión IA (Salud + SEO):** `src/app/mobile-capture/`, `src/app/api/capture-session/`, `src/app/api/vision/`, `src/lib/vision/`, `src/components/mobile-sync/` |
-| **Track C** | **Matías** | **MCP Stealth Engine, Cron de Precios & Módulos LifeOS (Clima/Planes/GitHub):** `src/mcp/`, `src/lib/mcp/`, `src/app/api/market/`, `src/app/api/lifeos/`, `src/lib/lifeos/` |
+| **Track A** | **Ales** | **Frontend Next.js, Bento Grid UI, Auth/Perfil & Centro de Notificaciones:** `src/components/dashboard/`, `src/components/inventory/`, `src/components/notifications/`, `src/app/(dashboard)/` |
+| **Track B** | **Adri** | **Sync Móvil-PC (QR/Cámara) & Reconocimiento de Imágenes / Visión IA en Python:** `src/app/mobile-capture/`, `src/components/mobile-sync/`, `backend/app/vision/`, `backend/app/routers/vision.py`, `backend/app/routers/capture_session.py` |
+| **Track C** | **Matías** | **Motor MCP Stealth en Python, Cron de Precios & Módulos LifeOS (Clima/Planes/GitHub):** `backend/mcp_server.py`, `backend/app/mcp/`, `backend/app/lifeos/`, `backend/app/routers/market.py`, `backend/app/routers/lifeos.py` |
 
-> **Regla de Oro de Git:** El archivo `src/types/sdd.ts` refleja exactamente el contrato de [`.agent/architecture.md`](.agent/architecture.md). Ningún Track rompe las firmas exportadas en `src/types/sdd.ts`.
+> **Regla de Oro de Git:** Los archivos `src/types/sdd.ts` (Frontend TS) y `backend/app/models/sdd.py` (Backend Pydantic v2) reflejan exactamente el contrato de [`.agent/architecture.md`](.agent/architecture.md). Ningún Track rompe las firmas exportadas en ambos contratos.
 
 ### Convención de Ramas y Commits
 * **Ramas:** `feat/track-a-<feature>`, `feat/track-b-<feature>`, `feat/track-c-<feature>` o trabajo coordinado por módulos sobre `main`.
@@ -68,17 +67,35 @@ Para que **Ales, Adri y Matías** (y sus respectivos agentes en Antigravity CLI,
 
 ---
 
-## 5. Mapa de Especificaciones SDD (`.agent/`)
+## 5. Mapa Completo de Especificaciones SDD, Módulos, Reglas y Skills (`.agent/`)
 
 Todos los agentes deben consultar y mantener sincronizados los siguientes documentos:
 
+### 🧭 Gobernanza, Arquitectura y Decisiones (ADRs)
 * 📋 [`.agent/roadmap.md`](.agent/roadmap.md) — Checklist maestro por niveles (Niveles 1 a 4) y criterios de aceptación.
+* 🗼 [`.agent/modules/INDEX-control-tower.md`](.agent/modules/INDEX-control-tower.md) — **Control Tower de Módulos (`MOD-00` a `MOD-07`)**, estados, SLAs y dependencias.
 * 🏗️ [`.agent/architecture.md`](.agent/architecture.md) — Modelos de datos TypeScript, endpoints REST/SSE y arquitectura de carpetas.
+* 🧭 [`.agent/decisions/001-tech-stack-and-options-matrix.md`](.agent/decisions/001-tech-stack-and-options-matrix.md) — Análisis de opciones tecnológicas, trade-offs y estrategia de fallbacks.
 * 🕵️ [`.agent/mcp/stealth-market-mcp.md`](.agent/mcp/stealth-market-mcp.md) — Especificación del motor MCP anti-bot, cálculo de $P_{\min}, P_{\text{avg}}, P_{\max}$ y fallback determinista.
-* 🛡️ [`.agent/rules/hackathon-guardrails.md`](.agent/rules/hackathon-guardrails.md) — Reglas innegociables de rendimiento ($<6\text{ s}$), captura móvil sin bloqueo HTTPS/CORS y resiliencia en demo.
-* 📐 **Especificaciones Funcionales por Nivel:**
-  * [`.agent/specs/level-1-core-recommerce.md`](.agent/specs/level-1-core-recommerce.md)
-  * [`.agent/specs/level-2-price-tracking-alerts.md`](.agent/specs/level-2-price-tracking-alerts.md)
-  * [`.agent/specs/level-3-lifeos-plans-calendar.md`](.agent/specs/level-3-lifeos-plans-calendar.md)
-  * [`.agent/specs/level-4-github-hacktoberfest.md`](.agent/specs/level-4-github-hacktoberfest.md)
-* 🤝 [`.agent/tracks/team-tracks-contract.md`](.agent/tracks/team-tracks-contract.md) — Contratos de integración entre Ales, Adri y Matías.
+* 🤝 [`.agent/tracks/team-tracks-contract.md`](.agent/tracks/team-tracks-contract.md) — Contratos de integración sin conflictos entre **Ales (Track A)**, **Adri (Track B)** y **Matías (Track C)**.
+
+### 🛡️ Reglas Activas (`always_on` en `.agent/rules/`)
+* [`.agent/rules/hackathon-guardrails.md`](.agent/rules/hackathon-guardrails.md) — Rendimiento ($<6\text{ s}$), captura móvil sin bloqueo HTTPS/CORS y resiliencia en demo.
+* [`.agent/rules/clean-code-solid.md`](.agent/rules/clean-code-solid.md) — Principios SOLID, Clean Architecture en 4 capas, límite de 220 líneas por archivo y Zod estricto.
+* [`.agent/rules/testing-and-quality-gates.md`](.agent/rules/testing-and-quality-gates.md) — Invariantes matemáticas obligatorias y protocolo del Harness de Verificación.
+
+### 📦 Fichas de Seguimiento y Control por Módulo (`.agent/modules/`)
+* [`.agent/modules/MOD-00-foundation-store-types.md`](.agent/modules/MOD-00-foundation-store-types.md) — Tipos `sdd.ts`, esquemas Zod y Repositorio JSON Atómico.
+* [`.agent/modules/MOD-01-auth-and-inventory-ui.md`](.agent/modules/MOD-01-auth-and-inventory-ui.md) — Login rápido, Bento Grid UI y "Mi Inventario" (`Track A`).
+* [`.agent/modules/MOD-02-mobile-pc-sync.md`](.agent/modules/MOD-02-mobile-pc-sync.md) — Sync Cámara Móvil $\leftrightarrow$ PC vía QR + compresión Canvas + SSE/Polling (`Track B`).
+* [`.agent/modules/MOD-03-vision-health-seo.md`](.agent/modules/MOD-03-vision-health-seo.md) — Visión IA Multimodal, diagnóstico de Salud ($0-100\%$) y generador SEO (`Track B`).
+* [`.agent/modules/MOD-04-mcp-stealth-valuation.md`](.agent/modules/MOD-04-mcp-stealth-valuation.md) — Motor MCP Stealth multi-web y cálculo de las 3 medidas ($P_{\min}, P_{\text{avg}}, P_{\max}$) (`Track C`).
+* [`.agent/modules/MOD-05-price-tracker-and-alerts.md`](.agent/modules/MOD-05-price-tracker-and-alerts.md) — Rastreo periódico, botón Demo Mode, Sparklines y Centro de Alertas (`Track C + A`).
+* [`.agent/modules/MOD-06-lifeos-weather-plans-calendar.md`](.agent/modules/MOD-06-lifeos-weather-plans-calendar.md) — Planes Locales financiados por inventario, Clima y Calendario de entregas (`Track C + A`).
+* [`.agent/modules/MOD-07-github-hacktoberfest-ai.md`](.agent/modules/MOD-07-github-hacktoberfest-ai.md) — Buscador GitHub Hacktoberfest 2026 + Resumen IA 2 líneas (`Track C + A`).
+
+### 🛠️ Skills y Harness Tools Ejecutables (`.agent/skills/`)
+* **`sdd-gatekeeper`** ([`SKILL.md`](.agent/skills/sdd-gatekeeper/SKILL.md)) $\rightarrow$ Script: `node .agent/skills/sdd-gatekeeper/scripts/verify-sdd-harness.mjs`
+* **`mcp-stealth-builder`** ([`SKILL.md`](.agent/skills/mcp-stealth-builder/SKILL.md)) $\rightarrow$ Script: `node .agent/skills/mcp-stealth-builder/scripts/test-mcp-math.mjs`
+* **`mobile-sync-debugger`** ([`SKILL.md`](.agent/skills/mobile-sync-debugger/SKILL.md)) $\rightarrow$ Script: `node .agent/skills/mobile-sync-debugger/scripts/detect-lan-and-simulate.mjs`
+* **`solid-module-scaffolder`** ([`SKILL.md`](.agent/skills/solid-module-scaffolder/SKILL.md)) $\rightarrow$ Receta de 6 pasos para implementar módulos bajo SOLID y Liskov.

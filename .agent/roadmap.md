@@ -17,10 +17,11 @@
 ## 🟢 NIVEL 1: El Core Absoluto — Inventario IA, Sync Móvil-PC, MCP Stealth y Login (Horas 0:00 - 3:30)
 > 📄 **Spec Detallada:** [`.agent/specs/level-1-core-recommerce.md`](specs/level-1-core-recommerce.md)
 
-### 1.0 Inicialización del Proyecto Base
-- [ ] Inicializar proyecto Next.js (App Router + TypeScript + Tailwind CSS + `lucide-react`).
-- [ ] Definir todas las interfaces compartidas en `src/types/sdd.ts` según [`.agent/architecture.md`](architecture.md).
-- [ ] Crear capa de persistencia local inmediata (`src/lib/store/`) con perfiles semilla para **Ales**, **Adri**, **Matías** y **Jurado**.
+### 1.0 Inicialización del Proyecto Base (`MOD-00` — Común para los 3 Tracks antes de ramificar)
+- [ ] Inicializar Frontend Next.js (`src/`, App Router + TypeScript + Tailwind CSS + `lucide-react` + Rewrite Proxy `/api/* -> :8000`) y Backend Python FastAPI (`backend/app/main.py`, `requirements.txt`, `Pillow`, `FastMCP`).
+- [ ] Definir todas las interfaces compartidas en `src/types/sdd.ts` (Frontend) y los modelos Pydantic v2 equivalentes en `backend/app/models/sdd.py` (Backend) según [`.agent/architecture.md`](architecture.md).
+- [ ] Crear capa de persistencia local atómica en Python (`backend/app/store/repository.py` con `RLock` + `.tmp` `os.replace`) y perfiles semilla para **Ales**, **Adri**, **Matías** y **Jurado** + endpoint `/api/store/reset`.
+- [ ] Configurar `.env.example`, `backend/Dockerfile` y `docker-compose.yml` (con volumen `./data` y túnel HTTPS `cloudflared` para evitar AP Isolation en el móvil).
 
 ### 1.1 Inicio de Sesión y Perfil de Usuario (`Track A - Ales`)
 - [ ] Selector de sesión rápida / Login sin fricción (Ales, Adri, Matías, Jurado) con persistencia de sesión.

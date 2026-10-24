@@ -4,24 +4,37 @@
 
 ---
 
-## 1. Matriz de Propiedad de Archivos por Track
+## 1. Matriz de Propiedad de Archivos por Track (Frontend Next.js + Backend Python FastAPI)
 
 | Módulo / Carpeta | Track A (**Ales**) | Track B (**Adri**) | Track C (**Matías**) | Regla de Coordinación |
 | :--- | :---: | :---: | :---: | :--- |
-| `src/types/sdd.ts` | Lectura | Lectura | Lectura | Fuente de verdad común (definida en Fase 1.0). |
-| `src/lib/store/` | Lectura/Uso | Lectura/Uso | Lectura/Uso | Capa de persistencia compartida. |
+| `src/types/sdd.ts` & `backend/app/models/sdd.py` | Lectura | Lectura | Lectura | Fuente de verdad común (definida en `MOD-00`). |
+| `backend/app/store/` | Lectura/Uso | Lectura/Uso | Lectura/Uso | Capa de persistencia JSON atómica en Python compartida. |
 | `src/app/(dashboard)/` | **PROPIETARIO** | No tocar | No tocar | Ales ensambla los widgets de B y C en el Bento Grid. |
 | `src/components/dashboard/` | **PROPIETARIO** | No tocar | No tocar | Layout general, Login switcher, KPIs superiores. |
 | `src/components/inventory/` | **PROPIETARIO** | No tocar | No tocar | Tarjetas de producto, 3 precios ($P_{\min}, P_{\text{avg}}, P_{\max}$), Sparklines. |
 | `src/components/notifications/` | **PROPIETARIO** | No tocar | No tocar | Centro de alertas y badges $\uparrow/\downarrow$. |
-| `src/components/mobile-sync/` | Importa componente | **PROPIETARIO** | No tocar | Adri exporta `<MobileSyncModal onProductCaptured={...} />`. |
+| `src/components/mobile-sync/` | Importa componente | **PROPIETARIO** | No tocar | Adri exporta `<MobileSyncModal onItemCreated={...} />`. |
 | `src/app/mobile-capture/` | No tocar | **PROPIETARIO** | No tocar | Página móvil QR con captura de cámara y compresión Canvas. |
-| `src/app/api/capture-session/` | No tocar | **PROPIETARIO** | No tocar | Estado de sesión Móvil $\leftrightarrow$ PC. |
-| `src/app/api/vision/` & `src/lib/vision/` | No tocar | **PROPIETARIO** | No tocar | Visión IA: nombre, marca, `conditionScore` ($0-100\%$), SEO. |
-| `src/mcp/` & `src/lib/mcp/` | No tocar | No tocar | **PROPIETARIO** | Servidor MCP Stealth, jitter humano, ponderación y fallback. |
-| `src/app/api/market/` | Consume vía `fetch` | Consume vía `fetch` | **PROPIETARIO** | Endpoints `/valuate` (Nivel 1) y `/refresh` (Nivel 2). |
-| `src/app/api/lifeos/` & `src/lib/lifeos/` | Consume vía `fetch` | No tocar | **PROPIETARIO** | Clima, Planes Locales, Calendario y GitHub Hacktoberfest. |
-| `src/components/lifeos/` | Co-edición UI | No tocar | **PROPIETARIO** | Componentes encapsulados para Nivel 3 y Nivel 4. |
+| `backend/app/routers/capture_session.py` | No tocar | **PROPIETARIO** | No tocar | Estado de sesión Móvil $\leftrightarrow$ PC en FastAPI. |
+| `backend/app/vision/` & `backend/app/routers/vision.py` | No tocar | **PROPIETARIO** | No tocar | Reconocimiento de imágenes en Python (`Pillow` + Gemini/OpenAI): nombre, marca, `conditionScore` ($0-100\%$), SEO. |
+| `backend/mcp_server.py` & `backend/app/mcp/` | No tocar | No tocar | **PROPIETARIO** | Servidor MCP Stealth en Python (`FastMCP`), jitter humano, ponderación y fallback. |
+| `backend/app/routers/market.py` | Consume vía `fetch` | Consume vía `fetch` | **PROPIETARIO** | Endpoints FastAPI `/api/market/valuate` (Nivel 1) y `/api/market/refresh` (Nivel 2). |
+| `backend/app/lifeos/` & `backend/app/routers/lifeos.py` | Consume vía `fetch` | Consume vía `fetch` | **PROPIETARIO** | Servicios Python de Clima, Planes Locales, Calendario y GitHub Hacktoberfest. |
+| `src/components/lifeos/` | Co-edición UI (Planes/GitHub) | Co-edición UI (Clima/Agenda) | Soporte contratos | Componentes encapsulados en archivos separados para Nivel 3 y 4. |
+
+---
+
+## 1.5 Protocolo de los Primeros 30 Minutos (`MOD-00` Conjunto) y Balanceo de Carga
+
+1. **Prohibido Ramificar antes de `MOD-00` (Minutos 0:00 - 0:30):**
+   * Antes de que Ales, Adri y Matías creen sus ramas o lancen agentes en paralelo, **se debe completar `MOD-00` en `main`**:
+     * Inicialización del Frontend Next.js (`src/`, `next.config.ts` con rewrite proxy `/api/* -> :8000`) y del Backend Python FastAPI (`backend/app/main.py`, `requirements.txt`).
+     * Creación de `src/types/sdd.ts`, `backend/app/models/sdd.py` (Pydantic v2) y `backend/app/store/` con datos semilla para `ales`, `adri`, `matias` y `jurado`.
+     * Creación de **endpoints stub (mocks de 5 líneas en FastAPI)** en `/api/vision/analyze` y `/api/market/valuate` para que Track A y Track B puedan probar de extremo a extremo sin esperar a que Track C termine el motor MCP.
+2. **Re-equilibrio de Carga de Trabajo en Niveles 2, 3 y 4:**
+   * En el **Nivel 1**, **Adri (`Track B`)** tiene la carga crítica de Cámara Móvil + Reconocimiento de Imágenes en Python (`MOD-02` y `MOD-03`).
+   * A partir del **Nivel 2, 3 y 4**, una vez cerrados `MOD-02` y `MOD-03`, **Adri** apoya en componentes UI aislados (`WeatherForecastWidget.tsx`, `DailyCalendarWidget.tsx` y el modal de *"Agendar Entrega Wallapop"*), evitando cuellos de botella en el Track A de **Ales** mientras **Matías (`Track C`)** construye los servicios Python de backend.
 
 ---
 

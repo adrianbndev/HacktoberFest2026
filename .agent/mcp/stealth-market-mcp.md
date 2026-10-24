@@ -1,45 +1,55 @@
-# 🕵️ Especificación Técnica: Motor MCP "Human-Like" (`stealth-market-mcp`)
+# 🕵️ Especificación Técnica: Motor MCP "Human-Like" en Python (`stealth-market-mcp`)
 
 > **Responsable:** Track C (**Matías**)
-> **Ubicación de Implementación:** `src/lib/mcp/stealth-engine.ts`, `src/mcp/server.ts` y `/api/market/valuate`
+> **Ubicación de Implementación:** `backend/app/mcp/stealth_engine.py`, `backend/app/mcp/pricing_math.py`, `backend/mcp_server.py` y `backend/app/routers/market.py` (`/api/market/valuate`)
 
 ---
 
-## 1. Propósito del Servidor MCP
+## 1. Propósito del Servidor MCP en Python
 
-El motor `stealth-market-mcp` proporciona herramientas bajo el estándar **Model Context Protocol (MCP)** para tasar artículos de segunda mano en tiempo real consultando plataformas del mercado español/europeo (**Wallapop, Vinted, Milanuncios y eBay**), imitando a un comprador/vendedor humano y ajustando las **3 medidas obligatorias de precio** ($P_{\min}, P_{\text{avg}}, P_{\max}$) según la salud visual del objeto (`conditionScore` de $0$ a $100\%$).
+El motor `stealth-market-mcp` proporciona herramientas bajo el estándar **Model Context Protocol (MCP)** usando **`FastMCP` (`mcp` Python SDK)** y peticiones asíncronas con **`httpx` + `BeautifulSoup4`** para tasar artículos de segunda mano en tiempo real consultando plataformas del mercado español/europeo (**Wallapop, Vinted, Milanuncios y eBay**), imitando a un comprador/vendedor humano y ajustando las **3 medidas obligatorias de precio** ($P_{\min}, P_{\text{avg}}, P_{\max}$) según la salud visual del objeto (`conditionScore` de $0$ a $100\%$).
 
 ---
 
-## 2. Comportamiento Humano ("Stealth & Anti-Bot Engine")
+## 2. Comportamiento Humano ("Stealth & Anti-Bot Engine" en Python)
 
 Para evitar bloqueos `403 Forbidden` / Cloudflare / Akamai durante el hackathon, toda petición saliente debe aplicar las siguientes técnicas:
 
-### 2.1 Jitter Temporal Aleatorio ($800\text{ ms} - 2200\text{ ms}$)
-* Entre peticiones consecutivas a la misma plataforma (bucle de `/api/market/refresh`), aplicar una pausa asíncrona con distribución uniforme entre **$800\text{ ms}$ y $2200\text{ ms}$**. En `/api/market/valuate` (una sola petición por plataforma) basta `humanJitter(200, 600)`: esperar antes de una única petición solo añade latencia.
-  ```typescript
-  export const humanJitter = (minMs = 800, maxMs = 2200): Promise<void> => {
-    const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
-    return new Promise((resolve) => setTimeout(resolve, delay));
-  };
-  ```
-* Las consultas a múltiples plataformas se ejecutan en paralelo (`Promise.allSettled`) con un *deadline* duro de **$2500\text{ ms}$ en total, jitter incluido**. Las plataformas que no hayan respondido se descartan; si no queda ninguna, entra el fallback (§4). Sumado al timeout de $3000\text{ ms}$ de Visión IA, el pipeline completo queda en $\le 5.5\text{ s}$, dentro del guardrail global de **$6\text{ s}$**.
+### 2.1 Jitter Temporal Aleatorio y Presupuesto de Latencia ($< 2.8\text{ s}$ Total)
+* **Peligro evitado:** Si se sumaran $2.2\text{ s}$ de jitter + $3.5\text{ s}$ de red + $2.8\text{ s}$ de Visión IA, se superarían los $6.0\text{ s}$ máximos del hackathon.
+* **Regla de Presupuesto MCP en Python:**
+  1. Antes de despachar la consulta en vivo, aplicar una pausa asíncrona acotada (`await human_jitter(0.65, 1.20)` en modo interactivo web; configurable a `0.0` en `pytest`):
+     ```python
+     import asyncio
+     import random
 
-### 2.2 Rotación de Huella HTTP y User-Agents Reales
+     async def human_jitter(min_sec: float = 0.65, max_sec: float = 1.20) -> None:
+         if max_sec <= 0:
+             return
+         await asyncio.sleep(random.uniform(min_sec, max_sec))
+     ```
+  2. Las consultas a las 4 plataformas (`wallapop`, `vinted`, `milanuncios`, `ebay`) se lanzan en paralelo (`asyncio.gather(..., return_exceptions=True)`) con un *timeout* duro de **$1.6\text{ s}$** (`httpx.Timeout(1.6)`) tras el jitter.
+  3. De este modo, el motor MCP responde siempre en **$\le 2.8\text{ s}$**, asegurando que `Visión IA Python (≤ 2.5s) + MCP Python (≤ 2.8s) = ≤ 5.3s < 6.0s`.
+
+### 2.2 Normalización de Query y Filtrado Léxico Anti-Basura
+* **Normalización de Búsqueda:** La IA de Visión puede devolver nombres largos (ej. `"Consola Nintendo Switch OLED 64GB Blanca en excelente estado"`). Antes de consultar los conectores, el motor simplifica la búsqueda a `brand + model` o a las primeras 4-5 palabras clave significativas (`"Nintendo Switch OLED"`).
+* **Filtro Léxico de Falsos Positivos:** Antes del cálculo estadístico, descartar cualquier anuncio cuyo título contenga palabras de accesorios o engaños (`"caja vacía"`, `"solo caja"`, `"funda"`, `"protector"`, `"cable"`, `"carcasa"`) o precios simbólicos ($\le 3\text{ €}$).
+
+### 2.3 Rotación de Huella HTTP y User-Agents Reales
 * Mantener un pool rotativo de al menos 6 `User-Agent` modernos (Chrome 128+ en macOS/Windows/Linux, Safari 17+ iOS/macOS, Firefox 130+).
 * Incluir cabeceras realistas de navegador en España:
-  ```typescript
-  const STEALTH_HEADERS = {
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Sec-Ch-Ua-Mobile': '?0',
-    'Sec-Ch-Ua-Platform': '"Linux"',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-site',
-  };
+  ```python
+  STEALTH_HEADERS_BASE = {
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"Linux"',
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-site",
+  }
   ```
 
 ---
@@ -85,6 +95,7 @@ En un hackathon, el Wi-Fi del recinto o los firewalls pueden bloquear peticiones
    * Si la red falla, devuelve `403/429`, o la lista de resultados es vacía:
    * El motor consulta un **Catálogo Semilla de Mercado Curado** (con precios reales de 2026 en España para consolas, móviles, monitores, auriculares, portátiles, cámaras, bicicletas, ropa vintage, periféricos, libros, etc.) combinado con un **estimador determinista por hash de marca/modelo + categoría**.
    * Genera una muestra realista de `comparableListings` en Wallapop, Vinted, Milanuncios y eBay y aplica exactamente la misma fórmula de ponderación $W_{\text{health}}$.
+   * **Enlaces Reales de Búsqueda (Deep Links):** Cada elemento de `comparableListings` debe incluir siempre un campo `url` funcional apuntando al anuncio real o a la búsqueda activa en la plataforma correspondiente (ej. `https://es.wallapop.com/app/search?keywords=${encodeURIComponent(query)}`, `https://www.vinted.es/catalog?search_text=...`, `https://www.ebay.es/sch/i.html?_nkw=...`) para que el jurado pueda abrirlo en 1 clic sin recibir jamás un `404`.
    * **Nunca devuelve `null`, `NaN`, `0 €` ni lanza un error HTTP 500 hacia el frontend.**
 
 ---

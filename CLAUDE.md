@@ -6,16 +6,23 @@
 
 @AGENTS.md
 @.agent/roadmap.md
+@.agent/modules/INDEX-control-tower.md
 @.agent/architecture.md
+@.agent/decisions/001-tech-stack-and-options-matrix.md
 @.agent/mcp/stealth-market-mcp.md
 @.agent/rules/hackathon-guardrails.md
+@.agent/rules/clean-code-solid.md
+@.agent/rules/testing-and-quality-gates.md
 @.agent/tracks/team-tracks-contract.md
 
 ---
 
 ## ⚡ Reglas Rápidas de Ejecución (Hacktoberfest 2026 — 9 Horas)
 
-1. **Equipo:** **Ales** (Track A: UI Bento, Perfil, Alertas), **Adri** (Track B: Sync Móvil-PC QR/Cámara, Visión IA + Salud $0-100\%$ + SEO), **Matías** (Track C: MCP Stealth 3 Precios, Cron de Mercado, Clima/Planes/GitHub).
+1. **Equipo & Stack Híbrido (Next.js UI + Python FastAPI Back & Visión IA):**
+   * **Ales** (`Track A`: Frontend Next.js, UI Bento, Perfil, Alertas en `src/`).
+   * **Adri** (`Track B`: Sync Móvil-PC QR/Cámara en `src/app/mobile-capture/` + Reconocimiento de Imágenes y Visión IA en **Python** `backend/app/vision/` + `backend/app/routers/capture_session.py`).
+   * **Matías** (`Track C`: Motor MCP Stealth 3 Precios en **Python** `backend/mcp_server.py` y `backend/app/mcp/`, Cron de Mercado y APIs LifeOS en `backend/app/lifeos/`).
 2. **Ejecución Estricta Nivel por Nivel:**
    * **Nivel 1 (0:00 - 3:30):** Login + Perfil + Sync Cámara Móvil $\leftrightarrow$ PC + Visión IA (Estado/Salud + SEO) + MCP Stealth ($P_{\min}, P_{\text{avg}}, P_{\max}$). Ver `@.agent/specs/level-1-core-recommerce.md`.
    * **Nivel 2 (3:30 - 5:30):** Job de actualización de precios + Botón **"Forzar Actualización de Mercado (Demo Mode)"** + Indicadores $\uparrow/\downarrow$ + Centro de Notificaciones. Ver `@.agent/specs/level-2-price-tracking-alerts.md`.

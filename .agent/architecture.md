@@ -4,62 +4,68 @@
 
 ---
 
-## 1. Estructura de Carpetas del Proyecto (Target Codebase)
+## 1. Estructura de Carpetas del Proyecto (Frontend Next.js + Backend Python FastAPI)
 
 ```text
 /
 ├── AGENTS.md                           # Constitución SDD universal (Antigravity CLI & OpenCode)
 ├── CLAUDE.md                           # Entrypoint SDD para Claude Code (@imports)
-├── .agent/                             # Especificaciones SDD y Reglas Agénticas
-│   ├── roadmap.md                      # Checklist maestro de los 4 niveles y Gates
-│   ├── architecture.md                 # Este documento (Contratos de Datos y APIs)
-│   ├── mcp/
-│   │   └── stealth-market-mcp.md       # Especificación del motor MCP anti-bot y fallback
-│   ├── rules/
-│   │   └── hackathon-guardrails.md     # Reglas de seguridad, tiempos (<6s) y cero fallos en demo
-│   ├── specs/
-│   │   ├── level-1-core-recommerce.md  # Spec funcional Nivel 1
-│   │   ├── level-2-price-tracking-alerts.md # Spec funcional Nivel 2
-│   │   ├── level-3-lifeos-plans-calendar.md # Spec funcional Nivel 3
-│   │   └── level-4-github-hacktoberfest.md  # Spec funcional Nivel 4
-│   └── tracks/
-│       └── team-tracks-contract.md     # División de trabajo sin conflictos (Ales, Adri, Matías)
-└── src/                                # Código fuente Next.js (App Router)
-    ├── types/
-    │   └── sdd.ts                      # Contratos TypeScript inmutables compartidos por los 3 Tracks
-    ├── lib/
-    │   ├── store/                      # Persistencia JSON/SQLite en disco (/data/store.json)
-    │   ├── vision/                     # Track B: Cliente Visión IA + Salud + SEO + Fallback
-    │   ├── mcp/                        # Track C: Motor MCP Stealth Multi-Web + Ponderación + Fallback
-    │   └── lifeos/                     # Track C: Servicios de Clima, Planes Locales y GitHub
-    ├── mcp/
-    │   └── server.ts                   # Track C: Definición de Tools MCP estándar
-    ├── components/
-    │   ├── dashboard/                  # Track A: Layout Bento Grid, Header, Selector de Perfil
-    │   ├── inventory/                  # Track A: Tarjetas de Producto, 3 Precios, Sparklines
-    │   ├── notifications/              # Track A: Centro de Alertas y Badges de tendencia
-    │   ├── mobile-sync/                # Track B: Modal QR, Estado de Conexión SSE/Polling
-    │   └── lifeos/                     # Track A + C: Widgets de Planes, Clima, Calendario y GitHub
+├── docker-compose.yml                  # Orquestación: Python Backend (:8000) + Next.js (:3000) + Cloudflared Tunnel
+├── .env.example                        # Variables de entorno estandarizadas para los 3 Tracks
+├── .agent/                             # Especificaciones SDD, Módulos, Reglas y Skills Agénticas
+├── src/                                # FRONTEND: Next.js (App Router + TypeScript + Tailwind + Lucide)
+│   ├── types/
+│   │   └── sdd.ts                      # Contratos TypeScript inmutables (espejo 1:1 de backend/app/models/sdd.py)
+│   ├── lib/
+│   │   └── mobile-sync/
+│   │       └── image-compressor.ts     # Track B: Compresión cliente en <canvas> (<200KB JPEG) antes de subir
+│   ├── components/
+│   │   ├── dashboard/                  # Track A: Layout Bento Grid, Header, Selector de Perfil
+│   │   ├── inventory/                  # Track A: Tarjetas de Producto, 3 Precios, Sparklines SVG
+│   │   ├── notifications/              # Track A: Centro de Alertas y Badges de tendencia
+│   │   ├── mobile-sync/                # Track B: Modal QR, Estado de Conexión SSE/Polling
+│   │   └── lifeos/                     # Track A + B: Widgets de Planes, Clima, Calendario y GitHub
+│   └── app/
+│       ├── (dashboard)/                # Track A: Vista principal unificada por niveles
+│       └── mobile-capture/
+│           └── [sessionId]/page.tsx    # Track B: Vista móvil de captura directa de cámara (capture="environment")
+│   # Nota: next.config.ts redirige /api/:path* -> http://127.0.0.1:8000/api/:path* (Cero problemas CORS en móvil)
+└── backend/                            # BACKEND PYTHON: FastAPI + Reconocimiento Imágenes + Motor MCP Stealth
+    ├── Dockerfile                      # Imagen Python 3.11-slim con Pillow, FastAPI, httpx, google-genai, mcp
+    ├── requirements.txt                # Dependencias Python fijadas
+    ├── mcp_server.py                   # Track C: Servidor MCP oficial en Python (FastMCP stdio/SSE)
+    ├── tests/                          # Tests unitarios con pytest (invariantes MCP, Visión y Store)
     └── app/
-        ├── (dashboard)/                # Track A: Vista principal unificada por niveles
-        ├── mobile-capture/
-        │   └── [sessionId]/page.tsx    # Track B: Vista móvil de captura directa de cámara
-        └── api/
-            ├── auth/route.ts           # Sesión rápida de usuario (Ales, Adri, Matías, Jurado)
-            ├── inventory/route.ts      # CRUD de productos del perfil
-            ├── notifications/route.ts  # Centro de Alertas: GET lista / PATCH marcar como leída
-            ├── capture-session/
-            │   └── [sessionId]/route.ts # Track B: Sincronización Móvil <-> PC (POST foto / GET SSE-Polling)
-            ├── vision/
-            │   └── analyze/route.ts    # Track B: Inferencia de producto, salud (0-100%) y SEO
-            ├── market/
-            │   ├── valuate/route.ts    # Track C: Tasación MCP Stealth (P_min, P_avg, P_max)
-            │   └── refresh/route.ts    # Track C: Cron / Botón Demo "Forzar Actualización de Mercado"
-            └── lifeos/
-                ├── plans/route.ts      # Track C: Planes locales cruzados con valor de inventario
-                ├── weather/route.ts    # Track C: Clima y recomendación Interior/Exterior
-                ├── calendar/route.ts   # Track C: Agenda personal + entregas de Wallapop
-                └── github/route.ts     # Track C: Buscador Hacktoberfest 2026 + Resumen IA 2 líneas
+        ├── main.py                     # Entrypoint FastAPI (CORS, montaje de routers en /api/*)
+        ├── models/
+        │   └── sdd.py                  # Esquemas Pydantic v2 (camelCase alias = validación estricta runtime)
+        ├── store/
+        │   ├── seed_data.py            # Perfiles semilla (Ales, Adri, Matías, Jurado) + inventario inicial
+        │   └── repository.py           # Persistencia JSON atómica (/data/store.json con RLock + .tmp + os.replace)
+        ├── vision/                     # Track B (Adri): Reconocimiento de Imágenes en Python + Salud + SEO
+        │   ├── image_processor.py      # Decodificación Base64, validación y análisis visual con Pillow (PIL)
+        │   ├── gemini_provider.py      # Reconocimiento multimodal con google-genai (Gemini 2.5 Flash)
+        │   ├── openai_provider.py      # Reconocimiento multimodal con OpenAI Vision (gpt-4o-mini)
+        │   ├── fallback_provider.py    # Reconocedor determinista en Python (análisis de color/aspecto PIL + catálogo)
+        │   └── orchestrator.py         # Cadena de responsabilidad con asyncio.wait_for (timeout <= 2.5s)
+        ├── mcp/                        # Track C (Matías): Motor MCP Stealth Multi-Web + 3 Precios en Python
+        │   ├── pricing_math.py         # Funciones puras en Python: filtro IQR, W_health y 0 < P_min < P_avg < P_max
+        │   ├── stealth_http.py         # Rotación de User-Agents reales, cabeceras ES y human_jitter (0.65s - 1.2s)
+        │   ├── connectors.py           # Conectores async (httpx + BeautifulSoup4) para Wallapop, Vinted, Milanuncios, eBay
+        │   ├── catalog_fallback.py     # Catálogo curado España 2026 + estimador determinista por hash + deep links
+        │   ├── stealth_engine.py       # Orquestador paralelo asyncio.gather con timeout <= 2.8s
+        │   └── market_refresh.py       # Nivel 2: Re-escaneo de inventario, cálculo de deltas y alertas
+        ├── lifeos/                     # Track C (Matías): Servicios LifeOS en Python (Niveles 3 y 4)
+        │   ├── weather_service.py      # Cliente async Open-Meteo + modo simulación lluvia/sol + fallback
+        │   ├── plans_engine.py         # Recomendador de planes locales cruzados con subida/valor de inventario
+        │   ├── calendar_service.py     # Gestión de agenda personal y citas de entrega de Wallapop
+        │   └── github_service.py       # Buscador GitHub API Hacktoberfest 2026 + Resumen IA 2 líneas
+        └── routers/                    # Controladores HTTP FastAPI (<= 60 líneas por archivo)
+            ├── auth_inventory.py       # GET/POST/DELETE /api/inventory, POST /api/auth, POST /api/store/reset
+            ├── capture_session.py      # Track B: POST /api/capture-session, GET/PUT /api/capture-session/{id}
+            ├── vision.py               # Track B: POST /api/vision/analyze
+            ├── market.py               # Track C: POST /api/market/valuate, POST /api/market/refresh
+            └── lifeos.py               # Track C: GET/POST /api/lifeos/{weather,plans,calendar,github}
 ```
 
 ---
@@ -258,6 +264,57 @@ export interface MarketRefreshResponse {                 // POST /api/market/ref
   items: InventoryItem[];
   notifications: MarketNotification[];                  // Solo las nuevas de este refresco
 }
+
+// ==========================================
+// 6. DTOs DE INTERCAMBIO ENTRE TRACKS & ESTADO GLOBAL DEL STORE
+// ==========================================
+export interface VisionAnalysisResult {
+  name: string;
+  category: string;
+  brand: string;
+  model: string;
+  conditionScore: number;         // 0 a 100
+  conditionLabel: ConditionLabel;
+  conditionReasoning: string;
+  seoTitle: string;
+  seoDescription: string;
+  source?: 'gemini' | 'openai' | 'deterministic_fallback';
+}
+
+export interface MarketValuationResult {
+  priceMin: number;
+  priceAvg: number;
+  priceMax: number;
+  sampleSize: number;
+  platforms: MarketPlatform[];
+  comparableListings: MarketListingSample[];
+  source: 'live_mcp' | 'stealth_fallback';
+}
+
+export interface InventoryTotals {
+  totalMin: number;               // Suma de P_min (Liquidez inmediata)
+  totalAvg: number;               // Suma de P_avg (Valor real de mercado)
+  totalMax: number;               // Suma de P_max (Techo potencial)
+  dailyGainEur: number;           // Suma de subidas recientes > 0 €
+  itemCount: number;
+}
+
+export interface MarketRefreshResponse {
+  updatedItems: InventoryItem[];
+  newNotifications: MarketNotification[];
+  totals: InventoryTotals;
+  refreshedAt: string;
+}
+
+export interface AppStoreState {
+  activeUserId: TeamMemberId;
+  profiles: Record<TeamMemberId, UserProfile>;
+  inventory: InventoryItem[];
+  captureSessions: Record<string, MobileCaptureSession>;
+  notifications: MarketNotification[];
+  calendarEvents: CalendarEvent[];
+  lastUpdatedAt: string;
+}
 ```
 
 ---
@@ -266,32 +323,76 @@ export interface MarketRefreshResponse {                 // POST /api/market/ref
 
 ### 3.1 Sincronización Móvil-PC (`/api/capture-session/[sessionId]`)
 * **`POST /api/capture-session`**
-  * Crea una nueva sesión con `sessionId` único para el usuario activo y devuelve `{ sessionId, mobileUrl }`.
+  * Crea una nueva sesión con `sessionId` único para el usuario activo y devuelve `{ sessionId, mobileUrl, lanIps }`.
 * **`GET /api/capture-session/[sessionId]`**
   * Devuelve el estado actual `MobileCaptureSession` (usado tanto por el móvil al abrir el QR como por el PC en polling cada $1\text{ s}$ o stream SSE).
 * **`PUT /api/capture-session/[sessionId]`**
-  * El móvil envía `{ status: 'photo_uploaded', photoDataUrl: 'data:image/jpeg;base64,...' }`.
+  * El móvil envía `{ status: 'photo_uploaded', photoDataUrl: 'data:image/jpeg;base64,...' }` ($\le 200\text{ KB}$ comprimido en `<canvas>`).
   * El PC detecta `photo_uploaded` en $<1.5\text{ s}$ y lanza automáticamente el pipeline Visión IA $\rightarrow$ MCP Stealth.
 
 ### 3.2 Pipeline de Visión IA y Tasación MCP
 * **`POST /api/vision/analyze`**
+  * **Body:** `{ photoDataUrl: string, userHint?: string }`
+  * **Response:** `VisionAnalysisResult` (SLA $\le 2.5\text{ s}$)
   * **Body:** `{ photoDataUrl: string }`
   * **Response:** `VisionAnalysis`
 * **`POST /api/market/valuate`**
-  * **Body:** `ValuationRequest`
-  * **Response:** `ValuationResult`
+  * **Body:** `{ query: string, brand?: string, model?: string, category: string, conditionScore: number, conditionLabel: ConditionLabel }`
+  * **Response:** `MarketValuationResult` (SLA $\le 2.8\text{ s}$)
 
 ### 3.3 Rastreo de Precios y Notificaciones (Nivel 2)
 * **`POST /api/market/refresh`**
   * **Body:** `{ userId: TeamMemberId, demoMode?: boolean }`
-  * **Acción:** Recorre los artículos del usuario, consulta el MCP (o aplica variación realista de mercado en `demoMode: true` si se invoca desde el botón *"Forzar Actualización de Mercado"*), añade un nuevo `PricePoint` a `priceHistory`, recalcula `priceTrend`, `priceDeltaPercent`, `priceDeltaEur` y genera objetos `MarketNotification` para subidas o bajadas significativas ($\ge 5\%$ o $\ge 5\text{ €}$), **como máximo una por artículo** (la métrica con mayor variación %).
+  * **Response:** `MarketRefreshResponse`
+  * **Acción:** Recorre los artículos del usuario, consulta el MCP (o aplica variación realista de mercado en `demoMode: true` si se invoca desde el botón *"Forzar Actualización de Mercado"*), añade un nuevo `PricePoint` a `priceHistory`, recalcula `priceTrend`, `priceDeltaPercent`, `priceDeltaEur` y genera objetos `MarketNotification` para subidas o bajadas significativas ($\ge 4\%$ o $\ge 5\text{ €}$), **como máximo una por artículo** (la métrica con mayor variación %).
   * **Response:** `MarketRefreshResponse` (inventario actualizado + solo las notificaciones nuevas).
 * **`GET /api/notifications?userId=ales`** $\rightarrow$ `MarketNotification[]` (más recientes primero).
 * **`PATCH /api/notifications`**
   * **Body:** `{ id: string, read: true }` $\rightarrow$ `MarketNotification` actualizada.
 
 ### 3.4 Módulos LifeOS (Niveles 3 y 4)
-* **`GET /api/lifeos/weather?city=Madrid`** $\rightarrow$ `WeatherForecast`
-* **`GET /api/lifeos/plans?userId=ales`** $\rightarrow$ Cruza el `WeatherForecast` + el valor total y variación $\Delta\text{ €}$ del inventario del usuario para devolver `LocalPlan[]` personalizados.
-* **`GET / POST /api/lifeos/calendar`** $\rightarrow$ Lista o agenda eventos personales y citas de entrega de Wallapop.
-* **`GET /api/lifeos/github?language=TypeScript&hacktoberfest=true`** $\rightarrow$ Devuelve `HacktoberfestRepo[]` con el resumen IA de 2 líneas.
+* **`GET /api/lifeos/weather?city=Madrid&simulate=rainy|sunny`** $\rightarrow$ `WeatherForecast`
+* **`GET /api/lifeos/plans?userId=ales&condition=rainy|sunny`** $\rightarrow$ Cruza el `WeatherForecast` + el valor total y variación $\Delta\text{ €}$ del inventario del usuario para devolver `{ plans: LocalPlan[], budgetSummary: { dailyGainEur: number, readyToSellTotalEur: number, bannerText: string } }`.
+* **`GET / POST / DELETE /api/lifeos/calendar`** $\rightarrow$ Lista, agenda o elimina eventos personales y citas de entrega de Wallapop.
+* **`GET /api/lifeos/github?language=TypeScript&hacktoberfest=true&query=...`** $\rightarrow$ Devuelve `HacktoberfestRepo[]` con el resumen IA de 2 líneas.
+
+---
+
+## 4. Puente Frontend $\leftrightarrow$ Backend Python (Zero-CORS) y Variables de Entorno
+
+### 4.1 Proxy Transparente en `next.config.ts`
+Para que tanto el PC como el teléfono móvil (al escanear el QR en la red local o por túnel HTTPS) se comuniquen con un **único puerto (`:3000`)** sin errores de CORS ni puertos bloqueados en el firewall, `next.config.ts` redirige automáticamente `/api/*` al backend FastAPI en Python:
+
+```typescript
+const nextConfig = {
+  async rewrites() {
+    const backendUrl = process.env.FASTAPI_INTERNAL_URL || 'http://127.0.0.1:8000';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
+  },
+};
+```
+
+### 4.2 Variables de Entorno Estándar (`.env.example`)
+```env
+# Proveedores de Reconocimiento de Imágenes en Python (Track B - Opcionales gracias al Fallback con Pillow)
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+
+# GitHub API para Nivel 4 en Python (Track C - Sube el rate-limit de 60 a 5000 req/h)
+GITHUB_TOKEN=
+
+# Conexión Frontend Next.js <-> Backend Python FastAPI y Persistencia
+FASTAPI_INTERNAL_URL=http://127.0.0.1:8000
+STORE_FILE_PATH=./data/store.json
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### 4.3 Reglas de Dockerización (`docker-compose.yml`)
+1. **Servicio `lifeos-backend` (Python 3.11 + FastAPI + Pillow + FastMCP):** Expone el puerto `8000` internamente (y en host para Swagger UI `/docs`) y monta `./data:/app/data` para persistir `/data/store.json`.
+2. **Servicio `lifeos-web` (Next.js Frontend):** Expone el puerto `3000` con `FASTAPI_INTERNAL_URL=http://lifeos-backend:8000`.
+3. **Servicio `mobile-tunnel` (Opcional Anti-AP-Isolation):** `cloudflare/cloudflared:latest` apuntando a `http://lifeos-web:3000` para dar HTTPS público instantáneo al móvil si el Wi-Fi del recinto bloquea tráfico LAN.
