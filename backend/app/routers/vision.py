@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.models.sdd import VisionAnalysisResult, VisionAnalyzeRequest
 from app.vision.ollama_provider import OllamaVisionProvider
@@ -26,7 +26,9 @@ async def analyze_product_image(payload: VisionAnalyzeRequest) -> VisionAnalysis
 
 
 @router.get("/node-status")
-async def get_vision_node_status() -> dict[str, Any]:
+async def get_vision_node_status(force: bool = Query(default=False)) -> dict[str, Any]:
     """Checks connectivity with Matías's Mac Ollama Vision node in the LAN."""
     provider = OllamaVisionProvider()
-    return await provider.check_node_health()
+    status = await provider.check_node_health(force=force)
+    status["activeProviders"] = _orchestrator.get_provider_ids()
+    return status

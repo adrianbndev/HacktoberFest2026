@@ -2,78 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from PIL import Image
 
 from app.models.sdd import (
+    ConditionLabel,
     VisionAnalysisResult,
     clamp_condition_score,
     map_score_to_condition_label,
+)
+from app.vision.catalog_data import (
+    CATALOG_TEMPLATES,
+    CatalogItemTemplate,
+    synthesize_template_from_hint,
 )
 from app.vision.protocol import (
     ImageVisualMetrics,
     build_seo_description,
     build_seo_title,
-)
-
-
-@dataclass(frozen=True)
-class _CatalogItemTemplate:
-    keywords: tuple[str, ...]
-    name: str
-    category: str
-    brand: str
-    model: str
-    base_score: int
-    reasoning_template: str
-
-
-CATALOG_TEMPLATES: tuple[_CatalogItemTemplate, ...] = (
-    _CatalogItemTemplate(
-        keywords=("switch", "nintendo", "oled", "joycon", "consola"),
-        name="Nintendo Switch OLED 64GB",
-        category="Consolas y Videojuegos",
-        brand="Nintendo",
-        model="Switch OLED HEG-001",
-        base_score=88,
-        reasoning_template="Pantalla OLED sin rayones apreciables, carcasa en tono {color} bien conservada y controles firmes.",
-    ),
-    _CatalogItemTemplate(
-        keywords=("iphone", "apple", "ios", "pro", "movil", "móvil", "telefono"),
-        name="Apple iPhone 14 Pro 128GB",
-        category="Telefonía y Smartphones",
-        brand="Apple",
-        model="iPhone 14 Pro A2890",
-        base_score=85,
-        reasoning_template="Chasis en acabado {color} con bordes limpios, módulo de cámaras intacto y cristal sin fisuras.",
-    ),
-    _CatalogItemTemplate(
-        keywords=("macbook", "portatil", "portátil", "laptop", "mac", "air", "m2", "m3"),
-        name="MacBook Air 13 M2 8GB/256GB",
-        category="Informática y Portátiles",
-        brand="Apple",
-        model="MacBook Air M2 A2681",
-        base_score=91,
-        reasoning_template="Chasis unibody de aluminio ({color}) sin abolladuras, teclado limpio y bisagra firme.",
-    ),
-    _CatalogItemTemplate(
-        keywords=("sony", "wh-1000xm5", "xm5", "xm4", "auriculares", "cascos", "audio"),
-        name="Auriculares Sony WH-1000XM5 ANC",
-        category="Audio y Sonido",
-        brand="Sony",
-        model="WH-1000XM5",
-        base_score=84,
-        reasoning_template="Almohadillas sin desgaste pronunciado, diadema intacta y acabado {color} bien cuidado.",
-    ),
-    _CatalogItemTemplate(
-        keywords=("ps5", "playstation", "dualsense", "mando"),
-        name="PlayStation 5 Edición Disco 825GB",
-        category="Consolas y Videojuegos",
-        brand="Sony",
-        model="PS5 CFI-1216A",
-        base_score=86,
-        reasoning_template="Cubiertas laterales en color {color} limpias, puertos intactos y excelente estado estético.",
-    ),
 )
 
 
@@ -95,17 +40,41 @@ def _compute_visual_health_adjustment(metrics: ImageVisualMetrics) -> int:
     return delta
 
 
-def _select_template(metrics: ImageVisualMetrics, user_hint: str | None) -> _CatalogItemTemplate:
-    if user_hint:
-        lowered = user_hint.lower()
-        for item in CATALOG_TEMPLATES:
-            if any(k in lowered for k in item.keywords):
-                return item
+def _matches_keywords(text: str, keywords: tuple[str, ...]) -> bool:
+    low = text.lower()
+    tokens = set(low.replace("-", " ").replace("/", " ").replace("_", " ").split())
+    for kw in keywords:
+        k = kw.lower()
+        if " " in k:
+            if k in low:
+                return True
+        elif k in tokens:
+            return True
+    return False
 
-    # Deterministic visual selection based on color & aspect ratio when no hint is provided
+
+def _select_template(metrics: ImageVisualMetrics, user_hint: str | None) -> CatalogItemTemplate:
+    if user_hint and user_hint.strip():
+        for item in CATALOG_TEMPLATES:
+            if _matches_keywords(user_hint, item.keywords):
+                return item
+        return synthesize_template_from_hint(user_hint)
+
     r, g, b = metrics.dominant_rgb
     idx = (r + g * 2 + b * 3 + metrics.width) % len(CATALOG_TEMPLATES)
     return CATALOG_TEMPLATES[idx]
+
+
+def _format_health_reasoning(label: ConditionLabel, color: str, metrics: ImageVisualMetrics) -> str:
+    descriptions: dict[ConditionLabel, str] = {
+        "Nuevo": f"Artículo en acabado {color} sin marcas de uso ni arañazos; conservación impoluta.",
+        "Como nuevo": f"Superficie y acabados en tono {color} muy limpios, conservación excelente.",
+        "Buen estado": f"Ligeras marcas de uso normal en bordes ({color}), plenamente funcional.",
+        "Desgaste visible": f"Marcas evidentes de uso continuado o roces estéticos en el acabado {color}.",
+        "Para piezas": f"Deterioro visible o marcas pronunciadas en la carcasa ({color}); apto para repuestos.",
+    }
+    desc = descriptions.get(label, f"Estado físico evaluado en color {color}.")
+    return f"{desc} (Inspección visual: nitidez {metrics.sharpness:.1f}, luminancia {metrics.brightness:.0f}/255)."
 
 
 class DeterministicVisionProvider:
@@ -131,10 +100,7 @@ class DeterministicVisionProvider:
             if metrics.color_name_es.lower() not in template.name.lower()
             else template.name
         )
-        reasoning = (
-            template.reasoning_template.format(color=metrics.color_name_es.lower())
-            + f" (Inspección visual: nitidez {metrics.sharpness:.1f}, luminancia {metrics.brightness:.0f}/255)."
-        )
+        reasoning = _format_health_reasoning(label, metrics.color_name_es.lower(), metrics)
 
         return VisionAnalysisResult(
             name=product_name,

@@ -1,4 +1,4 @@
-"""Resilient Vision Orchestrator (Chain of Responsibility: Mac Ollama -> Pillow Fallback)."""
+"""Resilient Vision Orchestrator (Chain of Responsibility: Ollama -> OpenAI -> Pillow Fallback)."""
 
 from __future__ import annotations
 
@@ -16,17 +16,19 @@ from app.models.sdd import (
 from app.vision.fallback_provider import DeterministicVisionProvider
 from app.vision.image_processor import decode_image_source, prepare_and_inspect_image
 from app.vision.ollama_provider import OllamaVisionProvider
+from app.vision.openai_provider import OpenAIVisionProvider
 from app.vision.protocol import (
     VisionProviderProtocol,
     build_seo_description,
     build_seo_title,
 )
 
-DEFAULT_VISION_TIMEOUT_SEC = float(os.getenv("VISION_TIMEOUT_SEC", "6.0"))
+# SLA guardrail: <= 2.5s before falling back to deterministic Pillow (<20ms)
+DEFAULT_VISION_TIMEOUT_SEC = float(os.getenv("VISION_TIMEOUT_SEC", "2.5"))
 
 
 class ResilientVisionOrchestrator:
-    """Executes Pillow pre-processing + primary VLM (Matías's Mac) + deterministic fallback."""
+    """Executes non-blocking Pillow inspection + primary VLM + optional OpenAI + deterministic fallback."""
 
     def __init__(
         self,
@@ -42,20 +44,27 @@ class ResilientVisionOrchestrator:
             if mode == "fallback":
                 self.providers = [self.fallback_provider]
             else:
-                self.providers = [
+                active: list[VisionProviderProtocol] = [
                     OllamaVisionProvider(request_timeout_sec=timeout_sec),
-                    self.fallback_provider,
                 ]
+                openai_prov = OpenAIVisionProvider()
+                if openai_prov.is_available():
+                    active.append(openai_prov)
+                active.append(self.fallback_provider)
+                self.providers = active
+
+    def get_provider_ids(self) -> list[str]:
+        return [p.provider_id for p in self.providers]
 
     async def analyze_photo(
         self,
         photo_source: str | bytes | Path,
         user_hint: str | None = None,
     ) -> VisionAnalysisResult:
-        """Full pipeline: decode -> Pillow optimize & metrics -> VLM provider -> normalize."""
+        """Full pipeline: non-blocking decode & Pillow metrics -> VLM chain -> normalize."""
         start_ts = time.perf_counter()
-        raw_image = decode_image_source(photo_source)
-        enhanced_image, metrics = prepare_and_inspect_image(raw_image)
+        raw_image = await asyncio.to_thread(decode_image_source, photo_source)
+        enhanced_image, metrics = await asyncio.to_thread(prepare_and_inspect_image, raw_image)
         data_url_ref = photo_source if isinstance(photo_source, str) else "binary://image"
 
         for provider in self.providers:
@@ -73,7 +82,6 @@ class ResilientVisionOrchestrator:
             except Exception:
                 continue
 
-        # Guaranteed last-resort fallback so the user's form never fails
         fallback_res = await self.fallback_provider.analyze(
             image=enhanced_image,
             metrics=metrics,

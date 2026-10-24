@@ -96,8 +96,15 @@ def build_seo_description(
     ]
     hashtag_line = " ".join(f"#{t}" for t in dict.fromkeys(tags) if t)
 
+    item_ref = ""
+    low_name = name.lower()
+    if brand.lower() not in low_name and model.lower() not in low_name:
+        item_ref = f" ({brand} {model})"
+    elif model and model.lower() not in low_name:
+        item_ref = f" (ref. {model})"
+
     return (
-        f"✨ Se vende {name} ({brand} {model}) en estado '{label}'.\n"
+        f"✨ Se vende {name}{item_ref} en estado '{label}'.\n"
         f"🔍 Diagnóstico visual IA ({score}/100%): {condition_reasoning.strip()}\n"
         f"📦 Listo para entrega en mano o envío protegido por Wallapop/Vinted. "
         f"Se puede ver y probar sin compromiso.\n"
