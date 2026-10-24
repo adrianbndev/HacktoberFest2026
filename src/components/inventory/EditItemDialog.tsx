@@ -55,7 +55,8 @@ export function EditItemDialog({ open, item, onClose }: EditItemDialogProps) {
 }
 
 function EditItemForm({ item, titleId, onClose }: { item: InventoryItem; titleId: string; onClose: () => void }) {
-  const { updateItem } = useDashboard();
+  const { updateItem, pendingValuations } = useDashboard();
+  const isValuating = Boolean(pendingValuations[item.id]);
   const [name, setName] = useState(item.name);
   const id = useId();
   const categories = PRODUCT_CATEGORIES.includes(item.category)
@@ -105,11 +106,17 @@ function EditItemForm({ item, titleId, onClose }: { item: InventoryItem; titleId
         </div>
       )}
       <p className="mt-3 rounded-inner bg-fog px-4 py-3 text-[13px] leading-relaxed text-ink-2">
-        <span className="font-semibold text-ink">
-          {item.conditionLabel} ({item.conditionScore}/100) · <span className="tabular-nums">{formatEur(item.priceMin)}</span>{" "}
-          a <span className="tabular-nums">{formatEur(item.priceMax)}</span>, precio justo{" "}
-          <span className="tabular-nums">{formatEur(item.priceAvg)}</span>
-        </span>
+        {isValuating ? (
+          <span className="font-semibold text-ink">
+            Tasando… los precios aparecerán cuando terminen las 3 fuentes.
+          </span>
+        ) : (
+          <span className="font-semibold text-ink">
+            {item.conditionLabel} ({item.conditionScore}/100) · <span className="tabular-nums">{formatEur(item.priceMin)}</span>{" "}
+            a <span className="tabular-nums">{formatEur(item.priceMax)}</span>, precio justo{" "}
+            <span className="tabular-nums">{formatEur(item.priceAvg)}</span>
+          </span>
+        )}
         <br />
         El estado y los precios salen de la tasación y no se editan a mano.
       </p>
@@ -183,7 +190,7 @@ function EditItemForm({ item, titleId, onClose }: { item: InventoryItem; titleId
         </button>
         <button
           type="submit"
-          disabled={name.trim() === ""}
+          disabled={isValuating || name.trim() === ""}
           className="h-11 rounded-full bg-accent px-5 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           Guardar cambios

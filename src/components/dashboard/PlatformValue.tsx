@@ -1,27 +1,16 @@
 "use client";
 
-import type { InventoryItem, MarketPlatform } from "@/types/sdd";
-import { PLATFORM_LABEL, formatEur, platformReferences } from "@/components/inventory/format";
-
-const PLATFORMS = Object.keys(PLATFORM_LABEL) as MarketPlatform[];
-
-// Suma, por plataforma, de los precios de referencia de lo que aún tienes (los vendidos no cuentan).
-function platformTotals(items: InventoryItem[]) {
-  const owned = items.filter((item) => item.status !== "sold");
-  return PLATFORMS.map((platform) => ({
-    platform,
-    value: owned.reduce(
-      (sum, item) => sum + (platformReferences(item).find((listing) => listing.platform === platform)?.price ?? 0),
-      0,
-    ),
-  }))
-    .filter(({ value }) => value > 0)
-    .sort((a, b) => b.value - a.value);
-}
+import type { InventoryItem } from "@/types/sdd";
+import { PLATFORM_LABEL, formatEur } from "@/components/inventory/format";
+import { ValuatingAggregateNote } from "@/components/inventory/ValuatingPriceSkeleton";
+import { useDashboard } from "./DashboardShell";
+import { platformTotals, settledItems } from "./inventory-aggregates";
 
 // Gráfico de énfasis: la plataforma donde más vale en el acento, el resto en gris; cada valor va escrito.
 export function PlatformValue({ items }: { items?: InventoryItem[] }) {
-  const totals = items ? platformTotals(items) : [];
+  const { pendingValuations } = useDashboard();
+  const totals = items ? platformTotals(settledItems(items, pendingValuations)) : [];
+  const pendingCount = Object.keys(pendingValuations).length;
   if (totals.length < 2) return null;
   const max = totals[0].value;
   const mean = totals.reduce((sum, { value }) => sum + value, 0) / totals.length;
@@ -58,6 +47,11 @@ export function PlatformValue({ items }: { items?: InventoryItem[] }) {
         })}
       </ul>
       <p className="mt-6 text-[13px] text-ink-2">Según los precios de referencia de cada objeto en cada plataforma.</p>
+      {pendingCount > 0 && (
+        <div className="mt-3 border-t border-line pt-1">
+          <ValuatingAggregateNote label={`Tasando ${pendingCount === 1 ? "un objeto" : `${pendingCount} objetos`}…`} />
+        </div>
+      )}
     </section>
   );
 }

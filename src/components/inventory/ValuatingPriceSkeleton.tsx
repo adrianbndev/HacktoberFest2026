@@ -92,3 +92,12 @@ export function ValuatingPlatformRefsSkeleton() {
     </div>
   );
 }
+
+export function ValuatingAggregateNote({ label = "Tasando un objeto…" }: { label?: string }) {
+  return (
+    <p role="status" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-accent">
+      <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+      {label}
+    </p>
+  );
+}

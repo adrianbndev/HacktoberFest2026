@@ -44,9 +44,10 @@ export function buildPendingInventoryItem(
     conditionReasoning: vision.conditionReasoning,
     seoTitle: vision.seoTitle,
     seoDescription: vision.seoDescription,
-    priceMin: 1,
-    priceAvg: 2,
-    priceMax: 3,
+    // Sin precios hasta que terminen las 3 fuentes; las vistas ocultan los pendientes.
+    priceMin: 0,
+    priceAvg: 0,
+    priceMax: 0,
     priceTrend: "stable",
     priceDeltaPercent: 0,
     priceDeltaEur: 0,
