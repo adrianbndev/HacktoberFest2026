@@ -48,8 +48,10 @@ class BrowserSessionPool:
                 client_factory=client_factory,
                 cdp_probe=cdp_probe,
                 timeout_sec=timeout_sec,
+                own_page=True,
+                page_token=f"browser-pool-slot-{index}",
             )
-            for _ in range(self._size)
+            for index in range(self._size)
         ]
         self._free: asyncio.Queue[BrowserSessionManager] = asyncio.Queue()
         for slot in self._slots:

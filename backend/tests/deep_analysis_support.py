@@ -123,18 +123,22 @@ def make_analyzer(
     *,
     browser: FakeBrowser | None = None,
     recommender: FakeRecommender | None = None,
+    milanuncios: object | None = None,
     **settings_overrides: object,
 ) -> DeepMarketAnalyzer:
-    settings = make_settings(
-        market_cache_path=str(tmp_path / "cache.sqlite"),
-        **settings_overrides,
-    )
+    settings_kwargs: dict[str, object] = {
+        "market_cache_path": str(tmp_path / "cache.sqlite"),
+        "market_milanuncios_transport": "browser",
+    }
+    settings_kwargs.update(settings_overrides)
+    settings = make_settings(**settings_kwargs)
     return DeepMarketAnalyzer(
         settings,
         browser=browser or FakeBrowser(),  # type: ignore[arg-type]
         cache=MarketAnalysisCache(path=settings.market_cache_path, ttl_sec=900),
         sources=sources,  # type: ignore[arg-type]
         recommender=recommender or FakeRecommender(),
+        milanuncios=milanuncios,  # type: ignore[arg-type]
     )
 
 

@@ -74,35 +74,52 @@ class _HtmlConnector:
     platform: MarketPlatform = "ebay"
     base_url: str = ""
     search_template: str = ""
+    page_template: str | None = None
 
     def __init__(
-        self, *, timeout_sec: float = 1.6, client: httpx.AsyncClient | None = None
+        self,
+        *,
+        timeout_sec: float = 1.6,
+        client: httpx.AsyncClient | None = None,
+        max_pages: int = 1,
     ) -> None:
+        if max_pages < 1:
+            raise ValueError("max_pages must be >= 1")
         self._timeout_sec = timeout_sec
         self._client = client
+        self._max_pages = max_pages
 
     async def search(self, query: str) -> ConnectorResult:
         clean_query = squeeze(query)
         if len(clean_query) < 2:
             return ConnectorResult(self.platform, failure_reason="empty_query")
-        try:
-            status_code, html = await self._fetch(clean_query)
-        except httpx.HTTPError:
-            return ConnectorResult(self.platform, failure_reason="network_error")
-        except Exception:
-            return ConnectorResult(self.platform, failure_reason="unexpected_error")
-        if looks_blocked(html, status_code):
-            return ConnectorResult(self.platform, failure_reason=f"blocked_http_{status_code}")
-        try:
-            listings = tuple(self.parse(html))
-        except Exception:
-            return ConnectorResult(self.platform, failure_reason="parse_error")
+        listings: list[MarketListingSample] = []
+        for page in range(1, self._max_pages + 1):
+            try:
+                status_code, html = await self._fetch(clean_query, page)
+            except httpx.HTTPError:
+                return ConnectorResult(self.platform, failure_reason="network_error")
+            except Exception:
+                return ConnectorResult(self.platform, failure_reason="unexpected_error")
+            if looks_blocked(html, status_code):
+                return ConnectorResult(
+                    self.platform, failure_reason=f"blocked_http_{status_code}"
+                )
+            try:
+                listings.extend(self.parse(html))
+            except Exception:
+                return ConnectorResult(self.platform, failure_reason="parse_error")
         if not listings:
             return ConnectorResult(self.platform, failure_reason="no_listings_parsed")
-        return ConnectorResult(self.platform, listings)
+        return ConnectorResult(self.platform, tuple(listings))
 
-    async def _fetch(self, query: str) -> tuple[int, str]:
+    async def _fetch(self, query: str, page: int = 1) -> tuple[int, str]:
         url = self.search_template.format(query=quote_plus(query))
+        if page > 1:
+            template = self.page_template
+            if template is None:
+                raise ValueError("page_template is required for multi-page connectors")
+            url = template.format(query=quote_plus(query), page=page)
         headers = build_headers()
         if self._client is not None:
             response = await self._client.get(url, headers=headers)
@@ -202,6 +219,7 @@ class MilanunciosConnector(_HtmlConnector):
     platform: MarketPlatform = "milanuncios"
     base_url = "https://www.milanuncios.com"
     search_template = "https://www.milanuncios.com/anuncios/?s={query}"
+    page_template = "https://www.milanuncios.com/anuncios/?s={query}&pagina={page}"
 
     def parse(self, html: str) -> list[MarketListingSample]:
         soup = BeautifulSoup(html, "lxml")

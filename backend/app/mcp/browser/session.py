@@ -92,6 +92,8 @@ class BrowserSessionManager:
         client_factory: ClientFactory | None = None,
         cdp_probe: CdpProbe | None = None,
         timeout_sec: float | None = None,
+        own_page: bool = False,
+        page_token: str | None = None,
     ) -> None:
         self._settings = settings
         self._timeout_sec = (
@@ -99,6 +101,8 @@ class BrowserSessionManager:
         )
         self._client_factory: ClientFactory = client_factory or self._spawn_client
         self._cdp_probe: CdpProbe = cdp_probe or probe_cdp
+        self._own_page = own_page
+        self._page_token = page_token
         self._lock = asyncio.Lock()
         self._client: McpClientProtocol | None = None
         self._page_id: int | None = None
@@ -211,8 +215,20 @@ class BrowserSessionManager:
     async def _ensure_page(self) -> BrowserPage:
         client = await self._ensure_client()
         if self._page_id is None:
-            text = await self._call(client, "list_pages", {})
-            self._page_id = parse_page_id(text)
+            if self._own_page:
+                token = self._page_token or "browser-pool-page"
+                text = await self._call(
+                    client,
+                    "new_page",
+                    {
+                        "url": f"data:text/html,<title>{token}</title>",
+                        "background": True,
+                    },
+                )
+                self._page_id = parse_page_id(text, token)
+            else:
+                text = await self._call(client, "list_pages", {})
+                self._page_id = parse_page_id(text)
         return BrowserPage(self, self._page_id)
 
     async def _close_page_best_effort(self) -> None:

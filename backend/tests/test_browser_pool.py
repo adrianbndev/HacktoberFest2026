@@ -40,9 +40,9 @@ async def test_pool_defaults_to_two_lazily_spawned_slots() -> None:
     assert factory.clients == []
 
     async with pool.session() as first:
-        assert first.page_id == 1
+        assert first.page_id == 2
     async with pool.session() as second:
-        assert second.page_id == 1
+        assert second.page_id == 2
 
     assert len(factory.clients) == 2
     assert all(client.initialized for client in factory.clients)
@@ -83,7 +83,7 @@ async def test_a_slot_is_returned_even_when_the_worker_raises() -> None:
         await page.navigate("https://example.com")
 
     assert len(factory.clients) == 1
-    assert ("navigate_page", {"pageId": 1, "url": "https://example.com"}) in (
+    assert ("navigate_page", {"pageId": 2, "url": "https://example.com"}) in (
         factory.clients[0].calls
     )
 
@@ -143,3 +143,44 @@ async def test_health_probe_does_not_serialize_the_slots() -> None:
     assert health.connected is True
     assert health.url == "http://market-browser:9222"
     assert len(factory.clients) == 2
+
+
+async def test_cancelling_a_session_releases_its_slot() -> None:
+    factory = FakeFactory()
+    pool = _pool(factory, size=1, acquire_timeout_sec=0.05)
+    entered = asyncio.Event()
+
+    async def holder() -> None:
+        async with pool.session():
+            entered.set()
+            await asyncio.sleep(10)
+
+    task = asyncio.create_task(holder())
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    async with pool.session() as page:
+        assert page.page_id == 2
+
+
+async def test_each_slot_creates_its_own_page() -> None:
+    factory = FakeFactory()
+    pool = _pool(factory)
+
+    async with pool.session():
+        pass
+    async with pool.session():
+        pass
+
+    new_page_calls = [
+        call
+        for client in factory.clients
+        for call in client.calls
+        if call[0] == "new_page"
+    ]
+    assert len(new_page_calls) == 2
+    urls = [str(call[1].get("url")) for call in new_page_calls]
+    assert any("browser-pool-slot-0" in url for url in urls)
+    assert any("browser-pool-slot-1" in url for url in urls)

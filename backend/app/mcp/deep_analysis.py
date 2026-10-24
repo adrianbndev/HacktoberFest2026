@@ -23,35 +23,42 @@ from app.mcp.analysis_events import (
     SourceStarted,
     ValuationReady,
 )
-from app.mcp.analysis_query import build_analysis_query, build_relevance_query
+from app.mcp.analysis_query import build_analysis_query
 from app.mcp.browser.pool import BrowserSessionPool
 from app.mcp.browser.sources.base import BrowserSourceProtocol
 from app.mcp.cache import MarketAnalysisCache, build_cache_key
 from app.mcp.deep_cache import now_iso, read_cached, write_cached
+from app.mcp.deep_milanuncios import MilanunciosHybridRunner
+from app.mcp.deep_parallel import (
+    RELEVANCE_SKIPPED_WARNING,
+    SMALL_SAMPLE_WARNING,
+    aggregate_results,
+    run_sources,
+)
 from app.mcp.deep_recommend import RecommenderProtocol, recommend
 from app.mcp.deep_sources import BrowserSourceRunner, default_sources
-from app.mcp.deep_support import select_comparables, single_iqr_filter, source_warnings
 from app.mcp.deepseek import DeepSeekRecommender
-from app.mcp.pricing_math import compute_price_triplet_from_clean, confidence_score
-from app.mcp.relevance import score_relevance
 from app.models.market_analysis import (
     MarketAnalysisRequest,
     MarketAnalysisResult,
-    MarketAnalysisValuation,
     MarketSourceResult,
 )
 from app.models.sdd import MarketListingSample, MarketPlatform
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "RELEVANCE_SKIPPED_WARNING",
+    "SMALL_SAMPLE_WARNING",
+    "DeepMarketAnalyzer",
+    "reset_shared_analyzer",
+    "shared_analyzer",
+]
+
 UNAVAILABLE_DETAIL = "Ninguna fuente de mercado profunda devolvió anuncios utilizables."
 BROWSER_UNAVAILABLE_DETAIL = "browser_unavailable"
 ANALYSIS_DISABLED_DETAIL = "analysis_disabled"
 ANALYSIS_FAILED_DETAIL = "analysis_failed"
-SMALL_SAMPLE_WARNING = "Muestra de mercado pequeña: interpreta el rango con cautela."
-RELEVANCE_SKIPPED_WARNING = (
-    "No se pudo aplicar el filtro de relevancia; se usa la muestra completa."
-)
 
 
 class DeepMarketAnalyzer:
@@ -65,6 +72,7 @@ class DeepMarketAnalyzer:
         cache: MarketAnalysisCache | None = None,
         sources: Mapping[MarketPlatform, BrowserSourceProtocol] | None = None,
         recommender: RecommenderProtocol | None = None,
+        milanuncios: MilanunciosHybridRunner | None = None,
     ) -> None:
         self._settings = settings
         self.browser = browser or BrowserSessionPool(settings)
@@ -75,6 +83,7 @@ class DeepMarketAnalyzer:
             settings,
             self.browser,
             sources if sources is not None else default_sources(settings),
+            milanuncios=milanuncios,
         )
         self._recommender: RecommenderProtocol = recommender or DeepSeekRecommender(
             settings, allow_template=False
@@ -96,7 +105,6 @@ class DeepMarketAnalyzer:
             return
 
         query = build_analysis_query(request.name)
-        relevance_query = build_relevance_query(request.name, request.brand, request.model)
         cache_key = build_cache_key(query, request.condition_score, list(request.sources))
         cached = await read_cached(self.cache, cache_key)
         if cached is not None:
@@ -106,73 +114,41 @@ class DeepMarketAnalyzer:
 
         yield AnalysisStarted(query, tuple(request.sources), False)
         deadline = monotonic() + self._settings.market_analysis_deadline_sec
-        results: list[MarketSourceResult] = []
-        usable_by_source: dict[MarketPlatform, list[MarketListingSample]] = {}
         for platform in request.sources:
             yield SourceStarted(platform)
-            outcome = await self._runner.run(platform, query, deadline)
+
+        results_by_platform: dict[MarketPlatform, MarketSourceResult] = {}
+        usable_by_source: dict[MarketPlatform, list[MarketListingSample]] = {}
+        async for platform, outcome in run_sources(
+            self._runner,
+            request.sources,
+            query,
+            deadline,
+            self._settings.market_source_concurrency,
+        ):
             if outcome is None:
                 yield AnalysisFailed(BROWSER_UNAVAILABLE_DETAIL, {})
                 return
             source_result, usable = outcome
-            results.append(source_result)
+            results_by_platform[platform] = source_result
             if usable:
                 usable_by_source[platform] = usable
             yield SourceFinished(source_result)
 
-        statuses: dict[str, str] = {
-            str(source_result.source): source_result.status
-            for source_result in results
-        }
-        if not usable_by_source:
-            yield AnalysisFailed(UNAVAILABLE_DETAIL, statuses)
-            return
-
-        warnings = source_warnings(statuses)
-        all_usable = [
-            listing
+        results = [
+            results_by_platform[platform]
             for platform in request.sources
-            for listing in usable_by_source.get(platform, ())
+            if platform in results_by_platform
         ]
-        relevant = score_relevance(relevance_query, all_usable)
-        if not relevant:
-            relevant = all_usable
-            warnings.append(RELEVANCE_SKIPPED_WARNING)
-        clean = single_iqr_filter(relevant)
-        if not clean:
-            yield AnalysisFailed(UNAVAILABLE_DETAIL, statuses)
+        aggregation = aggregate_results(
+            self._settings, request, query, results, usable_by_source
+        )
+        if aggregation.valuation is None:
+            yield AnalysisFailed(UNAVAILABLE_DETAIL, aggregation.statuses)
             return
-
-        triplet = compute_price_triplet_from_clean(
-            [listing.price for listing in clean], request.condition_score
-        )
-        platforms = [
-            platform
-            for platform in request.sources
-            if any(listing.platform == platform for listing in clean)
-        ]
-        valuation = MarketAnalysisValuation(
-            price_min=triplet.price_min,
-            price_avg=triplet.price_avg,
-            price_max=triplet.price_max,
-            sample_size=len(clean),
-            platforms=platforms,
-            confidence=confidence_score(
-                [listing.price for listing in clean],
-                platform_count=len(platforms),
-                ok_sources=sum(1 for result in results if result.status == "ok"),
-                requested_sources=len(request.sources),
-            ),
-        )
-        if len(clean) < self._settings.market_min_sample_size:
-            warnings.append(SMALL_SAMPLE_WARNING)
-        comparables = select_comparables(
-            clean,
-            query,
-            triplet.price_avg,
-            limit=self._settings.market_max_comparable_listings,
-            quota=self._settings.market_platform_quota,
-        )
+        valuation = aggregation.valuation
+        warnings = aggregation.warnings
+        comparables = aggregation.comparables
         yield ValuationReady(valuation)
 
         recommendation = await recommend(

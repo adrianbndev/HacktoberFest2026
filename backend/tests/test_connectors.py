@@ -132,6 +132,60 @@ async def test_short_queries_are_rejected_without_a_request() -> None:
     assert result.failure_reason == "empty_query"
 
 
+async def test_milanuncios_fetches_every_configured_page() -> None:
+    requested: list[str | None] = []
+    body = _fixture("milanuncios_search_v2.html")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.params.get("pagina"))
+        return httpx.Response(200, text=body)
+
+    async with _client(handler) as client:
+        result = await MilanunciosConnector(client=client, max_pages=3).search(
+            "iPhone 13 128GB"
+        )
+
+    assert requested == [None, "2", "3"]
+    assert result.ok is True
+    assert len(result.listings) == 6
+
+
+async def test_milanuncios_multi_page_stops_on_a_blocked_page() -> None:
+    body = _fixture("milanuncios_search_v2.html")
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            return httpx.Response(200, text=_fixture("milanuncios_blocked.html"))
+        return httpx.Response(200, text=body)
+
+    async with _client(handler) as client:
+        result = await MilanunciosConnector(client=client, max_pages=3).search(
+            "iPhone 13 128GB"
+        )
+
+    assert calls == 2
+    assert result.ok is False
+    assert result.listings == ()
+    assert result.failure_reason == "blocked_http_200"
+
+
+async def test_single_page_is_still_the_default() -> None:
+    requested: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.params.get("pagina"))
+        return httpx.Response(200, text=_fixture("milanuncios_search_v2.html"))
+
+    async with _client(handler) as client:
+        result = await MilanunciosConnector(client=client).search("iPhone 13 128GB")
+
+    assert requested == [None]
+    assert result.ok is True
+
+
 async def test_milanuncios_parses_current_ad_card_markup() -> None:
     async with _client(_static(_fixture("milanuncios_search_v2.html"))) as client:
         result = await MilanunciosConnector(client=client).search("iPhone 13 128GB")

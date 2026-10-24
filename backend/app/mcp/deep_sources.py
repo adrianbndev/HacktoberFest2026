@@ -1,7 +1,9 @@
-"""Per-source browser collection for the deep analysis engine.
+"""Per-source collection for the deep analysis engine (Phase 3 hybrid).
 
-Isolates failure handling: a blocked source, a timeout or a crashed page never
-aborts the other sources; only a missing browser is fatal (`None` result).
+eBay and Wallapop use one browser pool slot each. Milanuncios tries the fast
+HTTP connector first and falls back to the browser source when HTTP is blocked,
+empty or yields fewer than 8 usable listings. A source failure never aborts the
+other sources; only a missing browser is fatal (`None`).
 """
 
 from __future__ import annotations
@@ -15,10 +17,11 @@ from app.config import Settings
 from app.mcp.analysis_query import build_platform_search_url
 from app.mcp.browser.pool import BrowserSessionPool
 from app.mcp.browser.session import BrowserUnavailableError
-from app.mcp.browser.sources.base import BrowserSourceProtocol
+from app.mcp.browser.sources.base import BrowserSourceProtocol, SourceOutcome
 from app.mcp.browser.sources.ebay import EbaySource
 from app.mcp.browser.sources.milanuncios import MilanunciosSource
 from app.mcp.browser.sources.wallapop import WallapopSource
+from app.mcp.deep_milanuncios import MilanunciosHybridRunner
 from app.mcp.normalize import dedupe_listings, filter_usable_listings
 from app.models.market_analysis import (
     MAX_SOURCE_LISTINGS,
@@ -34,48 +37,37 @@ FETCHED_STATUSES = frozenset({"blocked", "timeout", "error"})
 
 
 class BrowserSourceRunner:
-    """Runs one browser source on a pool slot."""
+    """Runs one source on a pool slot or through the hybrid Milanuncios runner."""
 
     def __init__(
         self,
         settings: Settings,
         browser: BrowserSessionPool,
         sources: Mapping[MarketPlatform, BrowserSourceProtocol],
+        *,
+        milanuncios: MilanunciosHybridRunner | None = None,
     ) -> None:
         self._settings = settings
         self._browser = browser
         self._sources = dict(sources)
+        self._milanuncios = milanuncios or MilanunciosHybridRunner(
+            settings, browser, browser_source=self._sources.get("milanuncios")
+        )
 
     async def run(
         self, platform: MarketPlatform, query: str, deadline: float
     ) -> tuple[MarketSourceResult, list[MarketListingSample]] | None:
         started = monotonic()
-        source = self._sources.get(platform)
-        if source is None:
-            return (
-                self._result(platform, "error", [], started, query, SOURCE_NOT_IMPLEMENTED),
-                [],
-            )
-        remaining = deadline - started
-        if remaining <= 0:
-            return (
-                self._result(platform, "timeout", [], started, query, "deadline_exceeded"),
-                [],
-            )
-        timeout = min(self._settings.market_source_timeout_sec, remaining)
-        try:
-            async with self._browser.session() as page:
-                outcome = await asyncio.wait_for(source.collect(page, query), timeout=timeout)
-        except BrowserUnavailableError:
+        outcome: SourceOutcome | None
+        if platform == "milanuncios":
+            try:
+                outcome = await self._milanuncios.collect(query, deadline)
+            except BrowserUnavailableError:
+                return None
+        else:
+            outcome = await self._browser_outcome(platform, query, deadline)
+        if outcome is None:
             return None
-        except TimeoutError:
-            return (
-                self._result(platform, "timeout", [], started, query, "source_timeout"),
-                [],
-            )
-        except Exception:
-            logger.warning("deep source %s failed", platform, exc_info=True)
-            return self._result(platform, "error", [], started, query, "source_error"), []
 
         usable = filter_usable_listings(
             dedupe_listings(outcome.listings),
@@ -97,10 +89,64 @@ class BrowserSourceRunner:
         status: MarketSourceStatus = "ok" if usable else "no_listings"
         return (
             self._result(
-                platform, status, usable, started, query, outcome.error, outcome.latency_ms
+                platform,
+                status,
+                usable,
+                started,
+                query,
+                outcome.error,
+                outcome.latency_ms,
             ),
             usable if status == "ok" else [],
         )
+
+    async def _browser_outcome(
+        self, platform: MarketPlatform, query: str, deadline: float
+    ) -> SourceOutcome | None:
+        started = monotonic()
+        source = self._sources.get(platform)
+        if source is None:
+            return SourceOutcome(
+                source=platform,
+                status="error",
+                listings=(),
+                latency_ms=0,
+                error=SOURCE_NOT_IMPLEMENTED,
+            )
+        remaining = deadline - started
+        if remaining <= 0:
+            return SourceOutcome(
+                source=platform,
+                status="timeout",
+                listings=(),
+                latency_ms=0,
+                error="deadline_exceeded",
+            )
+        timeout = min(self._settings.market_source_timeout_sec, remaining)
+        try:
+            async with self._browser.session() as page:
+                return await asyncio.wait_for(
+                    source.collect(page, query), timeout=timeout
+                )
+        except BrowserUnavailableError:
+            return None
+        except TimeoutError:
+            return SourceOutcome(
+                source=platform,
+                status="timeout",
+                listings=(),
+                latency_ms=max(0, int((monotonic() - started) * 1000)),
+                error="source_timeout",
+            )
+        except Exception:
+            logger.warning("deep source %s failed", platform, exc_info=True)
+            return SourceOutcome(
+                source=platform,
+                status="error",
+                listings=(),
+                latency_ms=max(0, int((monotonic() - started) * 1000)),
+                error="source_error",
+            )
 
     def _result(
         self,

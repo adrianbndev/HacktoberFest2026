@@ -52,6 +52,10 @@ class FakeMCPClient:
                 raise MCPError(f"{name} crashed")
             if name == "list_pages":
                 return self.pages
+            if name == "new_page":
+                url = str(arguments.get("url") or "about:blank")
+                self.pages = f"1: about:blank\n2: {url} [selected]"
+                return self.pages
             if name == "evaluate_script":
                 return '{"value": 42}'
             return "{}"
@@ -246,3 +250,10 @@ async def test_health_probe_surfaces_a_crash() -> None:
 def test_parse_page_id_handles_the_list_pages_format() -> None:
     assert parse_page_id("1: about:blank\n2: https://example.com") == 1
     assert parse_page_id("no pages") == 1
+    assert (
+        parse_page_id(
+            "1: about:blank\n2: data:text/html,<title>browser-pool-slot-1</title> [selected]",
+            "browser-pool-slot-1",
+        )
+        == 2
+    )

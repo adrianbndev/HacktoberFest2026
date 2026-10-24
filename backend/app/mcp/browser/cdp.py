@@ -26,8 +26,19 @@ def probe_cdp(url: str, timeout_sec: float) -> None:
         pass
 
 
-def parse_page_id(text: str) -> int:
-    """Extract the first `N: url` page id from `list_pages` output."""
+def parse_page_id(text: str, token: str | None = None) -> int:
+    """Extract a page id from `list_pages` output.
+
+    With `token`, the line containing it wins (each pool slot creates its own
+    page with a unique data-URL title, so concurrent `new_page` calls cannot
+    make two slots share the selected page).
+    """
+    if token:
+        for line in text.splitlines():
+            if token in line:
+                match = PAGE_ID_PATTERN.match(line)
+                if match is not None:
+                    return int(match.group(1))
     match = PAGE_ID_PATTERN.search(text)
     return int(match.group(1)) if match is not None else DEFAULT_PAGE_ID
 

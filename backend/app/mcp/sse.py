@@ -45,8 +45,9 @@ async def stream_analysis(
 ) -> AsyncIterator[str]:
     """Yield SSE frames; heartbeat while a source is slow; cancel on disconnect.
 
-    `on_disconnect` (the router passes `browser.stop`) closes the page and the
-    MCP process only when the stream did not finish normally.
+    `on_disconnect` is an optional cleanup hook for a stream that did not finish
+    normally. The deep engine does not stop the whole pool here: cancelling the
+    producer releases only the pool slots held by its in-flight sources.
     """
     queue: asyncio.Queue[DeepAnalysisEvent | None] = asyncio.Queue()
 
