@@ -139,7 +139,10 @@ default **2**: eBay + Wallapop). Each slot owns:
 
 - one `chrome-devtools-mcp` stdio process (`--browserUrl $CDP_URL`, never
   `--headless`, never `--enable-automation`, never launches Chrome);
-- one page created with `new_page` and reused by that slot only;
+- one page created with `new_page` and a unique data-URL token (background
+  tab), parsed by token from `list_pages` so two concurrent `new_page` calls
+  cannot make two slots share the globally "selected" page; the page is reused
+  by that slot only;
 - its **own** `asyncio.Lock`, so slots do not serialize each other;
 - per-operation timeout, one restart of a dead MCP process, and `close_page`
   plus process shutdown on release/shutdown.
