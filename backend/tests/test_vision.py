@@ -156,6 +156,11 @@ class TestVisionModule(unittest.TestCase):
         self.assertLess(result.latency_ms or 9999, 1000)
         self.assertLessEqual(len(result.seo_title), SEO_TITLE_MAX_LENGTH)
 
+    def test_corrupted_image_raises_clean_value_error(self) -> None:
+        """Verifies that corrupted image bytes fail with ValueError rather than unhandled crash."""
+        with self.assertRaises(ValueError):
+            decode_image_source("data:image/jpeg;base64,/9j/corrupted")
+
 
 if __name__ == "__main__":
     unittest.main()

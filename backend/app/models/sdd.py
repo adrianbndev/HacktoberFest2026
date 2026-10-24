@@ -24,7 +24,7 @@ class CamelModel(BaseModel):
     )
 
 
-TeamMemberId = Literal["ales", "adri", "matias", "jurado"]
+TeamMemberId = Literal["ales", "adri", "matias"]
 
 ConditionLabel = Literal[
     "Nuevo",
@@ -132,6 +132,9 @@ class ValuationRequest(CamelModel):
     category: str
     condition_score: int = Field(..., ge=0, le=100)
     condition_label: ConditionLabel
+
+
+MarketValuationRequest = ValuationRequest
 
 
 class MarketListingSample(CamelModel):

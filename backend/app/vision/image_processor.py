@@ -52,9 +52,12 @@ def decode_image_source(source: str | bytes | Path) -> Image.Image:
     else:
         raise ValueError("Unsupported image input type")
 
-    with Image.open(io.BytesIO(raw_bytes)) as opened:
-        transposed = ImageOps.exif_transpose(opened)
-        return transposed.convert("RGB")
+    try:
+        with Image.open(io.BytesIO(raw_bytes)) as opened:
+            transposed = ImageOps.exif_transpose(opened)
+            return transposed.convert("RGB")
+    except Exception as exc:
+        raise ValueError(f"No se pudo decodificar la imagen: {exc}") from exc
 
 
 def prepare_and_inspect_image(
