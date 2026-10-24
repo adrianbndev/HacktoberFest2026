@@ -17,7 +17,7 @@ export function BalancePanel({ totals, onCapture }: BalancePanelProps) {
   const count = totals?.itemCount ?? 0;
 
   return (
-    <section aria-labelledby="balance-title" className="flex flex-col gap-8 rounded-panel bg-accent p-6 text-white sm:p-8">
+    <section aria-labelledby="balance-title" className="flex h-full flex-col gap-8 rounded-panel bg-accent p-6 text-white sm:p-8">
       <div>
         <h1 id="balance-title" className="text-base font-medium text-on-accent-2">Tu patrimonio</h1>
         {totals && rolling !== undefined ? (

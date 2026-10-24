@@ -21,7 +21,7 @@ export function InventoryByStatus({ items }: { items?: InventoryItem[] }) {
   }).filter(({ status, count }) => status !== "reserved" || count > 0);
 
   return (
-    <section aria-labelledby="by-status-title" className="rounded-panel bg-fog p-3 sm:p-4">
+    <section aria-labelledby="by-status-title" className="h-full rounded-panel bg-fog p-3 sm:p-4">
       <h2 id="by-status-title" className="px-3 pt-2 text-xl font-semibold">Tu inventario por estado</h2>
       <ul className="mt-2">
         {rows.map(({ status, icon, count, value }) => (

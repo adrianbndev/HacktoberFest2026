@@ -2,7 +2,7 @@
 
 import { createElement } from "react";
 import Link from "next/link";
-import { Camera } from "lucide-react";
+import { Camera, Plus } from "lucide-react";
 import type { InventoryItem } from "@/types/sdd";
 import { STATUS_LABEL, categoryIcon, formatDayLabel, formatEur, formatTime } from "@/components/inventory/format";
 
@@ -24,7 +24,7 @@ export function RecentValuations({ items, lastAddedId, onCapture }: RecentValuat
   }
 
   return (
-    <section aria-labelledby="recent-title" aria-busy={!items} className="rounded-panel bg-fog p-3 sm:p-4">
+    <section aria-labelledby="recent-title" aria-busy={!items} className="flex h-full flex-col rounded-panel bg-fog p-3 sm:p-4">
       <div className="flex items-baseline justify-between px-3 pb-1 pt-2">
         <h2 id="recent-title" className="text-xl font-semibold">Tasaciones recientes</h2>
         {items && items.length > 0 && (
@@ -56,16 +56,28 @@ export function RecentValuations({ items, lastAddedId, onCapture }: RecentValuat
           </button>
         </div>
       ) : (
-        [...groups].map(([day, dayItems]) => (
-          <div key={day} className="mt-3">
-            <h3 className="px-3 pb-1 text-sm font-medium text-ink-2">{day}</h3>
-            <ul>
-              {dayItems.map((item) => (
-                <RecentRow key={item.id} item={item} isNew={item.id === lastAddedId} />
-              ))}
-            </ul>
-          </div>
-        ))
+        <>
+          {[...groups].map(([day, dayItems]) => (
+            <div key={day} className="mt-3">
+              <h3 className="px-3 pb-1 text-sm font-medium text-ink-2">{day}</h3>
+              <ul>
+                {dayItems.map((item) => (
+                  <RecentRow key={item.id} item={item} isNew={item.id === lastAddedId} />
+                ))}
+              </ul>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={onCapture}
+            className="mt-auto flex items-center gap-3 rounded-inner px-3 py-3 text-left font-semibold text-accent transition-colors hover:bg-paper"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-full border-2 border-dashed border-accent/35">
+              <Plus className="size-5" aria-hidden />
+            </span>
+            Tasar otro objeto
+          </button>
+        </>
       )}
     </section>
   );

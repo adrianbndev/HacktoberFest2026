@@ -46,7 +46,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <DashboardContext value={{ ...state, openCapture: () => setCaptureOpen(true), lastAddedId }}>
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 pb-16 pt-4 sm:px-6 lg:pt-6">
+      <div className="mx-auto flex w-full max-w-[96rem] flex-1 flex-col gap-8 px-4 pb-16 pt-4 sm:px-6 lg:px-10 lg:pt-6">
         <TopNav profile={state.inventory?.profile} onLogout={state.logout} onResetDemo={state.resetDemo} />
         <main className="flex flex-col gap-8">
           {state.error ? (
