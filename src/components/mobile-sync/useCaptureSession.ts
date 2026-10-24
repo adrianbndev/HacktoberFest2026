@@ -8,7 +8,7 @@ import { formatDynamicFieldsSummary } from "@/lib/vision/category-fields";
 import {
   buildPendingInventoryItem,
   createInventoryItemId,
-  runMarketValuationWithFallback,
+  runMarketValuation,
   upsertSourceResult,
 } from "./capture-item";
 import { mergeSourceResults, sourcesFromError } from "./market-error";
@@ -167,7 +167,7 @@ export function useCaptureSession(
 
     let liveSources: MarketSourceResult[] = [];
     try {
-      const newItem = await runMarketValuationWithFallback({
+      const newItem = await runMarketValuation({
         userId, photoUrl: capturedPhoto, vision: adjustedVision, details: dynamicSummary, itemId, signal: controller.signal,
         onEvent: (event) => {
           if (event.type === "source_result") {
