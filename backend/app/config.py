@@ -50,7 +50,6 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_reasoning_model: str = "deepseek-v4-pro"
     deepseek_fast_model: str = "deepseek-flash"
-    deepseek_legacy_reasoner_model: str = "deepseek-reasoner"
     deepseek_timeout_sec: float = Field(default=4.0, gt=0.0, le=60.0)
     deepseek_recommendation_budget_sec: float = Field(default=1.2, gt=0.0, le=10.0)
 
