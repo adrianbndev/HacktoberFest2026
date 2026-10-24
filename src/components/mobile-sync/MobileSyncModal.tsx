@@ -63,13 +63,17 @@ function MobileSyncDialog({
   const baseUrl = customBaseUrl ?? (session ? defaultBaseUrl(session.mobileUrl) : "");
   const mobileUrl = session ? `${baseUrl.replace(/\/+$/, "")}/mobile-capture/${session.sessionId}` : "";
   const waiting = step === "waiting" || step === "connected";
+  // Con foto (análisis, revisión, resultado) el modal se ensancha: foto a la izquierda y datos a la derecha.
+  const wide = !waiting && step !== "error";
 
   return (
     <dialog
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="mobile-sync-title"
-      className="m-auto max-h-[92dvh] w-[min(95vw,38rem)] overflow-y-auto rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7"
+      className={`m-auto max-h-[92dvh] overflow-y-auto rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7 ${
+        wide ? "w-[min(95vw,64rem)]" : "w-[min(95vw,38rem)]"
+      }`}
     >
       <div className="mb-5 flex items-start justify-between gap-4">
         <h2 id="mobile-sync-title" className="flex items-center gap-2.5 text-lg font-semibold">
@@ -134,14 +138,14 @@ function MobileSyncDialog({
           />
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
           {photo && (
-            <div className="relative overflow-hidden rounded-inner bg-fog">
+            <div className="relative overflow-hidden rounded-inner bg-fog lg:sticky lg:top-0">
               {/* eslint-disable-next-line @next/next/no-img-element -- foto recibida en data URL */}
               <img
                 src={photo}
                 alt="Foto recibida del producto"
-                className={`${step === "review" ? "max-h-48" : "aspect-[4/3]"} w-full object-cover`}
+                className={`aspect-[4/3] w-full object-cover ${step === "review" ? "max-h-48 lg:max-h-none" : ""}`}
               />
               {step === "vision" && (
                 <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
@@ -154,61 +158,63 @@ function MobileSyncDialog({
             </div>
           )}
 
-          {step === "vision" && (
-            <div role="status" aria-live="polite" className="flex flex-col gap-1.5 rounded-inner bg-fog p-4">
-              <p className="flex items-center gap-2.5 text-[15px] font-semibold">
-                <ScanSearch className="size-5 text-accent" aria-hidden />
-                Reconociendo el objeto y su estado…
-              </p>
-              <p className="text-sm leading-relaxed text-ink-2">
-                Identificamos qué es, en qué estado está y qué datos pedirte según su tipo (móvil, consola, mueble…).
-              </p>
-            </div>
-          )}
-
-          {(step === "review" || step === "market") && visionDraft && (
-            <DynamicProductForm
-              initialAnalysis={visionDraft}
-              submitting={step === "market"}
-              onConfirm={confirmVisionAndValuate}
-              onRetake={resetToCapture}
-            />
-          )}
-
-          {step === "done" && item && (
-            <>
-              <p role="status" className="flex items-center gap-2 text-[15px] font-semibold">
-                <CircleCheck className="size-5 text-accent" aria-hidden /> Guardado en tu inventario
-              </p>
-              <div>
-                <p className="text-lg font-semibold">{item.name}</p>
-                <p className="text-sm text-ink-2">
-                  {item.brand} · {item.model} · {item.category}
+          <div className="flex min-w-0 flex-col gap-5">
+            {step === "vision" && (
+              <div role="status" aria-live="polite" className="flex flex-col gap-1.5 rounded-inner bg-fog p-4">
+                <p className="flex items-center gap-2.5 text-[15px] font-semibold">
+                  <ScanSearch className="size-5 text-accent" aria-hidden />
+                  Reconociendo el objeto y su estado…
+                </p>
+                <p className="text-sm leading-relaxed text-ink-2">
+                  Identificamos qué es, en qué estado está y qué datos pedirte según su tipo (móvil, consola, mueble…).
                 </p>
               </div>
-              <HealthScoreBadge
-                score={item.conditionScore}
-                label={item.conditionLabel}
-                reasoning={item.conditionReasoning}
+            )}
+
+            {(step === "review" || step === "market") && visionDraft && (
+              <DynamicProductForm
+                initialAnalysis={visionDraft}
+                submitting={step === "market"}
+                onConfirm={confirmVisionAndValuate}
+                onRetake={resetToCapture}
               />
-              {item.details && (
-                <div className="whitespace-pre-line rounded-inner bg-fog p-3.5 text-sm leading-relaxed text-ink-2">
-                  {item.details}
+            )}
+
+            {step === "done" && item && (
+              <>
+                <p role="status" className="flex items-center gap-2 text-[15px] font-semibold">
+                  <CircleCheck className="size-5 text-accent" aria-hidden /> Guardado en tu inventario
+                </p>
+                <div>
+                  <p className="text-lg font-semibold">{item.name}</p>
+                  <p className="text-sm text-ink-2">
+                    {item.brand} · {item.model} · {item.category}
+                  </p>
                 </div>
-              )}
-              <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
-              <div className="flex gap-2.5">
-                <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
-                  <RotateCcw className="size-4" aria-hidden /> Tasar otro
-                </button>
-                <form method="dialog" className="flex-1">
-                  <button className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover">
-                    <Check className="size-4" aria-hidden /> Hecho
+                <HealthScoreBadge
+                  score={item.conditionScore}
+                  label={item.conditionLabel}
+                  reasoning={item.conditionReasoning}
+                />
+                {item.details && (
+                  <div className="whitespace-pre-line rounded-inner bg-fog p-3.5 text-sm leading-relaxed text-ink-2">
+                    {item.details}
+                  </div>
+                )}
+                <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
+                <div className="flex gap-2.5">
+                  <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
+                    <RotateCcw className="size-4" aria-hidden /> Tasar otro
                   </button>
-                </form>
-              </div>
-            </>
-          )}
+                  <form method="dialog" className="flex-1">
+                    <button className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover">
+                      <Check className="size-4" aria-hidden /> Hecho
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </dialog>
