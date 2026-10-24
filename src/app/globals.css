@@ -124,6 +124,23 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Bloquea el scroll de la pantalla principal y difumina el fondo cuando hay un modal abierto. */
+html:has(dialog[open]),
+body:has(dialog[open]) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+dialog[open] {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  background-color: rgb(10 12 16 / 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 ::selection {
   background: var(--accent);
   color: #fff;

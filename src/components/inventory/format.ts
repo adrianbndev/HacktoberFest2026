@@ -54,6 +54,26 @@ export function formatPlatforms(item: InventoryItem) {
   return list.format([...new Set(platforms)].map((platform) => PLATFORM_LABEL[platform]));
 }
 
+// Agrupa las muestras por plataforma para mostrar una única referencia media por mercado sin claves duplicadas.
+export function platformReferences(item: InventoryItem) {
+  const grouped = new Map<MarketPlatform, { total: number; count: number; url?: string }>();
+  for (const listing of item.comparableListings) {
+    const current = grouped.get(listing.platform);
+    if (current) {
+      current.total += listing.price;
+      current.count += 1;
+      current.url ??= listing.url;
+    } else {
+      grouped.set(listing.platform, { total: listing.price, count: 1, url: listing.url });
+    }
+  }
+  return Array.from(grouped, ([platform, { total, count, url }]) => ({
+    platform,
+    price: Math.round(total / count),
+    url,
+  }));
+}
+
 // Las categorías vienen de la Visión IA en texto libre; se reconocen por palabra clave.
 const CATEGORY_ICONS: [string, LucideIcon][] = [
   ["móvil", Smartphone],

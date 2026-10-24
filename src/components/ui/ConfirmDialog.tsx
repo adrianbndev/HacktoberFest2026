@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { useDialogScrollLock } from "./useDialogScrollLock";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -22,12 +23,14 @@ export function ConfirmDialog({ open, title, body, confirmLabel, onConfirm, onCa
     if (!open && dialog?.open) dialog.close();
   }, [open]);
 
+  useDialogScrollLock(dialogRef, open);
+
   return (
     <dialog
       ref={dialogRef}
       onClose={onCancel}
       aria-labelledby={titleId}
-      className="m-auto w-[min(92vw,26rem)] rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50"
+      className="m-auto w-[min(92vw,26rem)] overscroll-contain rounded-panel bg-paper p-6 text-ink backdrop:bg-black/55 backdrop:backdrop-blur-sm"
     >
       <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
       <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{body}</p>

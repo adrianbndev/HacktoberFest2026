@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import { Check, ClipboardCopy, X } from "lucide-react";
+import { useDialogScrollLock } from "@/components/ui/useDialogScrollLock";
 
 interface SeoAnnouncementModalProps {
   itemName: string;
@@ -13,6 +14,7 @@ export function SeoAnnouncementModal({ itemName, seoTitle, seoDescription }: Seo
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [copy, setCopy] = useState<"idle" | "done" | "failed">("idle");
+  useDialogScrollLock(dialogRef);
 
   async function copyAnnouncement() {
     try {
@@ -40,7 +42,7 @@ export function SeoAnnouncementModal({ itemName, seoTitle, seoDescription }: Seo
       <dialog
         ref={dialogRef}
         aria-labelledby={titleId}
-        className="m-auto w-[min(92vw,34rem)] rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7"
+        className="m-auto w-[min(92vw,34rem)] overscroll-contain rounded-panel bg-paper p-6 text-ink backdrop:bg-black/55 backdrop:backdrop-blur-sm sm:p-7"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>

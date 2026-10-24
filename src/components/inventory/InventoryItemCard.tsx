@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { InventoryItem } from "@/types/sdd";
-import { PLATFORM_LABEL, STATUS_LABEL, categoryIcon, formatEur, formatPlatforms, formatShortDay } from "./format";
+import { PLATFORM_LABEL, STATUS_LABEL, categoryIcon, formatEur, formatPlatforms, formatShortDay, platformReferences } from "./format";
 import { DEMO_PHOTO_CREDITS } from "./demo-photo-credits";
 import { ConditionChip } from "./HealthScoreBadge";
 import { ItemActions } from "./ItemActions";
@@ -90,7 +90,7 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
               <div>
                 <p className="font-semibold">Referencia por plataforma</p>
                 <ul className="mt-1">
-                  {item.comparableListings.map((listing) => (
+                  {platformReferences(item).map((listing) => (
                     <li key={listing.platform} className="flex items-center justify-between gap-3 py-1">
                       <span className="text-ink-2">
                         {PLATFORM_LABEL[listing.platform]} · <span className="tabular-nums">{formatEur(listing.price)}</span>

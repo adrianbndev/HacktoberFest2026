@@ -2,6 +2,7 @@
 
 import { useRef, type ReactNode } from "react";
 import { Maximize2, X } from "lucide-react";
+import { useDialogScrollLock } from "./useDialogScrollLock";
 
 interface ZoomablePhotoProps {
   src: string;
@@ -13,6 +14,7 @@ interface ZoomablePhotoProps {
 // Foto recortada que, al pulsarla, se abre entera (sin recortes) sobre fondo oscuro; Esc o clic la cierran.
 export function ZoomablePhoto({ src, alt, className, children }: ZoomablePhotoProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useDialogScrollLock(dialogRef);
   return (
     <>
       <button
@@ -32,7 +34,7 @@ export function ZoomablePhoto({ src, alt, className, children }: ZoomablePhotoPr
         ref={dialogRef}
         onClick={() => dialogRef.current?.close()}
         aria-label={alt}
-        className="m-auto max-h-none max-w-none overflow-visible bg-transparent p-0 backdrop:bg-black/85"
+        className="m-auto max-h-none max-w-none overflow-visible bg-transparent p-0 backdrop:bg-black/85 backdrop:backdrop-blur-md"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- foto en data URL */}
         <img src={src} alt={alt} className="max-h-[90dvh] max-w-[92vw] rounded-inner object-contain" />

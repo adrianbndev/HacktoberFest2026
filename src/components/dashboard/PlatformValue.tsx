@@ -1,7 +1,7 @@
 "use client";
 
 import type { InventoryItem, MarketPlatform } from "@/types/sdd";
-import { PLATFORM_LABEL, formatEur } from "@/components/inventory/format";
+import { PLATFORM_LABEL, formatEur, platformReferences } from "@/components/inventory/format";
 
 const PLATFORMS = Object.keys(PLATFORM_LABEL) as MarketPlatform[];
 
@@ -11,7 +11,7 @@ function platformTotals(items: InventoryItem[]) {
   return PLATFORMS.map((platform) => ({
     platform,
     value: owned.reduce(
-      (sum, item) => sum + (item.comparableListings.find((listing) => listing.platform === platform)?.price ?? 0),
+      (sum, item) => sum + (platformReferences(item).find((listing) => listing.platform === platform)?.price ?? 0),
       0,
     ),
   }))

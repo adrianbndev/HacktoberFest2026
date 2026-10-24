@@ -6,6 +6,7 @@ import { ConditionChip } from "@/components/inventory/HealthScoreBadge";
 import { RangeRuler } from "@/components/inventory/PriceTrioDisplay";
 import { formatEur } from "@/components/inventory/format";
 import { Brand } from "./Brand";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface LoginScreenProps {
   onLogin: () => Promise<string | null>;
@@ -27,7 +28,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   return (
     <main className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
       <section className="flex flex-col justify-between gap-14 p-6 sm:p-10 lg:p-14">
-        <Brand size="lg" />
+        <div className="flex items-center justify-between gap-4">
+          <Brand size="lg" />
+          <ThemeToggle />
+        </div>
         <div className="max-w-lg">
           <h1 className="font-display text-[clamp(2.5rem,5.2vw,4rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-balance">
             Tasa tus objetos con una foto.

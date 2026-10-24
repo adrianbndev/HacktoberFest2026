@@ -113,7 +113,7 @@ export function MobileCaptureScreen() {
       {preview && (
         <div className="relative overflow-hidden rounded-panel bg-fog">
           {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local en data URL */}
-          <img src={preview} alt="Foto enviada" className="aspect-square w-full object-cover" />
+          <img src={preview} alt="Foto enviada" className="h-auto max-h-[55dvh] w-full object-cover object-center" />
           {(phase === "sending" || phase === "analyzing") && (
             <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
               <div className="flex items-center gap-2.5 rounded-full bg-paper px-4 py-2 text-[13px] font-semibold text-ink shadow-[0_8px_24px_-8px_rgb(16_17_20/0.4)]">

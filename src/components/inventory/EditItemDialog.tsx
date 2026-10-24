@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { InventoryItem } from "@/types/sdd";
 import { useDashboard } from "@/components/dashboard/DashboardShell";
 import { setLaptopBusyReason } from "@/components/mobile-sync/useCaptureSession";
+import { useDialogScrollLock } from "@/components/ui/useDialogScrollLock";
 import { PRODUCT_CATEGORIES } from "@/lib/vision/category-fields";
 import { STATUS_LABEL, formatEur } from "./format";
 
@@ -37,12 +38,14 @@ export function EditItemDialog({ open, item, onClose }: EditItemDialogProps) {
     return () => setLaptopBusyReason(null);
   }, [open, item.name]);
 
+  useDialogScrollLock(dialogRef, open);
+
   return (
     <dialog
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby={titleId}
-      className="m-auto max-h-[92dvh] w-[min(94vw,36rem)] overflow-y-auto rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7"
+      className="m-auto max-h-[92dvh] w-[min(94vw,36rem)] overflow-y-auto overscroll-contain rounded-panel bg-paper p-6 text-ink backdrop:bg-black/55 backdrop:backdrop-blur-sm sm:p-7"
     >
       {/* El formulario se monta en cada apertura, así arranca siempre con los datos actuales del objeto. */}
       {open && <EditItemForm item={item} titleId={titleId} onClose={onClose} />}

@@ -8,6 +8,7 @@ import { PriceTrioDisplay } from "@/components/inventory/PriceTrioDisplay";
 import type { InventoryItem, TeamMemberId } from "@/types/sdd";
 import { DynamicProductForm } from "./DynamicProductForm";
 import { ZoomablePhoto } from "@/components/ui/ZoomablePhoto";
+import { useDialogScrollLock } from "@/components/ui/useDialogScrollLock";
 import { useCaptureSession } from "./useCaptureSession";
 
 export interface MobileSyncModalProps {
@@ -60,6 +61,7 @@ function MobileSyncDialog({
   const { session, step, photo, visionDraft, item, simulateCapture, confirmVisionAndValuate, resetToCapture } = capture;
 
   useEffect(() => dialogRef.current?.showModal(), []);
+  useDialogScrollLock(dialogRef);
 
   const baseUrl = customBaseUrl ?? (session ? defaultBaseUrl(session.mobileUrl) : "");
   const mobileUrl = session ? `${baseUrl.replace(/\/+$/, "")}/mobile-capture/${session.sessionId}` : "";
@@ -72,8 +74,8 @@ function MobileSyncDialog({
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="mobile-sync-title"
-      className={`m-auto max-h-[92dvh] overflow-y-auto rounded-panel bg-paper p-6 text-ink backdrop:bg-ink/50 sm:p-7 ${
-        wide ? "w-[min(95vw,72rem)]" : "w-[min(95vw,38rem)]"
+      className={`m-auto max-h-[92dvh] overflow-y-auto overscroll-contain rounded-panel bg-paper p-6 text-ink backdrop:bg-black/55 backdrop:backdrop-blur-sm sm:p-7 ${
+        wide ? "w-[min(95vw,56rem)]" : "w-[min(95vw,38rem)]"
       }`}
     >
       <div className="mb-5 flex items-start justify-between gap-4">
@@ -142,7 +144,7 @@ function MobileSyncDialog({
         <div className="flex flex-col gap-5">
           {photo && (
             <div className="relative overflow-hidden rounded-inner bg-fog">
-              <ZoomablePhoto src={photo} alt="Foto recibida del producto" className="h-56 w-full object-cover sm:h-72">
+              <ZoomablePhoto src={photo} alt="Foto recibida del producto" className="h-auto max-h-80 w-full object-cover object-center sm:max-h-[30rem]">
                 {step === "vision" && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink/45">
                     <div className="flex items-center gap-2.5 rounded-full bg-paper px-4 py-2 text-[13px] font-semibold text-ink">
