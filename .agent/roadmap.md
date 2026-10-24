@@ -32,7 +32,7 @@
 - [x] Botón destacado en PC: *"📱 Añadir Producto con el Móvil"*.
 - [x] Generación de sesión única (`/mobile-capture/[sessionId]`) con código QR escaneable y link directo integrable en LAN/túnel.
 - [x] Interfaz móvil limpia con apertura directa de cámara trasera (`<input type="file" accept="image/*" capture="environment" />`) y compresión cliente en Canvas ($\le 800\text{ px}$, JPEG $0.75$, $<200\text{ KB}$) para evitar errores de payload.
-- [ ] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1.2\text{ s}$ (el *short-polling* ya funciona; falta el SSE).
+- [x] Sincronización en tiempo real Móvil $\rightarrow$ PC mediante SSE (`/api/capture-session/[sessionId]/stream`) + fallback de *short-polling* cada $1.2\text{ s}$.
 - [x] Recepción instantánea de la foto en la pantalla del PC y disparo automático del análisis sin intervención manual.
 
 ### 1.3 Reconocimiento por Visión IA + Salud/Estado + SEO (`Track B - Adri`)

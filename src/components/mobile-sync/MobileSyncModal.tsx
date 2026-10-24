@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
-import { Check, CircleCheck, Loader2, RotateCcw, ScanSearch, Smartphone, TriangleAlert, Upload, X } from "lucide-react";
-import { HealthScoreBadge } from "@/components/inventory/HealthScoreBadge";
-import { PriceTrioDisplay } from "@/components/inventory/PriceTrioDisplay";
+import { Loader2, ScanSearch, Smartphone, X } from "lucide-react";
 import type { InventoryItem, TeamMemberId } from "@/types/sdd";
+import { CaptureDonePanel, CaptureErrorPanel, CaptureWaitingPanel } from "./CapturePanels";
 import { DynamicProductForm } from "./DynamicProductForm";
+import { MarketProgress } from "./MarketProgress";
 import { ZoomablePhoto } from "@/components/ui/ZoomablePhoto";
 import { useDialogScrollLock } from "@/components/ui/useDialogScrollLock";
 import { useCaptureSession } from "./useCaptureSession";
@@ -19,9 +18,6 @@ export interface MobileSyncModalProps {
   onItemCreated: (newItem: InventoryItem) => void;
   busyReason?: string | null;
 }
-
-const SECONDARY_BUTTON =
-  "flex h-11 items-center justify-center gap-2 rounded-full bg-fog px-5 text-[15px] font-semibold transition-colors hover:bg-fog-2 disabled:opacity-50";
 
 // Si el PC usa localhost, el QR apunta a la IP de la red local que detecta el backend.
 function defaultBaseUrl(mobileUrl: string) {
@@ -58,7 +54,20 @@ function MobileSyncDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
-  const { session, step, photo, visionDraft, item, simulateCapture, confirmVisionAndValuate, resetToCapture } = capture;
+  const {
+    session,
+    step,
+    photo,
+    visionDraft,
+    item,
+    marketSources,
+    marketRecommendation,
+    marketWarnings,
+    marketError,
+    simulateCapture,
+    confirmVisionAndValuate,
+    resetToCapture,
+  } = capture;
 
   useEffect(() => dialogRef.current?.showModal(), []);
   useDialogScrollLock(dialogRef);
@@ -91,55 +100,25 @@ function MobileSyncDialog({
       </div>
 
       {step === "error" ? (
-        <div className="flex flex-col gap-3">
-          <p role="alert" className="flex items-center gap-3 rounded-inner bg-rose-50 p-4 text-[15px] text-rose-800">
-            <TriangleAlert className="size-5 shrink-0" aria-hidden />
-            No hemos podido analizar la foto. Prueba con otra, con buena luz y el objeto entero a la vista.
-          </p>
-          <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
-            <RotateCcw className="size-4" aria-hidden /> Volver a intentarlo
-          </button>
-        </div>
+        <CaptureErrorPanel
+          marketError={marketError}
+          sources={marketSources}
+          warnings={marketWarnings}
+          visionDraft={visionDraft}
+          onRetry={(vision) => void confirmVisionAndValuate(vision)}
+          onReset={resetToCapture}
+        />
       ) : waiting ? (
-        <div className="flex flex-col items-center gap-5">
-          <div className="grid size-56 place-items-center rounded-panel bg-paper p-3 ring-1 ring-line">
-            {session ? (
-              <QRCodeSVG value={mobileUrl} size={200} marginSize={1} bgColor="#ffffff" fgColor="#101114" />
-            ) : (
-              <Loader2 className="size-8 animate-spin text-ink-2" aria-label="Creando sesión" />
-            )}
-          </div>
-          <p role="status" className={`text-center text-[15px] font-semibold ${step === "connected" ? "text-accent" : ""}`}>
-            {step === "connected" ? "Móvil conectado: haz la foto cuando quieras" : "Escanea el código con la cámara del móvil"}
-          </p>
-          <label className="w-full text-[13px] font-medium text-ink-2">
-            Dirección que abre el móvil (cámbiala si usas un túnel o el hotspot)
-            <input
-              value={baseUrl}
-              onChange={(event) => setCustomBaseUrl(event.target.value)}
-              className="mt-1.5 h-11 w-full rounded-inner border border-line bg-paper px-3.5 text-[15px] text-ink transition-colors focus:border-accent"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={!session}
-            onClick={() => fileRef.current?.click()}
-            className={`${SECONDARY_BUTTON} w-full`}
-          >
-            <Upload className="size-4" aria-hidden /> Subir una foto desde este ordenador
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) simulateCapture(file);
-              event.target.value = "";
-            }}
-          />
-        </div>
+        <CaptureWaitingPanel
+          session={session}
+          mobileUrl={mobileUrl}
+          baseUrl={baseUrl}
+          connected={step === "connected"}
+          fileRef={fileRef}
+          onBaseUrlChange={setCustomBaseUrl}
+          onUpload={() => fileRef.current?.click()}
+          onFile={(file) => void simulateCapture(file)}
+        />
       ) : (
         <div className="flex flex-col gap-5">
           {photo && (
@@ -170,48 +149,31 @@ function MobileSyncDialog({
               </div>
             )}
 
-            {(step === "review" || step === "market") && visionDraft && (
+            {step === "review" && visionDraft && (
               <DynamicProductForm
                 initialAnalysis={visionDraft}
-                submitting={step === "market"}
+                submitting={false}
                 onConfirm={confirmVisionAndValuate}
                 onRetake={resetToCapture}
               />
             )}
 
+            {step === "market" && (
+              <MarketProgress
+                sources={marketSources}
+                recommendation={marketRecommendation}
+                warnings={marketWarnings}
+              />
+            )}
+
             {step === "done" && item && (
-              <>
-                <p role="status" className="flex items-center gap-2 text-[15px] font-semibold">
-                  <CircleCheck className="size-5 text-accent" aria-hidden /> Guardado en tu inventario
-                </p>
-                <div>
-                  <p className="text-lg font-semibold">{item.name}</p>
-                  <p className="text-sm text-ink-2">
-                    {item.brand} · {item.model} · {item.category}
-                  </p>
-                </div>
-                <HealthScoreBadge
-                  score={item.conditionScore}
-                  label={item.conditionLabel}
-                  reasoning={item.conditionReasoning}
-                />
-                {item.details && (
-                  <div className="whitespace-pre-line rounded-inner bg-fog p-3.5 text-sm leading-relaxed text-ink-2">
-                    {item.details}
-                  </div>
-                )}
-                <PriceTrioDisplay priceMin={item.priceMin} priceAvg={item.priceAvg} priceMax={item.priceMax} />
-                <div className="flex gap-2.5">
-                  <button type="button" onClick={resetToCapture} className={SECONDARY_BUTTON}>
-                    <RotateCcw className="size-4" aria-hidden /> Tasar otro
-                  </button>
-                  <form method="dialog" className="flex-1">
-                    <button className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover">
-                      <Check className="size-4" aria-hidden /> Hecho
-                    </button>
-                  </form>
-                </div>
-              </>
+              <CaptureDonePanel
+                item={item}
+                sources={marketSources}
+                recommendation={marketRecommendation}
+                warnings={marketWarnings}
+                onReset={resetToCapture}
+              />
             )}
           </div>
         </div>
