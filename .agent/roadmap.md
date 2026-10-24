@@ -48,7 +48,9 @@
 - [x] Implementar el núcleo de tasación en Python (`backend/app/mcp/` y `POST /api/market/valuate`) siguiendo [`.agent/mcp/stealth-market-mcp.md`](mcp/stealth-market-mcp.md).
 - [ ] Exponer `backend/mcp_server.py` y `backend/app/mcp/stealth_engine.py` (FastMCP/CLI) en Fase 2.
 - [x] Simulación de navegación humana: rotación de User-Agents reales, cabeceras HTTP coherentes y *jitter* configurable (650-1200 ms por defecto; 0.2-0.6 s en `/valuate`).
-- [ ] Consulta multi-plataforma con datos en vivo de las cuatro webs: Milanuncios funciona; eBay devuelve 403; Wallapop requiere el motor de navegador; Vinted diferido a Fase 2.
+- [x] Consulta multi-plataforma con datos reales vía navegador (`/api/market/analyze`): eBay, Wallapop y Milanuncios con estados por fuente; Vinted diferido.
+- [x] Análisis profundo con SSE (`/analyze/stream`), caché SQLite de 15 min y cuota de 4 anuncios por plataforma (Fase 2).
+- [ ] Cuarta web (Vinted) y `/api/market/refresh` (Nivel 2).
 - [x] Capa de **Fallback Determinista Blindado** si la red del recinto bloquea peticiones o excede el timeout.
 - [ ] Retorno y visualización clara en UI de las **3 medidas obligatorias**:
   1. 📉 **Precio Mínimo ($P_{\min}$):** Venta rápida / liquidez inmediata.

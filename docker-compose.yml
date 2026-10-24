@@ -19,10 +19,22 @@ services:
       DEEPSEEK_FAST_MODEL: ${DEEPSEEK_FAST_MODEL:-deepseek-flash}
       CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
       CDP_URL: ${CDP_URL:-http://market-browser:9222}
+      MARKET_ANALYSIS_ENABLED: ${MARKET_ANALYSIS_ENABLED:-true}
+      MARKET_ANALYSIS_DEADLINE_SEC: ${MARKET_ANALYSIS_DEADLINE_SEC:-60}
+      MARKET_SOURCE_TIMEOUT_SEC: ${MARKET_SOURCE_TIMEOUT_SEC:-25}
+      MARKET_BROWSER_TIMEOUT_SEC: ${MARKET_BROWSER_TIMEOUT_SEC:-45}
+      MARKET_PLATFORM_QUOTA: ${MARKET_PLATFORM_QUOTA:-4}
+      MARKET_CACHE_PATH: ${MARKET_CACHE_PATH:-/app/data/market_cache.sqlite}
+      MARKET_CACHE_TTL_SEC: ${MARKET_CACHE_TTL_SEC:-900}
     ports:
       - "8000:8000"
     volumes:
       - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+      - market-cache:/app/data
+    depends_on:
+      market-browser:
+        condition: service_healthy
+        required: false
     healthcheck:
       test:
         - CMD
@@ -86,3 +98,4 @@ services:
 
 volumes:
   chrome-profile:
+  market-cache:

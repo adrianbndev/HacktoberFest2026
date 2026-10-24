@@ -207,22 +207,6 @@ class MarketValuationResult(CamelModel):
         return self
 
 
-class MarketHealthResponse(CamelModel):
-    status: Literal["ok"]
-    service: str
-    version: str
-    fallback_enabled: bool
-    jitter_enabled: bool
-    recommendation_enabled: bool
-    timestamp: str
-
-    @field_validator("timestamp")
-    @classmethod
-    def _check_timestamp(cls, value: str) -> str:
-        _parse_iso_timestamp(value)
-        return value
-
-
 def _parse_iso_timestamp(value: str) -> None:
     try:
         datetime.fromisoformat(value.replace("Z", "+00:00"))

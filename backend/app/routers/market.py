@@ -9,8 +9,15 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.config import Settings, get_settings
+from app.mcp.deep_analysis import DeepMarketAnalyzer
 from app.mcp.market_analysis import MarketAnalyzer, MarketUnavailableError
-from app.models.sdd import MarketHealthResponse, MarketValuationResult, ValuationRequest
+from app.models.market_health import (
+    BrowserHealthStatus,
+    MarketCacheStatus,
+    MarketHealthResponse,
+)
+from app.models.sdd import MarketValuationResult, ValuationRequest
+from app.routers.market_analysis import get_deep_analyzer
 
 router = APIRouter(prefix="/market", tags=["market"])
 
@@ -22,10 +29,14 @@ def get_market_analyzer(settings: SettingsDep) -> MarketAnalyzer:
 
 
 AnalyzerDep = Annotated[MarketAnalyzer, Depends(get_market_analyzer)]
+DeepAnalyzerDep = Annotated[DeepMarketAnalyzer, Depends(get_deep_analyzer)]
 
 
 @router.get("/health", response_model=MarketHealthResponse, summary="Market engine health")
-async def market_health(settings: SettingsDep) -> MarketHealthResponse:
+async def market_health(
+    settings: SettingsDep, deep_analyzer: DeepAnalyzerDep
+) -> MarketHealthResponse:
+    browser = await deep_analyzer.browser.health()
     return MarketHealthResponse(
         status="ok",
         service=settings.app_name,
@@ -34,6 +45,16 @@ async def market_health(settings: SettingsDep) -> MarketHealthResponse:
         jitter_enabled=settings.market_jitter_max_sec > 0,
         recommendation_enabled=settings.deepseek_api_key is not None,
         timestamp=datetime.now(UTC).isoformat(),
+        browser=BrowserHealthStatus(
+            connected=browser.connected,
+            url=browser.url,
+            last_error=browser.last_error,
+        ),
+        cache=MarketCacheStatus(
+            path=settings.market_cache_path,
+            ttl_seconds=settings.market_cache_ttl_sec,
+        ),
+        analysis_enabled=settings.market_analysis_enabled,
     )
 
 

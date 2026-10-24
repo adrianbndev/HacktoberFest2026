@@ -1,35 +1,49 @@
-# Market valuation API (MOD-04, Phase 1)
+# Market valuation API (MOD-04, Phase 1 + Phase 2)
 
-Fast, spec-compliant second-hand valuation for the LifeOS & ReCommerce AI demo.
-This document covers the **fast path** implemented in Phase 1:
+Second-hand valuation for the LifeOS & ReCommerce AI demo, with two independent
+paths sharing the same pricing contract:
 
 ```
-POST /api/market/valuate
-  -> normalise query
-  -> eBay + Wallapop + Milanuncios in parallel (1.6 s per source)
-  -> filter / dedupe / IQR outliers
-  -> P_min < P_avg < P_max (health-weighted)
-  -> comparable listings with functional deep links
-  -> optional DeepSeek recommendation (grounded, clamped)
+Fast path (frozen, <= 2.8 s)               Deep path (Phase 2, <= 60 s)
+POST /api/market/valuate                   POST /api/market/analyze
+  -> normalise query                         -> clean generic brand/model
+  -> eBay + Wallapop + Milanuncios           -> real CDP browser, 3 sources
+     in parallel (1.6 s/source)              -> per-source statuses + listings
+  -> filter / dedupe / IQR                   -> relevance + one IQR pass
+  -> P_min < P_avg < P_max                   -> per-platform quota (4/12)
+  -> comparable listings                     -> confidence + cached recommendation
+  -> optional DeepSeek recommendation        -> SQLite cache (15 min, real only)
+
+                                           POST /api/market/analyze/stream (SSE)
 ```
 
-The browser-MCP deep analysis (`POST /api/market/analyze`, SSE, SQLite cache and
-the full browser engine) is **Phase 2** and is not part of this service.
+`/valuate` and its contracts are frozen. The deep path never uses
+`catalog_fallback` or synthetic fixtures: if every source is blocked it returns
+HTTP `503` with per-source statuses.
 
 ## Architecture and dependency direction
 
 ```
-routers/market.py
-  -> mcp/market_analysis.py
-       -> mcp/connectors.py -> mcp/stealth_http.py, mcp/normalize.py
-       -> mcp/pricing_math.py
-       -> mcp/catalog_fallback.py
-       -> mcp/deepseek.py -> mcp/deepseek_client.py
-models/sdd.py imports nothing from mcp/
+routers/market.py                  -> mcp/market_analysis.py (fast, frozen)
+                                   -> mcp/deep_analysis.py (shared browser manager)
+routers/market_analysis.py         -> mcp/deep_analysis.py, mcp/sse.py
+mcp/deep_analysis.py
+  -> mcp/analysis_query.py         -> mcp/normalize.py
+  -> mcp/deep_sources.py           -> mcp/browser/session.py
+                                   -> mcp/browser/sources/{base,ebay,wallapop,milanuncios}.py
+  -> mcp/deep_support.py           -> mcp/analysis_query.py, mcp/pricing_math.py
+  -> mcp/deep_recommend.py         -> mcp/deepseek.py
+  -> mcp/deep_cache.py             -> mcp/cache.py
+  -> mcp/{relevance,pricing_math}.py
+mcp/cache.py                       -> standard library only
+models/market_health.py            -> models/sdd.py only
+models/                            -> no mcp/ imports
 ```
 
-`pricing_math.py` is pure: no network, no LLM, no settings. Connectors never raise
-to the router; failures are reported as a failed `ConnectorResult`.
+`pricing_math.py` is pure: no network, no LLM, no settings. Sources never raise
+to the router; a blocked/timeout/error source becomes a status. `app/` never
+imports `scripts/`; `scripts/mcp_client.py` is a shim over
+`app/mcp/browser/mcp_client.py`.
 
 ## Quick start
 
@@ -62,9 +76,26 @@ curl -s http://127.0.0.1:8000/api/market/health
   "fallbackEnabled": true,
   "jitterEnabled": true,
   "recommendationEnabled": false,
-  "timestamp": "2026-10-24T11:34:18.876869+00:00"
+  "timestamp": "2026-10-24T11:34:18.876869+00:00",
+  "browser": {
+    "connected": false,
+    "url": "http://market-browser:9222",
+    "lastError": null
+  },
+  "cache": {
+    "path": "/app/data/market_cache.sqlite",
+    "ttlSeconds": 900
+  },
+  "analysisEnabled": true
 }
 ```
+
+`browser.connected` reflects the process-wide MCP client: `false` means it has
+not been used yet (or the last probe failed). Before spawning the MCP, the
+analyzer performs a TCP reachability probe against `CDP_URL`; a missing browser
+fails fast with `503 browser_unavailable` (the MCP is never allowed to launch
+its own Chrome). `analysisEnabled` mirrors
+`MARKET_ANALYSIS_ENABLED`; when `false`, `/analyze` returns `503`.
 
 ### Valuate
 
@@ -122,6 +153,133 @@ curl -s -X POST http://127.0.0.1:8000/api/market/valuate \
 
 `recommendation` is omitted when `includeRecommendation` is `false` or the LLM
 fails (a warning is added instead).
+
+## Deep analysis: `POST /api/market/analyze`
+
+Real browser data only. The endpoint uses the headful browser managed by the
+`market-browser` container through `chrome-devtools-mcp@1.10.1`; it never
+launches Chrome itself, never uses `--headless`/`--enable-automation`, and never
+solves a captcha.
+
+### Request
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `name` | string | yes | 2–200 chars; this is the marketplace query |
+| `description` | string | no | ≤ 2000 chars; relevance/recommendation only |
+| `category` | string | yes | 1–120 chars |
+| `brand` | string | no | ≤ 80; generic values (`Sin marca`, `Genérica`, `N/A`, `-`, `unknown`, `No aplica`) are treated as absent |
+| `model` | string | no | ≤ 120; generic values or a model equal to `name` are treated as absent |
+| `conditionScore` | integer | yes | 0–100 |
+| `conditionLabel` | enum | yes | five canonical labels |
+| `location` | object | no | `{lat, lng}` |
+| `sources` | array | no | subset of `wallapop|vinted|milanuncios|ebay`; default `["ebay","wallapop","milanuncios"]` |
+| `includeRecommendation` | boolean | no | default `true` |
+
+`name` alone builds the search query (normalised, filler words removed). The
+cleaned brand/model feed the relevance filter; `description` is never used to
+search and is never stored in the cache.
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/market/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Silla de madera",
+    "description": "Silla de madera en estado Como nuevo, con pequenas marcas.",
+    "category": "Mobiliario",
+    "brand": "Sin marca",
+    "model": "Silla de madera",
+    "conditionScore": 85,
+    "conditionLabel": "Como nuevo",
+    "sources": ["ebay", "wallapop", "milanuncios"],
+    "includeRecommendation": true
+  }'
+```
+
+### Response
+
+- `sources[]`: one entry per requested source with
+  `status ∈ {ok, blocked, timeout, no_listings, error}`, `sampleSize`,
+  `listings`, `latencyMs` and optional `error`. Every listing URL is absolute;
+  a missing listing URL falls back to the platform search deep link.
+- `valuation`: `0 < priceMin < priceAvg < priceMax`, `sampleSize` is the number
+  of listings actually priced after one IQR pass, `platforms` includes every
+  source with usable data (even if its listings are not in the final 12), and
+  `confidence ∈ [0,1]` blends sample size, coverage, price agreement and source
+  reliability.
+- `comparableListings`: up to 12 listings, up to 4 per successful source, then
+  filled by price proximity to `priceAvg`.
+- `recommendation`: omitted when `includeRecommendation=false`, the LLM fails,
+  or the budget is exhausted. `suggestedPrice` is always inside
+  `[priceMin, priceMax]`; a clamp adds a warning.
+- `warnings`: per-source failures, small sample, relevance fallback,
+  recommendation skipped/clamped.
+- `cached` is `true` only on a real cache hit; `analyzedAt` is ISO 8601.
+
+The deep path uses `deepseek-v4-pro` with thinking and **disables the
+deterministic template**: a failed LLM omits the recommendation and adds a
+warning instead of inventing text.
+
+### Errors
+
+| Case | HTTP | Body |
+|---|---|---|
+| Every source blocked / no usable listings | `503` | `{"detail": "...", "sources": {"ebay": "blocked", ...}}` |
+| Browser/MCP unavailable | `503` | `{"detail": "browser_unavailable", "sources": {}}` |
+| Analysis disabled | `503` | `{"detail": "analysis_disabled", "sources": {}}` |
+| Unexpected engine error | `503` | `{"detail": "analysis_failed", "sources": {}}` |
+| Invalid request | `422` | Pydantic details |
+
+Never `500`, never synthetic data.
+
+## SSE: `POST /api/market/analyze/stream`
+
+`Content-Type: text/event-stream`, `Cache-Control: no-cache`,
+`X-Accel-Buffering: no`. Wire format is `event: <name>\ndata: <json>\n\n`.
+
+1. `analysis_started` — `{query, sources, cached}`.
+2. `source_started` — `{source}`.
+3. `source_result` — the same object as `sources[]`.
+4. `valuation` — the valuation object.
+5. `recommendation` — the recommendation object (omitted when disabled/failed).
+6. `done` — the full response object.
+7. `error` — `{detail, sources?}` on a fatal error.
+
+- `source_result` is emitted as soon as that source finishes.
+- A heartbeat comment (`: ping\n\n`) is sent every 15 s.
+- A cache hit emits `analysis_started` with `cached=true` and then `done` fast.
+- On client disconnect the analysis task is cancelled, the browser lock/page is
+  released and `BrowserSessionManager.stop()` closes the page and the MCP
+  process (the next request lazily respawns it).
+
+```bash
+curl -N -X POST http://127.0.0.1:8000/api/market/analyze/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Silla de madera","category":"Mobiliario","conditionScore":85,"conditionLabel":"Como nuevo","sources":["wallapop"]}'
+```
+
+## Cache
+
+- SQLite at `MARKET_CACHE_PATH` (default `/app/data/market_cache.sqlite`),
+  TTL `MARKET_CACHE_TTL_SEC=900` (15 min).
+- Key: normalised query + condition score + sorted sources. `description`, user
+  identity and coordinates are never part of the key or payload.
+- Only real results are stored (including partial results with at least one
+  usable source). A corrupted payload is a miss, never a request failure.
+- Writes use `asyncio.to_thread`, one connection per operation, WAL mode and a
+  busy timeout. A cache failure never fails the analysis.
+
+## Browser sources
+
+| Source | Search URL | Extraction | Expected good-connection count |
+|---|---|---|---|
+| eBay | `ebay.es/sch/i.html` with `LH_BIN=1`, `LH_ItemCondition=3000`, `_ipg=60` | `li.s-item, li.s-card`, strips the accessibility suffix, skips "Shop on eBay", optional page 2 if < 20 | ≥ 20 |
+| Wallapop | `es.wallapop.com/app/search?keywords=…&order_by=newest` | scrolls 4 times, extracts `a[href*='/item/']`, parses `1.234 €` and `1.234,56 €` | ≥ 20 |
+| Milanuncios | `milanuncios.com/anuncios/?s=…` | `article` cards; PerimeterX/captcha/access-denied → `blocked` | ≥ 10 |
+
+Parser unit tests use saved HTML fixtures under `backend/tests/fixtures/`
+(`*_browser.html`, `milanuncios_blocked.html`). Fixtures are test-only and are
+never imported by the runtime deep path. Vinted is deferred (backlog).
 
 ## Contract
 
@@ -189,6 +347,19 @@ are bounded by the same deadline.
 The 0.65–1.2 s jitter default is reserved for `/refresh` (Level 2), not this
 interactive endpoint.
 
+### Deep path targets
+
+| Stage | Target | Hard bound |
+|---|---|---|
+| First `source_result` on a warm browser | < 6 s | `MARKET_SOURCE_TIMEOUT_SEC` (25 s) |
+| Full analysis without recommendation | < 20 s | `MARKET_ANALYSIS_DEADLINE_SEC` (60 s) |
+| Recommendation (when enabled) | minutes are not acceptable | remaining deadline ∩ `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` |
+| Cache hit (`/analyze` and SSE) | < 1 s | no browser call |
+
+Sources run sequentially on the single locked page, so per-source latency adds
+up; the deadline is shared, and a source that would exceed it is reported as
+`timeout` instead of aborting the response.
+
 ## Fallback policy
 
 - Live sample `source="live_mcp"`.
@@ -199,6 +370,8 @@ interactive endpoint.
 - The fallback catalog contains curated Spain-2026 medians for common models and
   a stable SHA-256 estimator for unknown products.
 - Every fallback listing links to a real platform search URL.
+- **The deep path (`/analyze`) never uses this fallback.** It returns `503` when
+  no real browser listing is usable.
 
 ## DeepSeek recommendation
 
@@ -213,7 +386,9 @@ interactive endpoint.
   `[priceMin, priceMax]`; a clamp adds a warning.
 - `deepseek-reasoner` is legacy and is not referenced anywhere in the code.
 - Without `DEEPSEEK_API_KEY` the template recommendation is returned immediately
-  (text only, never market data).
+  (text only, never market data). The `/analyze` engine constructs the
+  recommender with `allow_template=False`, so a missing key or LLM failure omits
+  the recommendation and adds a warning instead.
 - `deepseek-v4-pro` with `reasoning_effort="max"` takes **~12–23 s** for a real
   recommendation. That is why `includeRecommendation=true` is an **opt-in**
   window outside the 2.8 s market SLA. The default `/valuate` call (no
@@ -241,6 +416,14 @@ interactive endpoint.
 | `DEEPSEEK_TIMEOUT_SEC` | `30.0` | transport timeout per attempt |
 | `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` | `25.0` | opt-in recommendation window (`0` disables the LLM) |
 | `CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS` | `1` | MCP telemetry off |
+| `MARKET_ANALYSIS_ENABLED` | `true` | expose the deep analysis |
+| `MARKET_ANALYSIS_DEADLINE_SEC` | `60` | whole deep request deadline |
+| `MARKET_SOURCE_TIMEOUT_SEC` | `25` | per-source browser timeout |
+| `MARKET_BROWSER_TIMEOUT_SEC` | `45` | MCP tool-call timeout |
+| `MARKET_PLATFORM_QUOTA` | `4` | max listings per source in the final 12 |
+| `MARKET_CACHE_PATH` | `/app/data/market_cache.sqlite` | SQLite cache (`./data/...` works locally too) |
+| `MARKET_CACHE_TTL_SEC` | `900` | cache TTL; `0` disables hits |
+| `CDP_URL` | `http://market-browser:9222` | Chrome DevTools endpoint |
 
 Copy `.env.example` to the repo-root `.env` for local overrides (this repository
 already ships a gitignored `.env` with an empty `DEEPSEEK_API_KEY`). Both
@@ -261,10 +444,19 @@ docker compose config
 docker compose up --build lifeos-backend
 curl -s http://127.0.0.1:8000/api/market/health
 
-# Optional Phase 2 / spike browser
-docker compose --profile browser up --build market-browser
+# Phase 2 deep analysis (optional browser + backend)
+docker compose --profile browser up --build -d market-browser
+docker compose up --build lifeos-backend
 curl -s http://127.0.0.1:9222/json/version
+python scripts/fingerprint_check.py
+python scripts/smoke_analyze.py --query "Silla de madera" --description "Silla en buen estado"
 ```
+
+Without the `browser` profile the backend still starts; `analysisEnabled` stays
+true but `/analyze` returns `503 browser_unavailable` until a browser is
+reachable. `lifeos-backend` declares the browser as an **optional healthy**
+dependency (`condition: service_healthy`, `required: false`), and the
+`market-cache` named volume persists the SQLite cache across restarts.
 
 - `lifeos-backend`: Python 3.11 + Node 22 + `chrome-devtools-mcp@1.10.1`,
   port `8000`, non-root user, healthcheck on `/api/market/health`.
@@ -300,9 +492,27 @@ Always run the fingerprint check on the architecture used for the demo.
 
 | Source | Fast `/valuate` path | Browser path |
 |---|---|---|
-| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | n/a |
-| eBay | HTTP 403 from this network | 60 listings on the first run, then its anti-bot error page |
-| Wallapop | HTML is a JS shell (0 server-rendered items) | 40 listings via the browser |
+| Milanuncios | **Working** (12 cards parsed, 5 usable after filtering) | **12–15 usable** with up to 6 result pages (~18–22 s); PerimeterX/captcha would be reported as `blocked` |
+| eBay | HTTP 403 from this network | **58 usable** when not blocked (~4.2 s); the intermittent eBay error page is reported as `blocked` |
+| Wallapop | HTML is a JS shell (0 server-rendered items) | **37–40 usable** (~4.8–5.1 s after the render/scroll tuning) |
+
+Measured on 2026-10-24 in this worktree (arm64, Debian Chromium 156, Xvfb)
+with `scripts/smoke_analyze.py --query "iPhone 13 128GB"`:
+
+- per-source usable listings: eBay **58**, Wallapop **38**, Milanuncios **15**
+  when all three respond; another run had eBay `blocked`, Wallapop **40** and
+  Milanuncios **12**;
+- first `source_result`: **4.2 s** (eBay) and **4.8–5.1 s** (Wallapop warm);
+  full analysis: **25.5–31.9 s** without recommendation (no key);
+- valuation in the all-source run: `priceMin=200`, `priceAvg=268`,
+  `priceMax=332`, `sampleSize=98`, `confidence=0.72`;
+- second identical run: `cached=true` in **0.01 s**;
+- eBay alternates between working and its anti-bot error page across runs; when
+  blocked it is reported explicitly, never replaced with synthetic prices.
+
+The Phase 2 `/analyze` results are reported by
+`python scripts/smoke_analyze.py`: per-source status, usable count, latency and
+the second-run cache hit. The live counts depend on the venue network.
 
 This is why `source="live_mcp"` is achieved with Milanuncios while eBay and
 Wallapop keep the response valid through warnings; Wallapop requires the Phase 2
@@ -345,12 +555,25 @@ the `/valuate` hot path.
 | Browser container `unhealthy` | Check `docker compose logs market-browser`; the entrypoint clears stale X/profile locks on restart. If needed, remove the `chrome-profile` volume. |
 | `curl 9222` resets | Chrome is loopback-only; always go through the built-in CDP proxy (`9222`, not `9223`). |
 | Docker build network error | Retry; the Dockerfile retries pip downloads. |
-| DeepSeek returns empty content | Automatic retry + deterministic template; no user action needed. |
+| DeepSeek returns empty content | In `/valuate` it retries then uses the template; in `/analyze` the recommendation is omitted with a warning. |
+| `/analyze` returns `503 browser_unavailable` | Start the browser profile (`docker compose --profile browser up -d market-browser`) and check `/api/market/health`. |
+| Browser connected but every source `blocked` | Anti-bot/captcha page; this is reported, not solved. Retry later or use another egress. |
+| Second `/analyze` is not `cached` | Query, conditionScore or sources changed; the key is exact. TTL `0` also disables hits. |
+| `analysisEnabled=false` | Set `MARKET_ANALYSIS_ENABLED=true` and recreate `lifeos-backend`. |
 
-## Frontend mirror (owned by MOD-00 / Track A)
+## Frontend contract (Phase 2, additive)
 
-Do **not** create `src/types/sdd.ts` from this phase. When Track A mirrors the
-contract, add these optional fields:
+Track C adds two files without touching `src/types/sdd.ts` or Track A
+components:
+
+- `src/types/market-analysis.ts`: request, response, source status, SSE event
+  types.
+- `src/lib/market-analysis.ts`: `analyzeMarket()` and
+  `streamMarketAnalysis()` (POST + `text/event-stream` reader, because
+  `EventSource` cannot POST). Both forward the Firebase ID token like
+  `requestJson`.
+
+The Phase 1 optional-field mirror remains Track A's responsibility:
 
 ```ts
 interface ValuationRequest {
@@ -383,7 +606,7 @@ interface MarketValuationResult {
 
 ```bash
 cd backend
-pytest -q          # 177 tests
+pytest -q          # 303 tests (hermetic; no CDP, no network)
 ruff check app tests
 mypy app
 docker compose config

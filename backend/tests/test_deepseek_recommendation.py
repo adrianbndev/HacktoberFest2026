@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 
+import pytest
 from app.config import Settings
 from app.mcp.deepseek import (
     CLAMP_WARNING,
     FALLBACK_WARNING,
     DeepSeekRecommender,
+    RecommendationUnavailableError,
 )
 from app.mcp.deepseek_client import CompletionResult, ModelUnavailableError
 from tests.deepseek_support import (
@@ -148,3 +150,10 @@ async def test_missing_api_key_uses_the_template_without_network() -> None:
 
     assert outcome.warnings == (FALLBACK_WARNING,)
     assert outcome.recommendation.bullets
+
+
+async def test_template_can_be_disabled_for_the_deep_analysis_path() -> None:
+    with pytest.raises(RecommendationUnavailableError):
+        await DeepSeekRecommender(
+            Settings(_env_file=None), allow_template=False
+        ).recommend(request=make_request(), valuation=make_valuation(), budget_sec=1.0)
