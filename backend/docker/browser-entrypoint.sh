@@ -32,6 +32,8 @@ done
     --remote-debugging-port="${CHROME_PORT}" \
     --remote-debugging-address=127.0.0.1 \
     --remote-allow-origins='*' \
+    --lang=es-ES \
+    --accept-lang=es-ES,es \
     --user-data-dir=/chrome-profile \
     --no-first-run \
     --no-default-browser-check \

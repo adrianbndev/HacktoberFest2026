@@ -39,6 +39,9 @@ services:
       - "9222:9222"
     environment:
       DISPLAY: ":99"
+      TZ: Europe/Madrid
+      LANG: es_ES.UTF-8
+      LANGUAGE: es_ES:es
       CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
     shm_size: 2g
     volumes:
