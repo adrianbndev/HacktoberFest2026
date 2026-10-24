@@ -5,8 +5,16 @@ const CONDITION_TONE: Record<ConditionLabel, { chip: string; fill: string; grade
   Nuevo: { chip: "bg-fog-2 text-ink", fill: "bg-ink", grade: 5 },
   "Como nuevo": { chip: "bg-fog-2 text-ink", fill: "bg-ink", grade: 4 },
   "Buen estado": { chip: "bg-fog-2 text-ink", fill: "bg-ink", grade: 3 },
-  "Desgaste visible": { chip: "bg-amber-50 text-amber-800", fill: "bg-amber-600", grade: 2 },
-  "Para piezas": { chip: "bg-rose-50 text-rose-800", fill: "bg-rose-600", grade: 1 },
+  "Desgaste visible": {
+    chip: "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+    fill: "bg-amber-600 dark:bg-amber-400",
+    grade: 2,
+  },
+  "Para piezas": {
+    chip: "bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300",
+    fill: "bg-rose-600 dark:bg-rose-400",
+    grade: 1,
+  },
 };
 
 const GRADES = [1, 2, 3, 4, 5];

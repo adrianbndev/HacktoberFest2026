@@ -1,8 +1,6 @@
 @import "tailwindcss";
 
-/* Solo modo claro: la demo se proyecta en una sala iluminada. Los `dark:` heredados
-   solo se activarían con la clase .dark, que no se pone en ningún sitio. */
-@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, :is(.dark *)));
 
 :root {
   color-scheme: light;
@@ -16,6 +14,20 @@
   --accent-hover: #3b2ae8;
   --accent-soft: #eceaff;
   --on-accent-2: #e2dfff; /* texto secundario sobre el acento, 4.9:1 */
+}
+
+.dark {
+  color-scheme: dark;
+  --paper: #0e1014;
+  --fog: #161920;
+  --fog-2: #20242e;
+  --line: #2b303d;
+  --ink: #f4f5f8;
+  --ink-2: #9299a9;
+  --accent: #5e4eff;
+  --accent-hover: #4e3ef7;
+  --accent-soft: rgba(94, 78, 255, 0.18);
+  --on-accent-2: #d6d3ff;
 }
 
 @theme inline {
@@ -37,8 +49,44 @@
 
 html {
   caret-color: var(--accent);
+  scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Barras de desplazamiento cohesivas con la estética de la web (página, diálogos y áreas de texto). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 6px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--line);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ink-2);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--accent);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {

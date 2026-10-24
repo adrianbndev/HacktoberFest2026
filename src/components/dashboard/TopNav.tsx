@@ -8,6 +8,7 @@ import type { UserProfile } from "@/types/sdd";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Menu } from "@/components/ui/Menu";
 import { Brand } from "./Brand";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface TopNavProps {
   profile?: UserProfile;
@@ -48,33 +49,36 @@ export function TopNav({ profile, onLogout, onResetDemo }: TopNavProps) {
         })}
       </nav>
 
-      <Menu
-        buttonLabel="Tu cuenta"
-        buttonClassName="flex items-center gap-2.5 rounded-full p-1 pr-1 transition-colors hover:bg-fog sm:pr-4"
-        buttonContent={
-          profile ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element -- foto de la cuenta de Google */}
-              <img src={profile.avatarUrl} alt="" referrerPolicy="no-referrer" className="size-9 rounded-full bg-fog" />
-              <span className="hidden text-[15px] font-semibold sm:inline">{profile.name.split(" ")[0]}</span>
-            </>
-          ) : (
-            <span className="block size-9 animate-pulse rounded-full bg-fog" />
-          )
-        }
-        heading={
-          profile && (
-            <>
-              <p className="font-semibold">{profile.name}</p>
-              {profile.email && <p className="truncate text-sm text-ink-2">{profile.email}</p>}
-            </>
-          )
-        }
-        items={[
-          { label: "Restaurar productos de demo", icon: RotateCcw, onSelect: () => setConfirmReset(true) },
-          { label: "Salir", icon: LogOut, onSelect: onLogout },
-        ]}
-      />
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <ThemeToggle />
+        <Menu
+          buttonLabel="Tu cuenta"
+          buttonClassName="flex items-center gap-2.5 rounded-full p-1 pr-1 transition-colors hover:bg-fog sm:pr-4"
+          buttonContent={
+            profile ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- foto de la cuenta de Google */}
+                <img src={profile.avatarUrl} alt="" referrerPolicy="no-referrer" className="size-9 rounded-full bg-fog" />
+                <span className="hidden text-[15px] font-semibold sm:inline">{profile.name.split(" ")[0]}</span>
+              </>
+            ) : (
+              <span className="block size-9 animate-pulse rounded-full bg-fog" />
+            )
+          }
+          heading={
+            profile && (
+              <>
+                <p className="font-semibold">{profile.name}</p>
+                {profile.email && <p className="truncate text-sm text-ink-2">{profile.email}</p>}
+              </>
+            )
+          }
+          items={[
+            { label: "Restaurar productos de demo", icon: RotateCcw, onSelect: () => setConfirmReset(true) },
+            { label: "Salir", icon: LogOut, onSelect: onLogout },
+          ]}
+        />
+      </div>
 
       <ConfirmDialog
         open={confirmReset}

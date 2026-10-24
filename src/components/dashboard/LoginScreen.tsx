@@ -40,7 +40,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             type="button"
             onClick={login}
             disabled={pending}
-            className="mt-9 flex h-13 items-center gap-3 rounded-full bg-ink px-7 text-base font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
+            className="mt-9 flex h-13 items-center gap-3 rounded-full bg-ink px-7 text-base font-semibold text-paper transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <GoogleMark />}
             Continuar con Google

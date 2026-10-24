@@ -82,7 +82,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       {state.notice && (
         <p
           role="status"
-          className="fixed bottom-5 left-1/2 z-40 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-ink px-5 py-3 text-[15px] font-medium text-white shadow-[0_12px_32px_-8px_rgb(16_17_20/0.4)]"
+          className="fixed bottom-5 left-1/2 z-40 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-ink px-5 py-3 text-[15px] font-medium text-paper shadow-[0_12px_32px_-8px_rgb(16_17_20/0.4)]"
         >
           {state.notice}
         </p>

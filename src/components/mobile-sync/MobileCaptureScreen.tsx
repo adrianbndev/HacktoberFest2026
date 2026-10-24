@@ -21,9 +21,19 @@ export function MobileCaptureScreen() {
   const [phase, setPhase] = useState<Phase>("connecting");
   const [preview, setPreview] = useState<string | null>(null);
   const [busyReason, setBusyReason] = useState<string | null>(null);
+  const pollEpochRef = useRef(0);
+  const awaitingUntilRef = useRef(0);
 
   const applySessionState = useCallback(
     (current: MobileCaptureSession) => {
+      if (Date.now() < awaitingUntilRef.current) {
+        if (current.status === "analyzing" || current.busyReason || current.status === "error") {
+          awaitingUntilRef.current = 0;
+        } else {
+          setPhase("sending");
+          return;
+        }
+      }
       if (current.status === "waiting_for_mobile") {
         const update: CaptureSessionUpdate = { status: "mobile_connected", busyReason: null };
         void requestJson(sessionUrl, "PUT", update).catch(() => undefined);
@@ -37,7 +47,9 @@ export function MobileCaptureScreen() {
         return;
       }
       setBusyReason(null);
-      if (current.status === "photo_uploaded" || current.status === "analyzing") {
+      if (current.status === "photo_uploaded") {
+        setPhase("sending");
+      } else if (current.status === "analyzing") {
         setPhase("analyzing");
       } else if (current.status === "completed") {
         setPhase("completed");
@@ -52,30 +64,36 @@ export function MobileCaptureScreen() {
 
   // Sincronización inicial al abrir o recargar la página móvil.
   useEffect(() => {
+    const epoch = pollEpochRef.current;
     requestJson<MobileCaptureSession>(sessionUrl)
-      .then((current) => applySessionState(current))
+      .then((current) => {
+        if (pollEpochRef.current === epoch) applySessionState(current);
+      })
       .catch(() => setPhase("expired"));
   }, [sessionUrl, applySessionState]);
 
   // Escucha continua del estado del portátil (detecta si está ocupado añadiendo/editando o si ya guardó en la Home).
   useEffect(() => {
-    if (phase === "connecting" || phase === "sending" || phase === "expired") return;
+    if (phase === "connecting" || phase === "expired") return;
     const timer = window.setInterval(async () => {
+      const epoch = pollEpochRef.current;
       const current = await requestJson<MobileCaptureSession>(sessionUrl).catch(() => null);
-      if (current) applySessionState(current);
+      if (current && pollEpochRef.current === epoch) applySessionState(current);
     }, POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [phase, sessionUrl, applySessionState]);
 
   async function sendPhoto(file: File) {
+    pollEpochRef.current += 1;
+    awaitingUntilRef.current = Date.now() + 6000;
     setPhase("sending");
     try {
       const photoDataUrl = await compressImageFileToDataUrl(file);
       setPreview(photoDataUrl);
       const update: CaptureSessionUpdate = { status: "photo_uploaded", photoDataUrl, busyReason: null };
       await requestJson(sessionUrl, "PUT", update);
-      setPhase("analyzing");
     } catch {
+      awaitingUntilRef.current = 0;
       const current = await requestJson<MobileCaptureSession>(sessionUrl).catch(() => null);
       if (current && (current.busyReason || current.status === "analyzing")) {
         applySessionState(current);
@@ -100,7 +118,7 @@ export function MobileCaptureScreen() {
             <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
               <div className="flex items-center gap-2.5 rounded-full bg-paper px-4 py-2 text-[13px] font-semibold text-ink shadow-[0_8px_24px_-8px_rgb(16_17_20/0.4)]">
                 <Loader2 className="size-4 animate-spin text-accent" aria-hidden />
-                {phase === "sending" ? "Subiendo la foto…" : "Analizando la foto…"}
+                {phase === "sending" ? "Cargando foto…" : "Analizando con IA…"}
               </div>
             </div>
           )}
@@ -111,7 +129,7 @@ export function MobileCaptureScreen() {
       {phase === "expired" && (
         <Status icon={TriangleAlert} text="Este código QR ya no vale. Genera uno nuevo en el ordenador." />
       )}
-      {phase === "sending" && <Status icon={Loader2} spin text="Enviando la foto al ordenador…" />}
+      {phase === "sending" && <Status icon={Loader2} spin text="Cargando y enviando la foto al ordenador…" />}
       {phase === "analyzing" && (
         <Status icon={Loader2} spin text="Analizando la foto. Sigue en el ordenador para revisar los datos." />
       )}

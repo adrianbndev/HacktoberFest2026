@@ -212,7 +212,12 @@ export function DynamicProductForm({ initialAnalysis, submitting, onConfirm, onR
           </label>
           <label className={labelCls}>
             Descripción del anuncio
-            <textarea rows={3} value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} className={textareaCls} />
+            <textarea
+              rows={5}
+              value={seoDescription}
+              onChange={(e) => setSeoDescription(e.target.value)}
+              className={`${textareaCls} min-h-32 resize-y`}
+            />
           </label>
           <label className={labelCls}>
             Tus notas

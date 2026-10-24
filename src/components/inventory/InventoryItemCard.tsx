@@ -47,7 +47,7 @@ export function InventoryItemCard({ item }: { item: InventoryItem }) {
         )}
         <span
           className={`absolute left-3 top-3 rounded-full px-3 py-1 text-[13px] font-semibold shadow-[0_2px_8px_rgb(16_17_20/0.15)] ${
-            sold ? "bg-ink text-white" : "bg-paper text-ink"
+            sold ? "bg-ink text-paper" : "bg-paper text-ink"
           }`}
         >
           {STATUS_LABEL[item.status]}
