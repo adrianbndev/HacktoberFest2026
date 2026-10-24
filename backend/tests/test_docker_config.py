@@ -70,3 +70,53 @@ def test_env_example_documents_the_required_flags() -> None:
         "DEEPSEEK_BASE_URL",
     ):
         assert key in env_example
+
+
+def test_deep_analysis_env_and_cache_volume_are_wired() -> None:
+    compose = _compose()
+    service = compose["services"]["lifeos-backend"]
+    environment = service["environment"]
+
+    for key in (
+        "MARKET_ANALYSIS_ENABLED",
+        "MARKET_ANALYSIS_DEADLINE_SEC",
+        "MARKET_SOURCE_TIMEOUT_SEC",
+        "MARKET_BROWSER_TIMEOUT_SEC",
+        "MARKET_PLATFORM_QUOTA",
+        "MARKET_CACHE_PATH",
+        "MARKET_CACHE_TTL_SEC",
+        "CDP_URL",
+    ):
+        assert key in environment
+
+    assert "market-cache:/app/data" in service["volumes"]
+    assert "market-cache" in compose["volumes"]
+
+
+def test_backend_depends_on_an_optional_healthy_browser() -> None:
+    backend = _compose()["services"]["lifeos-backend"]
+
+    dependency = backend["depends_on"]["market-browser"]
+    assert dependency["condition"] == "service_healthy"
+    assert dependency["required"] is False
+
+
+def test_env_example_documents_the_deep_analysis_flags() -> None:
+    env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
+
+    for key in (
+        "MARKET_ANALYSIS_ENABLED",
+        "MARKET_ANALYSIS_DEADLINE_SEC",
+        "MARKET_SOURCE_TIMEOUT_SEC",
+        "MARKET_BROWSER_TIMEOUT_SEC",
+        "MARKET_PLATFORM_QUOTA",
+        "MARKET_CACHE_PATH",
+        "MARKET_CACHE_TTL_SEC",
+    ):
+        assert key in env_example
+
+
+def test_backend_image_creates_the_cache_directory() -> None:
+    dockerfile = (ROOT / "backend" / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "mkdir -p /app/data" in dockerfile

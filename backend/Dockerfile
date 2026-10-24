@@ -17,6 +17,7 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && npm cache clean --force
 
 WORKDIR /app
+RUN mkdir -p /app/data
 COPY requirements.txt .
 RUN pip install --no-cache-dir --retries 10 --timeout 60 -r requirements.txt
 COPY . .
