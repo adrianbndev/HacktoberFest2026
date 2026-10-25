@@ -213,6 +213,27 @@ Items 10–14 concern `relevance.py`, which is now used **only** by `/valuate`:
    but not that `BrowserSourceRunner` itself keeps accessories. Add a
    runner-level test (HTTP/browser outcome with accessory titles) to pin that
    boundary.
+8. **Milanuncios browser retry after `llm_relevance_empty`.** With
+   `transport=auto`, HTTP is accepted when it yields at least 8 sanitised rows,
+   even if all of them are accessories or broken. DeepSeek then rejects
+   everything and `/analyze` returns `503 llm_relevance_empty` without trying
+   the browser. Consider a single browser retry when the LLM accepts nothing,
+   bounded by the analysis deadline.
+9. **Batch failures are not fail-fast.** `asyncio.gather(return_exceptions=True)`
+   waits for every sibling, so a slow batch can consume the full relevance
+   budget and surface `llm_relevance_timeout` instead of
+   `llm_relevance_unavailable`. Consider cancelling the siblings on the first
+   batch failure.
+10. **Duplicate ids collapse in the coverage set.** The strict check compares
+    `set(ids)`; a duplicated id can therefore carry conflicting labels (for
+    example `exact` and `unrelated`) and still pass. Enforce
+    `len(response.listings) == len(batch)` (and unique ids) to close it.
+11. **The concurrency limit is per call, not global.** `MAX_BATCH_CONCURRENCY`
+    bounds the batches of one `/analyze`; concurrent requests multiply DeepSeek
+    calls. Tie it to the pending auth/rate-limit work before public exposure.
+
+Discarded: `MARKET_LLM_RELEVANCE_BATCH_SIZE=0` is already rejected by
+`Field(ge=1)`; no action needed.
 
 ## Phase 3 follow-ups (non-blocking)
 
