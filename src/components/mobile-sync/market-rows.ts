@@ -20,9 +20,20 @@ export interface MarketRow {
   sampleSize: number;
 }
 
-export function buildMarketRows(sources: MarketSourceResult[], hasError: boolean): MarketRow[] {
+export interface MarketRowOptions {
+  /** A failed analysis: nothing else is coming, so do not spin. */
+  hasError?: boolean;
+  /** A finished analysis: a source without a result simply found no listings. */
+  complete?: boolean;
+}
+
+export function buildMarketRows(sources: MarketSourceResult[], options: MarketRowOptions = {}): MarketRow[] {
   const known = new Map(sources.map((source) => [source.source, source]));
-  const missingStatus: MarketRowStatus = hasError ? "not_run" : "pending";
+  const missingStatus: MarketRowStatus = options.hasError
+    ? "not_run"
+    : options.complete
+      ? "no_listings"
+      : "pending";
   const rows: MarketRow[] = REQUESTED_SOURCES.map((source) => {
     const result = known.get(source);
     return result

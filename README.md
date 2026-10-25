@@ -194,33 +194,6 @@ npm run test:api    # pytest del backend
 
 ---
 
-## 🗺️ Estado del proyecto
-
-Construido en 9 horas con la disciplina de [Spec-Driven Development](.agent/roadmap.md): ningún nivel empieza hasta cerrar el anterior.
-
-| Nivel | Alcance | Estado |
-| :---- | :------ | :----- |
-| 🟢 **1 · Core ReCommerce** | Login con Google, Bento Grid, inventario, sync móvil↔PC, visión IA + SEO, motor MCP con 3 precios | **Funcionando** · queda el gate de demo con foto real |
-| 🟡 **2 · Precios en el tiempo** | Re-escaneo periódico, botón *Forzar actualización*, sparklines y centro de alertas | En curso |
-| 🟠 **3 · LifeOS** | Planes locales financiados con tu inventario, clima y calendario de entregas | Planificado |
-| 🔴 **4 · Hacktoberfest** | Buscador de repos con issues `hacktoberfest` y resumen IA en 2 líneas | Planificado |
-
-> En cualquier minuto de la demo la interfaz muestra un producto terminado: **cero botones muertos y cero vistas "en construcción"**.
-
----
-
-## 👥 El equipo
-
-| Track | Persona | Dominio |
-| :---- | :------ | :------ |
-| **A** | **Ales** | Frontend Next.js, Bento Grid, auth y perfil, centro de notificaciones |
-| **B** | **Adri** | Sync móvil↔PC (QR y cámara) y visión IA en Python |
-| **C** | **Matías** | Motor MCP stealth, cron de precios y módulos LifeOS |
-
-Trabajamos en paralelo sin pisarnos gracias a [fronteras de track estrictas](.agent/tracks/team-tracks-contract.md) y a contratos de datos compartidos (`src/types/sdd.ts` ↔ `backend/app/models/sdd.py`).
-
----
-
 ## 📚 Documentación
 
 | Documento | Para qué |

@@ -36,19 +36,18 @@ RUN apt-get update \
         xdg-utils \
         xvfb \
     && if [ "${TARGETARCH:-amd64}" = "amd64" ]; then \
-        apt-get install --yes --no-install-recommends wget gnupg; \
-        wget --quiet --output-document=/tmp/google-chrome.deb \
-            https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb; \
-        apt-get install --yes /tmp/google-chrome.deb; \
-        rm -f /tmp/google-chrome.deb; \
-        apt-get purge --yes wget gnupg; \
-        apt-get autoremove --yes; \
+        curl -fsSL --retry 3 -o /tmp/google-chrome.deb \
+            https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+        && apt-get install --yes --no-install-recommends /tmp/google-chrome.deb \
+        && rm -f /tmp/google-chrome.deb; \
     else \
         apt-get install --yes --no-install-recommends chromium; \
     fi \
+    && (command -v google-chrome-stable || command -v chromium) \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --uid 10001 browser \
+    && mkdir -p -m 1777 /tmp/.X11-unix \
     && mkdir -p /chrome-profile \
     && chown -R browser:browser /chrome-profile
 

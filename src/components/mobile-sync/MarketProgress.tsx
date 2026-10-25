@@ -70,7 +70,7 @@ export function MarketProgress({
   complete = false,
   onRetry,
 }: MarketProgressProps) {
-  const rows = buildMarketRows(sources, Boolean(error));
+  const rows = buildMarketRows(sources, { hasError: Boolean(error), complete });
   const usable = rows.filter((row) => row.status === "ok").length;
   const settled = rows.filter((row) => row.status !== "pending").length;
   const degraded = rows.some(
