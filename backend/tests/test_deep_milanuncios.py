@@ -21,10 +21,12 @@ class FakeConnector:
         *,
         failure_reason: str | None = None,
         delay_sec: float = 0.0,
+        titles: list[str] | None = None,
     ) -> None:
         self.prices = prices or []
         self.failure_reason = failure_reason
         self.delay_sec = delay_sec
+        self.titles = titles
         self.calls = 0
 
     async def search(self, query: str) -> ConnectorResult:
@@ -33,7 +35,11 @@ class FakeConnector:
             await asyncio.sleep(self.delay_sec)
         listings = tuple(
             MarketListingSample(
-                title=f"{query} {index}",
+                title=(
+                    self.titles[index]
+                    if self.titles and index < len(self.titles)
+                    else f"{query} {index}"
+                ),
                 price=price,
                 platform="milanuncios",
                 condition="Buen estado",
@@ -78,6 +84,19 @@ async def test_auto_uses_http_when_it_reaches_the_threshold() -> None:
     assert source.calls == 0
     assert browser.sessions == 0
     assert http.calls == 1
+
+
+async def test_accessory_titles_count_as_sanitised_for_the_http_threshold() -> None:
+    titles = ["Funda de silla"] * MIN_USABLE_LISTINGS
+    http = FakeConnector(list(range(30, 30 + MIN_USABLE_LISTINGS)), titles=titles)
+    runner, browser, source, _ = _runner(http=http)
+
+    outcome = await runner.collect("Silla", monotonic() + 5)
+
+    assert outcome.status == "ok"
+    assert len(outcome.listings) == MIN_USABLE_LISTINGS
+    assert source.calls == 0
+    assert browser.sessions == 0
 
 
 async def test_auto_falls_back_to_the_browser_on_a_short_http_sample() -> None:

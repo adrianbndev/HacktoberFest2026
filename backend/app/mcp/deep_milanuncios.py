@@ -21,7 +21,7 @@ from app.mcp.connectors import (
     MarketConnectorProtocol,
     MilanunciosConnector,
 )
-from app.mcp.normalize import dedupe_listings, filter_usable_listings
+from app.mcp.normalize import sanitize_listings
 from app.models.market_analysis import MarketSourceStatus
 from app.models.sdd import MarketListingSample
 
@@ -129,9 +129,10 @@ class MilanunciosHybridRunner:
         return browser_outcome
 
     def _usable_count(self, outcome: SourceOutcome) -> int:
+        """Technical sanitisation count only; product relevance is the LLM's job."""
         return len(
-            filter_usable_listings(
-                dedupe_listings(outcome.listings),
+            sanitize_listings(
+                outcome.listings,
                 max_price_eur=self._settings.market_max_listing_price_eur,
             )
         )

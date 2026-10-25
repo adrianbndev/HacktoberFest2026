@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -90,6 +91,33 @@ class FakeSource:
         )
 
 
+class FakeRelevance:
+    """Fake DeepSeek relevance: records every listing and accepts by predicate."""
+
+    def __init__(
+        self,
+        *,
+        accept: Callable[[MarketListingSample], bool] | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self._accept = accept or (lambda listing: True)
+        self.error = error
+        self.calls = 0
+        self.received: list[MarketListingSample] = []
+
+    async def classify(
+        self,
+        request: MarketAnalysisRequest,
+        listings: Sequence[MarketListingSample],
+        deadline: float,
+    ) -> list[MarketListingSample]:
+        self.calls += 1
+        self.received.extend(listings)
+        if self.error is not None:
+            raise self.error
+        return [listing for listing in listings if self._accept(listing)]
+
+
 class FakeRecommender:
     def __init__(self, *, suggested_price: int = 0, error: Exception | None = None) -> None:
         self.suggested_price = suggested_price
@@ -124,6 +152,7 @@ def make_analyzer(
     browser: FakeBrowser | None = None,
     recommender: FakeRecommender | None = None,
     milanuncios: object | None = None,
+    relevance: FakeRelevance | None = None,
     **settings_overrides: object,
 ) -> DeepMarketAnalyzer:
     settings_kwargs: dict[str, object] = {
@@ -139,6 +168,7 @@ def make_analyzer(
         sources=sources,  # type: ignore[arg-type]
         recommender=recommender or FakeRecommender(),
         milanuncios=milanuncios,  # type: ignore[arg-type]
+        relevance=relevance or FakeRelevance(),
     )
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 from collections.abc import Iterable, Iterator
@@ -127,6 +128,34 @@ def filter_usable_listings(
         for listing in listings
         if is_usable_listing(listing, max_price_eur=max_price_eur)
     ]
+
+
+def is_sanitized_listing(
+    listing: MarketListingSample, *, max_price_eur: int
+) -> bool:
+    """Technical sanity only: visible title and a finite, positive price.
+
+    This deliberately does **not** judge the product. Accessories, broken units
+    and single items reach the LLM relevance filter in `/analyze`, so the model
+    — not a lexical rule — decides what is the exact product.
+    """
+    price = listing.price
+    return (
+        bool(listing.title.strip())
+        and math.isfinite(price)
+        and 0 < price <= max_price_eur
+    )
+
+
+def sanitize_listings(
+    listings: Iterable[MarketListingSample], *, max_price_eur: int
+) -> list[MarketListingSample]:
+    """Filter technically invalid rows and drop exact duplicates."""
+    return dedupe_listings(
+        listing
+        for listing in listings
+        if is_sanitized_listing(listing, max_price_eur=max_price_eur)
+    )
 
 
 def dedupe_listings(listings: Iterable[MarketListingSample]) -> list[MarketListingSample]:
