@@ -69,6 +69,7 @@ Ejemplos para el objetivo "Apple AirPods Pro 2":
 - "AirPods Pro 2" -> exact
 - "Apple AirPods Pro 2" -> exact
 - "AirPods Pro 2nd generation" -> exact
+- "AirPods Pro 2 con estuche" -> exact
 - "AirPods 2" -> different_model
 - "AirPods Pro" -> different_model
 - "AirPods Pro 3" -> different_model

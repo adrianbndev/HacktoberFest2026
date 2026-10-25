@@ -130,9 +130,7 @@ def filter_usable_listings(
     ]
 
 
-def is_sanitized_listing(
-    listing: MarketListingSample, *, max_price_eur: int
-) -> bool:
+def is_sanitized_listing(listing: MarketListingSample, *, max_price_eur: int) -> bool:
     """Technical sanity only: visible title and a finite, positive price.
 
     This deliberately does **not** judge the product. Accessories, broken units
@@ -152,9 +150,8 @@ def sanitize_listings(
 ) -> list[MarketListingSample]:
     """Filter technically invalid rows and drop exact duplicates."""
     return dedupe_listings(
-        listing
-        for listing in listings
-        if is_sanitized_listing(listing, max_price_eur=max_price_eur)
+        item for item in listings
+        if is_sanitized_listing(item, max_price_eur=max_price_eur)
     )
 
 

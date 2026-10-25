@@ -50,6 +50,31 @@ def test_deep_analysis_defaults_are_safe_and_additive() -> None:
     assert settings.cdp_url == "http://market-browser:9222"
 
 
+def test_llm_relevance_defaults_use_the_fast_model() -> None:
+    settings = get_settings()
+
+    assert settings.market_llm_relevance_enabled is True
+    assert settings.market_llm_relevance_batch_size == 25
+    assert settings.market_llm_relevance_budget_sec == 10.0
+    assert settings.market_llm_relevance_model is None
+    assert settings.llm_relevance_model == settings.deepseek_fast_model == "deepseek-flash"
+
+
+def test_llm_relevance_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("MARKET_LLM_RELEVANCE_ENABLED", "false")
+    monkeypatch.setenv("MARKET_LLM_RELEVANCE_BATCH_SIZE", "10")
+    monkeypatch.setenv("MARKET_LLM_RELEVANCE_BUDGET_SEC", "4")
+    monkeypatch.setenv("MARKET_LLM_RELEVANCE_MODEL", "custom-relevance-model")
+    get_settings.cache_clear()
+
+    settings = get_settings()
+
+    assert settings.market_llm_relevance_enabled is False
+    assert settings.market_llm_relevance_batch_size == 10
+    assert settings.market_llm_relevance_budget_sec == 4.0
+    assert settings.llm_relevance_model == "custom-relevance-model"
+
+
 def test_deep_analysis_env_overrides(monkeypatch) -> None:
     monkeypatch.setenv("MARKET_ANALYSIS_ENABLED", "false")
     monkeypatch.setenv("MARKET_CACHE_PATH", "/tmp/custom.sqlite")
