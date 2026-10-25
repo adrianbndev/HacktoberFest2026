@@ -128,5 +128,3 @@ async def test_llm_relevance_failures_are_503_and_never_price_the_full_sample(
         "wallapop": "ok",
         "milanuncios": "ok",
     }
-
-
