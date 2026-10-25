@@ -2,7 +2,7 @@
 
 eBay and Wallapop use one browser pool slot each. Milanuncios tries the fast
 HTTP connector first and falls back to the browser source when HTTP is blocked,
-empty or yields fewer than 8 usable listings. A source failure never aborts the
+empty or yields fewer than 8 sanitised listings. A source failure never aborts the
 other sources; only a missing browser is fatal (`None`).
 """
 
@@ -22,7 +22,7 @@ from app.mcp.browser.sources.ebay import EbaySource
 from app.mcp.browser.sources.milanuncios import MilanunciosSource
 from app.mcp.browser.sources.wallapop import WallapopSource
 from app.mcp.deep_milanuncios import MilanunciosHybridRunner
-from app.mcp.normalize import dedupe_listings, filter_usable_listings
+from app.mcp.normalize import sanitize_listings
 from app.models.market_analysis import (
     MAX_SOURCE_LISTINGS,
     MarketSourceResult,
@@ -69,8 +69,8 @@ class BrowserSourceRunner:
         if outcome is None:
             return None
 
-        usable = filter_usable_listings(
-            dedupe_listings(outcome.listings),
+        sanitized = sanitize_listings(
+            outcome.listings,
             max_price_eur=self._settings.market_max_listing_price_eur,
         )
         if outcome.status in FETCHED_STATUSES:
@@ -86,18 +86,18 @@ class BrowserSourceRunner:
                 ),
                 [],
             )
-        status: MarketSourceStatus = "ok" if usable else "no_listings"
+        status: MarketSourceStatus = "ok" if sanitized else "no_listings"
         return (
             self._result(
                 platform,
                 status,
-                usable,
+                sanitized,
                 started,
                 query,
                 outcome.error,
                 outcome.latency_ms,
             ),
-            usable if status == "ok" else [],
+            sanitized if status == "ok" else [],
         )
 
     async def _browser_outcome(

@@ -8,14 +8,12 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.config import Settings
-from app.mcp.analysis_query import build_relevance_query
 from app.mcp.deep_support import (
     select_comparables,
     single_iqr_filter,
     source_warnings,
 )
 from app.mcp.pricing_math import compute_price_triplet_from_clean, confidence_score
-from app.mcp.relevance import score_relevance
 from app.models.market_analysis import (
     MarketAnalysisRequest,
     MarketAnalysisValuation,
@@ -24,9 +22,6 @@ from app.models.market_analysis import (
 from app.models.sdd import MarketListingSample, MarketPlatform
 
 SMALL_SAMPLE_WARNING = "Muestra de mercado pequeña: interpreta el rango con cautela."
-RELEVANCE_SKIPPED_WARNING = (
-    "No se pudo aplicar el filtro de relevancia; se usa la muestra completa."
-)
 
 SourceOutcomePair = tuple[MarketSourceResult, list[MarketListingSample]]
 
@@ -83,24 +78,18 @@ def aggregate_results(
     request: MarketAnalysisRequest,
     query: str,
     results: Sequence[MarketSourceResult],
-    usable_by_source: dict[MarketPlatform, list[MarketListingSample]],
+    accepted: Sequence[MarketListingSample],
 ) -> AggregationOutcome:
-    """One IQR pass, relevance, per-platform quota and confidence."""
+    """One IQR pass over the LLM-`exact` listings, quota and confidence.
+
+    `accepted` is already the DeepSeek-selected sample; there is no lexical
+    relevance pass and no fallback to the full source sample.
+    """
     statuses: dict[str, str] = {
         str(result.source): result.status for result in results
     }
     warnings = source_warnings(statuses)
-    all_usable = [
-        listing
-        for platform in request.sources
-        for listing in usable_by_source.get(platform, ())
-    ]
-    relevance_query = build_relevance_query(request.name, request.brand, request.model)
-    relevant = score_relevance(relevance_query, all_usable)
-    if not relevant:
-        relevant = all_usable
-        warnings.append(RELEVANCE_SKIPPED_WARNING)
-    clean = single_iqr_filter(relevant)
+    clean = single_iqr_filter(accepted)
     if not clean:
         return AggregationOutcome(None, [], warnings, statuses)
 

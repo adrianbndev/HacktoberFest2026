@@ -30,7 +30,6 @@ from app.mcp.cache import MarketAnalysisCache, build_cache_key
 from app.mcp.deep_cache import now_iso, read_cached, write_cached
 from app.mcp.deep_milanuncios import MilanunciosHybridRunner
 from app.mcp.deep_parallel import (
-    RELEVANCE_SKIPPED_WARNING,
     SMALL_SAMPLE_WARNING,
     aggregate_results,
     run_sources,
@@ -38,6 +37,12 @@ from app.mcp.deep_parallel import (
 from app.mcp.deep_recommend import RecommenderProtocol, recommend
 from app.mcp.deep_sources import BrowserSourceRunner, default_sources
 from app.mcp.deepseek import DeepSeekRecommender
+from app.mcp.llm_relevance import (
+    LLM_RELEVANCE_EMPTY,
+    LlmRelevanceFilter,
+    LlmRelevanceUnavailableError,
+    RelevanceClassifierProtocol,
+)
 from app.models.market_analysis import (
     MarketAnalysisRequest,
     MarketAnalysisResult,
@@ -48,7 +53,6 @@ from app.models.sdd import MarketListingSample, MarketPlatform
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "RELEVANCE_SKIPPED_WARNING",
     "SMALL_SAMPLE_WARNING",
     "DeepMarketAnalyzer",
     "reset_shared_analyzer",
@@ -59,6 +63,9 @@ UNAVAILABLE_DETAIL = "Ninguna fuente de mercado profunda devolvió anuncios util
 BROWSER_UNAVAILABLE_DETAIL = "browser_unavailable"
 ANALYSIS_DISABLED_DETAIL = "analysis_disabled"
 ANALYSIS_FAILED_DETAIL = "analysis_failed"
+LLM_RELEVANCE_DISCARDED_WARNING = (
+    "DeepSeek descartó {count} anuncio(s) que no eran el producto exacto."
+)
 
 
 class DeepMarketAnalyzer:
@@ -73,6 +80,7 @@ class DeepMarketAnalyzer:
         sources: Mapping[MarketPlatform, BrowserSourceProtocol] | None = None,
         recommender: RecommenderProtocol | None = None,
         milanuncios: MilanunciosHybridRunner | None = None,
+        relevance: RelevanceClassifierProtocol | None = None,
     ) -> None:
         self._settings = settings
         self.browser = browser or BrowserSessionPool(settings)
@@ -87,6 +95,9 @@ class DeepMarketAnalyzer:
         )
         self._recommender: RecommenderProtocol = recommender or DeepSeekRecommender(
             settings, allow_template=False
+        )
+        self._relevance: RelevanceClassifierProtocol = relevance or LlmRelevanceFilter(
+            settings
         )
 
     async def analyze(self, request: MarketAnalysisRequest) -> MarketAnalysisResult:
@@ -140,14 +151,37 @@ class DeepMarketAnalyzer:
             for platform in request.sources
             if platform in results_by_platform
         ]
+        statuses: dict[str, str] = {
+            str(result.source): result.status for result in results
+        }
+        sanitized = [
+            listing
+            for platform in request.sources
+            for listing in usable_by_source.get(platform, ())
+        ]
+        if not sanitized:
+            yield AnalysisFailed(UNAVAILABLE_DETAIL, statuses)
+            return
+        try:
+            accepted = await self._relevance.classify(request, sanitized, deadline)
+        except LlmRelevanceUnavailableError as exc:
+            yield AnalysisFailed(exc.code, statuses)
+            return
+        if not accepted:
+            yield AnalysisFailed(LLM_RELEVANCE_EMPTY, statuses)
+            return
+
         aggregation = aggregate_results(
-            self._settings, request, query, results, usable_by_source
+            self._settings, request, query, results, accepted
         )
         if aggregation.valuation is None:
             yield AnalysisFailed(UNAVAILABLE_DETAIL, aggregation.statuses)
             return
         valuation = aggregation.valuation
         warnings = aggregation.warnings
+        discarded = len(sanitized) - len(accepted)
+        if discarded > 0:
+            warnings.append(LLM_RELEVANCE_DISCARDED_WARNING.format(count=discarded))
         comparables = aggregation.comparables
         yield ValuationReady(valuation)
 

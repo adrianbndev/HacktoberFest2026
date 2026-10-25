@@ -6,11 +6,7 @@ from pathlib import Path
 
 import pytest
 from app.mcp.analysis_events import AnalysisFailed, DeepAnalysisUnavailableError
-from app.mcp.deep_analysis import (
-    RELEVANCE_SKIPPED_WARNING,
-    SMALL_SAMPLE_WARNING,
-    UNAVAILABLE_DETAIL,
-)
+from app.mcp.deep_analysis import SMALL_SAMPLE_WARNING, UNAVAILABLE_DETAIL
 from tests.deep_analysis_support import (
     FakeBrowser,
     FakeSource,
@@ -154,24 +150,6 @@ async def test_source_timeout_does_not_abort_the_analysis(tmp_path: Path) -> Non
     assert result.valuation.platforms == ["wallapop", "milanuncios"]
 
 
-async def test_accessories_only_is_a_503_not_a_fake_valuation(tmp_path: Path) -> None:
-    sources = {
-        "ebay": FakeSource("ebay", [10], titles=["Funda de silla"]),
-        "wallapop": FakeSource("wallapop", [12], titles=["Cable de silla"]),
-        "milanuncios": FakeSource("milanuncios", [11], titles=["Caja vacía silla"]),
-    }
-    analyzer = make_analyzer(tmp_path, sources)
-
-    with pytest.raises(DeepAnalysisUnavailableError) as exc_info:
-        await analyzer.analyze(make_analysis_request())
-
-    assert exc_info.value.sources == {
-        "ebay": "no_listings",
-        "wallapop": "no_listings",
-        "milanuncios": "no_listings",
-    }
-
-
 async def test_small_sample_adds_a_warning(tmp_path: Path) -> None:
     sources = {
         "ebay": FakeSource("ebay", [30]),
@@ -183,20 +161,6 @@ async def test_small_sample_adds_a_warning(tmp_path: Path) -> None:
     result = await analyzer.analyze(make_analysis_request())
 
     assert SMALL_SAMPLE_WARNING in result.warnings
-
-
-async def test_relevance_fallback_adds_a_warning(tmp_path: Path) -> None:
-    sources = {
-        "ebay": FakeSource("ebay", [30, 35, 40], titles=["Bicicleta", "Monopatín", "Patinete"]),
-        "wallapop": FakeSource("wallapop", [32, 38, 42], titles=["Bicicleta", "Monopatín", "Patinete"]),
-        "milanuncios": FakeSource("milanuncios", [31, 36, 41], titles=["Bicicleta", "Monopatín", "Patinete"]),
-    }
-    analyzer = make_analyzer(tmp_path, sources)
-
-    result = await analyzer.analyze(make_analysis_request())
-
-    assert RELEVANCE_SKIPPED_WARNING in result.warnings
-    assert result.valuation.sample_size == 9
 
 
 async def test_analysis_can_be_disabled(tmp_path: Path) -> None:

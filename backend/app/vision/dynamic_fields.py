@@ -189,7 +189,8 @@ def normalize_vlm_dynamic_fields(
     """Sanitizes AI-generated dynamic fields against cross-domain contamination and backfills if needed."""
     family = resolve_object_family(category, name, brand, model)
     spec_by_key = {k: (lbl, ft, opts, hint) for k, lbl, ft, opts, hint in OBJECT_FIELD_SPECS.get(family, ())}
-    cleaned, seen_concepts = [], set()
+    cleaned: list[VisionDynamicField] = []
+    seen_concepts: set[str] = set()
 
     for item in vlm_fields:
         k_low, l_low, v_low = item.key.strip().lower(), item.label.strip().lower(), item.value.strip().lower()

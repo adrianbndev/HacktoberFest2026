@@ -42,7 +42,8 @@ class DeepSeekChat:
     """Small adapter around the chat-completions endpoint.
 
     Tries the reasoning model, retries empty/invalid JSON once, then falls back
-    to the fast model on ``model_not_found``. Never raises to the caller.
+    to the fast model on ``model_not_found``. A caller may pin a single model
+    (the relevance filter pins ``deepseek-flash``). Never raises to the caller.
     """
 
     def __init__(
@@ -59,25 +60,37 @@ class DeepSeekChat:
         user: str,
         validator: Validator[T],
         budget_sec: float | None = None,
+        model: str | None = None,
     ) -> T | None:
         timeout = budget_sec if budget_sec is not None else self._settings.deepseek_timeout_sec
         if timeout <= 0:
             return None
         try:
             return await asyncio.wait_for(
-                self._try_models(system, user, validator), timeout=timeout
+                self._try_models(system, user, validator, model), timeout=timeout
             )
         except Exception:
             return None
 
     async def _try_models(
-        self, system: str, user: str, validator: Validator[T]
+        self,
+        system: str,
+        user: str,
+        validator: Validator[T],
+        model: str | None = None,
     ) -> T | None:
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
-        models = (self._settings.deepseek_reasoning_model, self._settings.deepseek_fast_model)
+        models = (
+            (model,)
+            if model is not None
+            else (
+                self._settings.deepseek_reasoning_model,
+                self._settings.deepseek_fast_model,
+            )
+        )
         for model in dict.fromkeys(models):
             for _attempt in range(2):
                 try:

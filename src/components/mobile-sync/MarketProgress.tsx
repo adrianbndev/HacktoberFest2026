@@ -47,6 +47,14 @@ const ERROR_TEXT: Record<string, string> = {
   analysis_failed: "El análisis falló por un error inesperado. Vuelve a intentarlo en unos segundos.",
   stream_unavailable: "El servidor no pudo abrir el progreso del análisis. Vuelve a intentarlo.",
   stream_ended_without_done: "El análisis se cortó antes de terminar. Vuelve a intentarlo.",
+  llm_relevance_unavailable:
+    "La IA que decide qué anuncios son el producto exacto no está disponible ahora mismo. No calculamos el rango sin ella; vuelve a intentarlo.",
+  llm_relevance_timeout:
+    "La IA tardó demasiado en decidir qué anuncios son el producto exacto. Vuelve a intentarlo en unos segundos.",
+  llm_relevance_empty:
+    "Ningún anuncio encontrado parece ser el producto exacto. Prueba con otro nombre o revisa la foto y el modelo.",
+  llm_relevance_disabled:
+    "La relevancia por IA está desactivada en el backend; sin ella no se calcula el rango de precios.",
 };
 
 function StatusIcon({ status }: { status: RowStatus }) {

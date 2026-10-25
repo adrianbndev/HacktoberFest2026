@@ -11,6 +11,7 @@ from app.mcp.normalize import (
     normalize_condition,
     normalize_query,
     parse_price_eur,
+    sanitize_listings,
 )
 from app.models.sdd import MarketListingSample, MarketPlatform
 
@@ -94,6 +95,25 @@ def test_usable_filter_drops_symbolic_prices_accessories_and_extremes() -> None:
     filtered = filter_usable_listings(listings, max_price_eur=10_000)
 
     assert [listing.price for listing in filtered] == [325, 349]
+
+
+def test_sanitize_keeps_accessories_and_broken_but_drops_invalid_rows() -> None:
+    listings = [
+        _listing("Funda oficial iPhone 13", 15),
+        _listing("iPhone 13 para piezas", 40),
+        _listing("   ", 20),
+        _listing("iPhone 13 128GB", 10_001),
+        _listing("iPhone 13 128GB", 300),
+        _listing("iphone 13 128gb", 300),
+    ]
+
+    sanitized = sanitize_listings(listings, max_price_eur=10_000)
+
+    assert [listing.title for listing in sanitized] == [
+        "Funda oficial iPhone 13",
+        "iPhone 13 para piezas",
+        "iPhone 13 128GB",
+    ]
 
 
 def test_dedupe_keeps_one_copy_per_platform_title_and_price() -> None:

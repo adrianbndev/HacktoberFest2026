@@ -11,8 +11,10 @@ POST /api/market/valuate                   POST /api/market/analyze
      in parallel (1.6 s/source)              -> Milanuncios HTTP (3 pages) in parallel
   -> filter / dedupe / IQR                   -> HTTP blocked/<8: browser fallback
   -> P_min < P_avg < P_max                   -> per-source statuses + listings
-  -> comparable listings                     -> relevance + one IQR pass
-  -> optional DeepSeek recommendation        -> per-platform quota (4/12)
+  -> comparable listings                     -> sanitise only (no product prefilter)
+  -> optional DeepSeek recommendation        -> DeepSeek decides `exact` (batches)
+                                             -> one IQR pass on exact prices
+                                             -> per-platform quota (4/12)
                                              -> confidence + cached recommendation
                                              -> SQLite cache (15 min, real only)
 
@@ -21,7 +23,9 @@ POST /api/market/valuate                   POST /api/market/analyze
 
 `/valuate` and its contracts are frozen. The deep path never uses
 `catalog_fallback` or synthetic fixtures: if every source is blocked it returns
-HTTP `503` with per-source statuses.
+HTTP `503` with per-source statuses. It also never uses lexical relevance: every
+technically valid listing is classified by DeepSeek and only the `exact` ones
+feed the price triplet (ADR-006).
 
 ## Architecture and dependency direction
 
@@ -39,7 +43,8 @@ mcp/deep_analysis.py
   -> mcp/deep_support.py           -> mcp/analysis_query.py, mcp/pricing_math.py
   -> mcp/deep_recommend.py         -> mcp/deepseek.py
   -> mcp/deep_cache.py             -> mcp/cache.py
-  -> mcp/{relevance,pricing_math}.py
+  -> mcp/llm_relevance.py          -> mcp/deepseek_client.py
+  -> mcp/pricing_math.py
 mcp/cache.py                       -> standard library only
 models/market_health.py            -> models/sdd.py only
 models/                            -> no mcp/ imports
@@ -169,6 +174,15 @@ blocked, empty or yields fewer than 8 usable listings, it falls back to the
 browser source on a free pool slot. The engine never launches Chrome itself,
 never uses `--headless`/`--enable-automation`, and never solves a captcha.
 
+After collection, the engine applies **technical sanitisation only** (visible
+title, finite price `> 0` and de-duplication). There is no product prefilter:
+accessories, broken units, single earbuds and bundles go to DeepSeek. The
+`LlmRelevanceFilter` sends every listing in batches (`deepseek-flash`, thinking
+disabled, JSON) and keeps only `exact`. Prices are computed from those accepted
+listings with the usual IQR/percentile/`W_health` maths; the LLM never invents
+the range. If DeepSeek is disabled, missing, slow or returns invalid JSON, the
+endpoint returns `503` (never the full sample).
+
 ### Request
 
 | Field | Type | Required | Rules |
@@ -185,8 +199,9 @@ never uses `--headless`/`--enable-automation`, and never solves a captcha.
 | `includeRecommendation` | boolean | no | default `true` |
 
 `name` alone builds the search query (normalised, filler words removed). The
-cleaned brand/model feed the relevance filter; `description` is never used to
-search and is never stored in the cache.
+cleaned brand/model plus the target fields and description are sent to DeepSeek
+for relevance only; `description` is never used to search and is never stored in
+the cache.
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/api/market/analyze \
@@ -210,36 +225,44 @@ curl -s -X POST http://127.0.0.1:8000/api/market/analyze \
   `request.sources`**, with `status ∈ {ok, blocked, timeout, no_listings,
   error}`, `sampleSize`, `listings`, `latencyMs` and optional `error`. Every
   listing URL is absolute; a missing listing URL falls back to the platform
-  search deep link. Completion order only affects SSE, never this array.
+  search deep link. Completion order only affects SSE, never this array. These
+  are the sanitised source rows: they can include accessories/broken listings
+  that DeepSeek later rejects; only `valuation` and `comparableListings` are
+  restricted to `exact`.
 - `valuation`: `0 < priceMin < priceAvg < priceMax`, `sampleSize` is the number
-  of listings actually priced after one IQR pass, `platforms` includes every
-  source with usable data (even if its listings are not in the final 12), and
-  `confidence ∈ [0,1]` blends sample size, coverage, price agreement and source
-  reliability.
-- `comparableListings`: up to 12 listings, up to 4 per successful source, then
-  filled by price proximity to `priceAvg`.
+  of **DeepSeek-exact** listings actually priced after one IQR pass, `platforms`
+  includes every source that contributed an exact listing (even if its listings
+  are not in the final 12), and `confidence ∈ [0,1]` blends sample size,
+  coverage, price agreement and source reliability.
+- `comparableListings`: up to 12 **exact** listings, up to 4 per successful
+  source, then filled by price proximity to `priceAvg`.
 - `recommendation`: omitted when `includeRecommendation=false`, the LLM fails,
   or the budget is exhausted. `suggestedPrice` is always inside
   `[priceMin, priceMax]`; a clamp adds a warning.
-- `warnings`: per-source failures, small sample, relevance fallback,
-  recommendation skipped/clamped.
+- `warnings`: per-source failures, small sample, number of listings DeepSeek
+  discarded as not exact, recommendation skipped/clamped.
 - `cached` is `true` only on a real cache hit; `analyzedAt` is ISO 8601.
 
-The deep path uses `deepseek-v4-pro` with thinking and **disables the
-deterministic template**: a failed LLM omits the recommendation and adds a
-warning instead of inventing text.
+Relevance uses `deepseek-flash` with thinking disabled. The optional
+recommendation uses `deepseek-v4-pro` with thinking and **disables the
+deterministic template**: a failed recommendation omits the text and adds a
+warning instead of inventing it. A relevance failure is fatal (`503`).
 
 ### Errors
 
 | Case | HTTP | Body |
 |---|---|---|
-| Every source blocked / no usable listings | `503` | `{"detail": "...", "sources": {"ebay": "blocked", ...}}` |
+| Every source blocked / no sanitised listings | `503` | `{"detail": "...", "sources": {"ebay": "blocked", ...}}` |
 | Browser pool/MCP unavailable | `503` | `{"detail": "browser_unavailable", "sources": {}}` |
 | Analysis disabled | `503` | `{"detail": "analysis_disabled", "sources": {}}` |
+| LLM relevance disabled (`MARKET_LLM_RELEVANCE_ENABLED=false`) | `503` | `{"detail": "llm_relevance_disabled", "sources": {...}}` |
+| DeepSeek unavailable, no key, transport error or invalid JSON | `503` | `{"detail": "llm_relevance_unavailable", "sources": {...}}` |
+| LLM relevance budget/deadline exhausted | `503` | `{"detail": "llm_relevance_timeout", "sources": {...}}` |
+| DeepSeek rejected every listing | `503` | `{"detail": "llm_relevance_empty", "sources": {...}}` |
 | Unexpected engine error | `503` | `{"detail": "analysis_failed", "sources": {}}` |
 | Invalid request | `422` | Pydantic details |
 
-Never `500`, never synthetic data.
+Never `500`, never synthetic data and never a fallback to the full sample.
 
 ## SSE: `POST /api/market/analyze/stream`
 
@@ -403,6 +426,35 @@ response.
 - **The deep path (`/analyze`) never uses this fallback.** It returns `503` when
   no real browser listing is usable.
 
+## DeepSeek-only product relevance
+
+`/analyze` does not run `score_relevance`. The relevance stage is
+`backend/app/mcp/llm_relevance.py`:
+
+- `deepseek-flash` (or `MARKET_LLM_RELEVANCE_MODEL`), thinking disabled, JSON
+  object response.
+- Batches of `MARKET_LLM_RELEVANCE_BATCH_SIZE` (default 25), classified
+  concurrently within `MARKET_LLM_RELEVANCE_BUDGET_SEC` (default 10 s, also
+  bounded by the analysis deadline).
+- Prompt labels: `exact`, `different_model`, `accessory`, `single_item`,
+  `broken`, `unrelated`, `bundle`. Only `exact` is accepted; the prompt defaults
+  to `different_model` when in doubt and documents the AirPods Pro 2 cases
+  (`AirPods 2`, `AirPods Pro`, `AirPods Pro 3`, single side, broken, case and
+  “para piezas” are rejected; `AirPods Pro 2`, `Apple AirPods Pro 2` and
+  `AirPods Pro 2nd generation` are exact).
+- Strict batch coverage: the response must be non-empty, every label must be a
+  known label, every entry must carry an id, and the set of returned ids must
+  equal the set sent in that batch. Missing/extra/hallucinated ids, an empty
+  list, an unknown label or invalid JSON abort the analysis with a typed error
+  (`llm_relevance_unavailable`); there is no silent partial result. Batches run
+  with at most 4 concurrent requests and the relevance budget is the hard outer
+  timeout.
+- Failure codes: `llm_relevance_disabled`, `llm_relevance_unavailable`,
+  `llm_relevance_timeout`, `llm_relevance_empty` (all `503`).
+
+The price triplet is still pure `pricing_math`: the LLM only selects the sample.
+`/valuate` keeps its deterministic lexical relevance (frozen fast path).
+
 ## DeepSeek recommendation
 
 - Base URL `https://api.deepseek.com` (OpenAI-compatible SDK).
@@ -445,6 +497,10 @@ response.
 | `DEEPSEEK_FAST_MODEL` | `deepseek-flash` | parsing / fallback model |
 | `DEEPSEEK_TIMEOUT_SEC` | `30.0` | transport timeout per attempt |
 | `DEEPSEEK_RECOMMENDATION_BUDGET_SEC` | `25.0` | opt-in recommendation window (`0` disables the LLM) |
+| `MARKET_LLM_RELEVANCE_ENABLED` | `true` | DeepSeek-only product relevance in `/analyze`; `false` returns `503` |
+| `MARKET_LLM_RELEVANCE_BATCH_SIZE` | `25` | listings per relevance request |
+| `MARKET_LLM_RELEVANCE_BUDGET_SEC` | `10` | concurrent relevance window (also bounded by the analysis deadline) |
+| `MARKET_LLM_RELEVANCE_MODEL` | empty | overrides the relevance model; empty uses `DEEPSEEK_FAST_MODEL` (`deepseek-flash`, thinking disabled) |
 | `CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS` | `1` | MCP telemetry off |
 | `MARKET_ANALYSIS_ENABLED` | `true` | expose the deep analysis |
 | `MARKET_ANALYSIS_DEADLINE_SEC` | `60` | whole deep request deadline |
