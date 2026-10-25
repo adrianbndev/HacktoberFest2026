@@ -204,6 +204,15 @@ Items 10–14 concern `relevance.py`, which is now used **only** by `/valuate`:
 5. **Prompt injection/redaction.** Titles are user-controlled and sent to
    DeepSeek; JSON delimiting plus Pydantic validation is the current mitigation.
    Explicit delimiters and PII redaction remain pending.
+6. **Cross-source dedupe.** `dedupe_listings` keys on platform/title/price, so
+   the same item cross-posted on two platforms can be counted (and classified)
+   twice. A later dedupe by title/price (or a canonical listing key) would
+   reduce LLM calls and price bias.
+7. **Sanitisation source-level test.** The no-prefilter integration test uses
+   `FakeSource` directly, so it proves the engine forwards every sanitised row
+   but not that `BrowserSourceRunner` itself keeps accessories. Add a
+   runner-level test (HTTP/browser outcome with accessory titles) to pin that
+   boundary.
 
 ## Phase 3 follow-ups (non-blocking)
 

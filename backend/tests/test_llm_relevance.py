@@ -41,34 +41,104 @@ async def test_batches_use_the_configured_size_and_keep_input_order() -> None:
     assert [listing.price for listing in accepted] == [200, 201, 202, 203]
 
 
-async def test_missing_ids_unknown_labels_and_hallucinated_ids_are_not_exact() -> None:
-    class PartialCompletion:
-        async def __call__(self, **kwargs: object) -> CompletionResult:
-            return CompletionResult(
-                json.dumps(
-                    {
-                        "listings": [
-                            {"id": 0, "label": "EXACT"},
-                            {"label": "exact"},
-                            {"id": 1, "label": "maybe_exact"},
-                            {"id": 99, "label": "exact"},
-                        ]
-                    }
-                )
-            )
+class StaticCompletion:
+    """Return the same payload for every attempt (transport retries included)."""
 
+    def __init__(self, payload: dict[str, object]) -> None:
+        self.payload = payload
+        self.calls = 0
+
+    async def __call__(self, **kwargs: object) -> CompletionResult:
+        self.calls += 1
+        return CompletionResult(json.dumps(self.payload))
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({"listings": []}, id="empty-listings"),
+        pytest.param(
+            {"listings": [{"id": 0, "label": "exact"}]},
+            id="missing-ids",
+        ),
+        pytest.param(
+            {
+                "listings": [
+                    {"label": "exact"},
+                    {"id": 1, "label": "exact"},
+                    {"id": 2, "label": "exact"},
+                ]
+            },
+            id="entry-without-id",
+        ),
+        pytest.param(
+            {
+                "listings": [
+                    {"id": 0, "label": "maybe_exact"},
+                    {"id": 1, "label": "exact"},
+                    {"id": 2, "label": "exact"},
+                ]
+            },
+            id="unknown-label",
+        ),
+        pytest.param(
+            {
+                "listings": [
+                    {"id": 0, "label": "exact"},
+                    {"id": 1, "label": "exact"},
+                    {"id": 2, "label": "exact"},
+                    {"id": 99, "label": "exact"},
+                ]
+            },
+            id="hallucinated-id",
+        ),
+        pytest.param(
+            {
+                "listings": [
+                    {"id": 0, "label": "exact"},
+                    {"id": 0, "label": "exact"},
+                    {"id": 2, "label": "exact"},
+                ]
+            },
+            id="missing-id-with-duplicate",
+        ),
+    ],
+)
+async def test_incomplete_or_invalid_batch_coverage_is_a_503(
+    payload: dict[str, object],
+) -> None:
     settings = make_settings()
-    relevance = LlmRelevanceFilter(
-        settings, chat=make_chat(settings, PartialCompletion())
-    )
+    completion = StaticCompletion(payload)
+    relevance = LlmRelevanceFilter(settings, chat=make_chat(settings, completion))
+
+    with pytest.raises(LlmRelevanceUnavailableError) as exc_info:
+        await relevance.classify(
+            make_airpods_request(),
+            make_listings(["AirPods Pro 2", "AirPods Pro 2", "AirPods Pro 2"]),
+            monotonic() + 5,
+        )
+
+    assert exc_info.value.code == LLM_RELEVANCE_UNAVAILABLE
+
+
+async def test_complete_coverage_without_exact_returns_an_empty_accepted_list() -> None:
+    payload = {
+        "listings": [
+            {"id": 0, "label": "different_model"},
+            {"id": 1, "label": "accessory"},
+        ]
+    }
+    settings = make_settings()
+    completion = StaticCompletion(payload)
+    relevance = LlmRelevanceFilter(settings, chat=make_chat(settings, completion))
 
     accepted = await relevance.classify(
         make_airpods_request(),
-        make_listings(["AirPods Pro 2", "AirPods Pro 2", "AirPods Pro 2"]),
+        make_listings(["AirPods 2", "Funda AirPods"]),
         monotonic() + 5,
     )
 
-    assert [listing.price for listing in accepted] == [200]
+    assert accepted == []
 
 
 async def test_invalid_json_fails_with_a_typed_error_not_a_subset() -> None:

@@ -442,9 +442,13 @@ response.
   (`AirPods 2`, `AirPods Pro`, `AirPods Pro 3`, single side, broken, case and
   “para piezas” are rejected; `AirPods Pro 2`, `Apple AirPods Pro 2` and
   `AirPods Pro 2nd generation` are exact).
-- Pydantic validation: missing ids, hallucinated ids and unknown labels are
-  treated as not exact. A batch whose JSON/transport fails aborts the analysis
-  with a typed error; there is no silent partial result.
+- Strict batch coverage: the response must be non-empty, every label must be a
+  known label, every entry must carry an id, and the set of returned ids must
+  equal the set sent in that batch. Missing/extra/hallucinated ids, an empty
+  list, an unknown label or invalid JSON abort the analysis with a typed error
+  (`llm_relevance_unavailable`); there is no silent partial result. Batches run
+  with at most 4 concurrent requests and the relevance budget is the hard outer
+  timeout.
 - Failure codes: `llm_relevance_disabled`, `llm_relevance_unavailable`,
   `llm_relevance_timeout`, `llm_relevance_empty` (all `503`).
 

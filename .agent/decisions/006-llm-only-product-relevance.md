@@ -52,9 +52,17 @@ explicit AirPods-Pro-2 examples (accepted models/generations and rejected
 different models, single side, broken, case/box, accessories and bundles) and
 defaults to `different_model` when the model is unsure.
 
-Responses are validated with Pydantic. Missing ids, hallucinated ids and
-unknown labels are treated as **not exact**; they never fail the batch. A batch
-whose JSON/transport fails fails the whole analysis — no silent subset.
+Responses are validated with Pydantic and against the batch itself. Coverage is
+strict: `listings` must be non-empty, every label must belong to `LABELS`, every
+entry must carry an id, and the set of returned ids must equal the set of ids
+sent in that batch. A missing id, an extra/hallucinated id, a duplicate that
+displaces a real id, an empty list or an unknown label aborts the whole analysis
+with `llm_relevance_unavailable` (`503`). There is no partial acceptance and no
+silent sample reduction.
+
+Batches run with bounded concurrency (at most 4 in flight) and the shared
+relevance budget is the hard outer timeout; the filter does not add a grace
+period beyond it.
 
 ### 3. Prices come from the accepted listings, never from the LLM
 
