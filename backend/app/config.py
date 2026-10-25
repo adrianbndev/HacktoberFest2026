@@ -77,6 +77,19 @@ class Settings(BaseSettings):
     deepseek_timeout_sec: float = Field(default=30.0, gt=0.0, le=120.0)
     deepseek_recommendation_budget_sec: float = Field(default=25.0, ge=0.0, le=120.0)
 
+    # DeepSeek-only product relevance for `/analyze`. The deep path has no
+    # deterministic product prefilter: every sanitised listing is classified by
+    # the LLM and only `exact` listings feed the price triplet. `/valuate` is
+    # unaffected (frozen fast path with lexical relevance).
+    market_llm_relevance_enabled: bool = True
+    market_llm_relevance_batch_size: int = Field(default=25, ge=1, le=60)
+    market_llm_relevance_budget_sec: float = Field(default=10.0, gt=0.0, le=60.0)
+    market_llm_relevance_model: str | None = None
+
+    @property
+    def llm_relevance_model(self) -> str:
+        return self.market_llm_relevance_model or self.deepseek_fast_model
+
     @field_validator("deepseek_api_key")
     @classmethod
     def _empty_key_is_none(cls, value: str | None) -> str | None:
