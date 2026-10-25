@@ -243,9 +243,10 @@ curl -s -X POST http://127.0.0.1:8000/api/market/analyze \
   discarded as not exact, recommendation skipped/clamped.
 - `cached` is `true` only on a real cache hit; `analyzedAt` is ISO 8601.
 
-The deep path uses `deepseek-v4-pro` with thinking and **disables the
-deterministic template**: a failed LLM omits the recommendation and adds a
-warning instead of inventing text.
+Relevance uses `deepseek-flash` with thinking disabled. The optional
+recommendation uses `deepseek-v4-pro` with thinking and **disables the
+deterministic template**: a failed recommendation omits the text and adds a
+warning instead of inventing it. A relevance failure is fatal (`503`).
 
 ### Errors
 
