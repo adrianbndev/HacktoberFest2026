@@ -3,6 +3,16 @@
 Classified per the phase briefs. **No blocking items remain in Phase 3**; the
 Level 1 gate stays open until the end-to-end UI verification.
 
+## Closed in LLM-only relevance
+
+| # | Item | Resolution |
+|---|---|---|
+| 1 | Deep prefilter dropped accessories/broken listings before the LLM | `deep_sources`/`deep_milanuncios` now call `sanitize_listings` (title, finite price > 0, dedupe only); no product rule runs before DeepSeek |
+| 2 | Deep relevance used lexical `score_relevance` + `all_usable` fallback | `LlmRelevanceFilter` classifies every sanitised listing in batches; only `exact` is priced; `aggregate_results` no longer imports `score_relevance` |
+| 3 | LLM failures silently degraded to the full sample | Missing key / transport / invalid JSON / timeout / disabled / empty now map to explicit `503` codes (`llm_relevance_*`); no full-sample fallback |
+| 4 | LLM could invent the range | Unchanged and enforced: the LLM only labels; `pricing_math` computes the triplet from exact listing prices |
+| 5 | UI showed raw new error codes | `MarketProgress` maps `llm_relevance_unavailable`, `llm_relevance_timeout`, `llm_relevance_empty` and `llm_relevance_disabled` to Spanish copy |
+
 ## Closed in Phase 2
 
 | # | Item | Resolution |
@@ -138,8 +148,10 @@ All non-blocking; they do not change the delivered behaviour.
 10. **Dependency-direction deviation.** `browser/sources/base.py` imports
     `browser/session.py`; use a `BrowserPage` Protocol if the brief's letter must
     be respected.
-11. **Marketplace prompt-injection surface.** Listing titles and `description`
-    reach the LLM. Keep the clamp/validation and consider explicit delimiters.
+11. **Marketplace prompt-injection surface.** Listing titles reach the LLM for
+    both relevance and recommendation, and `description` reaches the
+    recommendation. Payloads are JSON-delimited and validated; redaction remains
+    pending.
 12. **Test coverage gaps.** `FakeAnalyzer` over-mocks the analyzer; there is no
     test for the frontend `parseSseFrame` nor for a real HTTP disconnect.
 13. **`error: null` is omitted for `ok` sources** by `exclude_none`; harmless
@@ -149,7 +161,9 @@ All non-blocking; they do not change the delivered behaviour.
 
 ## Phase 1 verification follow-ups still open
 
-These affect the frozen fast path only and are intentionally not changed here:
+These affect the frozen fast path only and are intentionally not changed here.
+Items 10–14 concern `relevance.py`, which is now used **only** by `/valuate`:
+`/analyze` delegates product relevance to DeepSeek (ADR-006).
 
 1. `/valuate` derives `platforms` from `comparableListings` and can omit a
    minority platform (the deep path fixed this with a quota).
@@ -173,6 +187,23 @@ These affect the frozen fast path only and are intentionally not changed here:
 14. Missing a direct `tests/test_relevance.py` and the `iPhone 13 mini` case.
 15. The timeout test uses 0.05 s, not the production 1.6 s value.
 
+
+## LLM-only relevance follow-ups (non-blocking)
+
+1. **No per-run classification cache.** The SQLite cache stores the final result
+   for 15 min, but a miss reclassifies every listing. A content-keyed
+   classification cache would cut latency and cost.
+2. **Up to 120 listings per run.** Sources cap at 40 listings each; all
+   sanitised rows are sent (batches of 25). Consider a tighter per-source cap if
+   DeepSeek latency becomes a problem; do not reintroduce a product prefilter.
+3. **Live smoke still environment-dependent.** All tests use a fake transport.
+   Run one `/analyze/stream` with a real `DEEPSEEK_API_KEY` on the demo network
+   and record the AirPods matrix outcome before the demo.
+4. **No auth/rate limit.** `/analyze` is public and now spends DeepSeek budget
+   on every cache miss (same open issue as the existing recommendation).
+5. **Prompt injection/redaction.** Titles are user-controlled and sent to
+   DeepSeek; JSON delimiting plus Pydantic validation is the current mitigation.
+   Explicit delimiters and PII redaction remain pending.
 
 ## Phase 3 follow-ups (non-blocking)
 
