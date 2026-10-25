@@ -28,10 +28,10 @@ const THEME_AND_MODAL_CSS = `
   --line: #d7dbe1;
   --ink: #101114;
   --ink-2: #5b606b;
-  --accent: #4b3bff;
-  --accent-hover: #3b2ae8;
-  --accent-soft: #eceaff;
-  --on-accent-2: #e2dfff;
+  --accent: #0b6b3a;
+  --accent-hover: #095530;
+  --accent-soft: #e6f9ef;
+  --on-accent-2: #d7f5e6;
 }
 html.dark {
   color-scheme: dark;
@@ -41,10 +41,10 @@ html.dark {
   --line: #2b303d;
   --ink: #f4f5f8;
   --ink-2: #9299a9;
-  --accent: #5e4eff;
-  --accent-hover: #4e3ef7;
-  --accent-soft: rgba(94, 78, 255, 0.18);
-  --on-accent-2: #d6d3ff;
+  --accent: #0e7f52;
+  --accent-hover: #0b6b45;
+  --accent-soft: rgba(14, 127, 82, 0.18);
+  --on-accent-2: #eafff5;
 }
 dialog::backdrop {
   background-color: rgb(10 12 16 / 0.55);

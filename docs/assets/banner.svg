@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="SmartLoot — Tasa tus objetos de segunda mano con una foto del móvil">
+  <defs>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e7f52" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#0e7f52" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#0e1014" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ruler" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0e7f52"/>
+      <stop offset="0.5" stop-color="#3ee08f"/>
+      <stop offset="1" stop-color="#0e7f52" stop-opacity="0.35"/>
+    </linearGradient>
+    <clipPath id="frame"><rect width="1280" height="420" rx="0"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="1280" height="420" fill="#0e1014"/>
+    <circle cx="1180" cy="-40" r="420" fill="url(#glow)"/>
+    <circle cx="-60" cy="440" r="260" fill="#0e7f52" opacity="0.10"/>
+
+    <!-- rejilla sutil -->
+    <g stroke="#ffffff" stroke-opacity="0.045" stroke-width="1">
+      <path d="M0 105h1280M0 210h1280M0 315h1280"/>
+      <path d="M320 0v420M640 0v420M960 0v420"/>
+    </g>
+
+    <!-- isotipo -->
+    <g transform="translate(72 92)">
+      <rect width="76" height="76" rx="21" fill="#0e7f52"/>
+      <g transform="translate(14 14) scale(1.5)">
+        <path fill="#ffffff" fill-rule="evenodd" d="M9 7.5h6.9c.6 0 1.1.2 1.5.6l7.5 7.5a2.1 2.1 0 0 1 0 3l-6 6a2.1 2.1 0 0 1-3 0l-7.5-7.5a2.1 2.1 0 0 1-.6-1.5V9A1.5 1.5 0 0 1 9 7.5Zm3.6 6.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2Z"/>
+      </g>
+    </g>
+
+    <text x="176" y="150" font-family="'Funnel Display', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="58" font-weight="600" letter-spacing="-2.2" fill="#f4f5f8">SmartLoot</text>
+
+    <text x="74" y="238" font-family="'Funnel Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="27" fill="#c8cedb">Tasa tus objetos con una foto del móvil.</text>
+    <text x="74" y="278" font-family="'Funnel Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="21" fill="#9299a9">Estado, anuncio listo para publicar y 3 precios reales en menos de 6 s.</text>
+
+    <!-- chips -->
+    <g font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" font-weight="600">
+      <rect x="74" y="318" width="122" height="34" rx="17" fill="#0e7f52" fill-opacity="0.16" stroke="#0e7f52" stroke-opacity="0.5"/>
+      <text x="96" y="340" fill="#3ee08f">Visión IA</text>
+      <rect x="208" y="318" width="140" height="34" rx="17" fill="#0e7f52" fill-opacity="0.16" stroke="#0e7f52" stroke-opacity="0.5"/>
+      <text x="230" y="340" fill="#3ee08f">MCP Stealth</text>
+      <rect x="360" y="318" width="158" height="34" rx="17" fill="#161920" stroke="#2b303d"/>
+      <text x="382" y="340" fill="#9299a9">Móvil &#8646; PC</text>
+    </g>
+
+    <!-- tarjeta de tasación -->
+    <g transform="translate(806 66)" font-family="'Funnel Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+      <rect width="404" height="288" rx="26" fill="#161920" stroke="#2b303d"/>
+      <text x="32" y="56" font-size="21" font-weight="600" fill="#f4f5f8" font-family="'Funnel Display', ui-sans-serif, system-ui, sans-serif">Nintendo Switch OLED</text>
+      <rect x="300" y="32" width="74" height="30" rx="15" fill="#20242e"/>
+      <text x="316" y="52" font-size="13" fill="#9299a9">Ejemplo</text>
+
+      <rect x="32" y="82" width="126" height="32" rx="16" fill="#0e7f52" fill-opacity="0.18"/>
+      <g fill="#3ee08f">
+        <rect x="48" y="97" width="4" height="8" rx="2"/>
+        <rect x="56" y="93" width="4" height="12" rx="2"/>
+        <rect x="64" y="89" width="4" height="16" rx="2"/>
+        <rect x="72" y="93" width="4" height="12" rx="2"/>
+      </g>
+      <text x="86" y="104" font-size="14" font-weight="600" fill="#d7f5e6">Como nuevo</text>
+
+      <text x="32" y="154" font-size="14" fill="#9299a9">Precio justo</text>
+      <text x="32" y="206" font-size="46" font-weight="600" letter-spacing="-1.4" fill="#f4f5f8" font-family="'Funnel Display', ui-sans-serif, system-ui, sans-serif">249 &#8364;</text>
+
+      <rect x="32" y="228" width="340" height="4" rx="2" fill="#20242e"/>
+      <rect x="32" y="228" width="170" height="4" rx="2" fill="url(#ruler)"/>
+      <circle cx="202" cy="230" r="7" fill="#3ee08f"/>
+
+      <text x="32" y="258" font-size="12" fill="#9299a9">Venta rápida</text>
+      <text x="32" y="274" font-size="15" font-weight="600" fill="#c8cedb">205 &#8364;</text>
+      <text x="372" y="258" font-size="12" fill="#9299a9" text-anchor="end">Máximo</text>
+      <text x="372" y="274" font-size="15" font-weight="600" fill="#c8cedb" text-anchor="end">309 &#8364;</text>
+    </g>
+
+    <text x="74" y="392" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" fill="#5b606b">Hacktoberfest 2026 · Ales, Adri y Matías</text>
+  </g>
+</svg>

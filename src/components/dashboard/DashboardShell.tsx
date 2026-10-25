@@ -1,15 +1,23 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { CloudOff, LoaderCircle } from "lucide-react";
 import { MobileSyncModal } from "@/components/mobile-sync/MobileSyncModal";
+import type { MarketSourceResult } from "@/types/market-analysis";
+import type { InventoryItem } from "@/types/sdd";
 import { LoginScreen } from "./LoginScreen";
 import { TopNav } from "./TopNav";
 import { useDashboardState } from "./useDashboardState";
 
+export interface PendingValuationState {
+  item: InventoryItem;
+  sources: MarketSourceResult[];
+}
+
 type DashboardValue = ReturnType<typeof useDashboardState> & {
   openCapture: () => void;
   lastAddedId: string | null;
+  pendingValuations: Record<string, PendingValuationState>;
 };
 
 const DashboardContext = createContext<DashboardValue | null>(null);
@@ -25,7 +33,20 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const state = useDashboardState();
   const [captureOpen, setCaptureOpen] = useState(false);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
-  const [pendingReload, setPendingReload] = useState(false);
+  const [pendingValuations, setPendingValuations] = useState<Record<string, PendingValuationState>>({});
+
+  const mergedInventory = useMemo(() => {
+    if (!state.inventory) return null;
+    const existingIds = new Set(state.inventory.items.map((item) => item.id));
+    const pendingItems = Object.values(pendingValuations)
+      .map((entry) => entry.item)
+      .filter((item) => !existingIds.has(item.id));
+    if (pendingItems.length === 0) return state.inventory;
+    return {
+      ...state.inventory,
+      items: [...pendingItems, ...state.inventory.items],
+    };
+  }, [state.inventory, pendingValuations]);
 
   if (state.user === undefined) {
     return (
@@ -37,15 +58,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }
   if (state.user === null) return <LoginScreen onLogin={state.login} />;
 
-  // El inventario se recarga al cerrar el modal, para que el saldo suba a la vista y no detrás de él.
-  function closeCapture() {
-    setCaptureOpen(false);
-    if (pendingReload) state.reloadInventory();
-    setPendingReload(false);
-  }
-
   return (
-    <DashboardContext value={{ ...state, openCapture: () => setCaptureOpen(true), lastAddedId }}>
+    <DashboardContext
+      value={{
+        ...state,
+        inventory: mergedInventory,
+        openCapture: () => setCaptureOpen(true),
+        lastAddedId,
+        pendingValuations,
+      }}
+    >
       <div className="mx-auto flex w-full max-w-[96rem] flex-1 flex-col gap-8 px-4 pb-16 pt-4 sm:px-6 lg:px-10 lg:pt-6">
         <TopNav profile={state.inventory?.profile} onLogout={state.logout} onResetDemo={state.resetDemo} />
         <main className="flex flex-col gap-8">
@@ -73,10 +95,36 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         userId={state.user.uid}
         isOpen={captureOpen}
         onOpen={() => setCaptureOpen(true)}
-        onClose={closeCapture}
+        onClose={() => setCaptureOpen(false)}
+        onValuationStarted={(pendingItem) => {
+          setLastAddedId(pendingItem.id);
+          setPendingValuations((prev) => ({
+            ...prev,
+            [pendingItem.id]: { item: pendingItem, sources: [] },
+          }));
+        }}
+        onValuationProgress={(itemId, sources) => {
+          setPendingValuations((prev) => {
+            const current = prev[itemId];
+            if (!current) return prev;
+            return { ...prev, [itemId]: { ...current, sources } };
+          });
+        }}
+        onValuationFailed={(itemId) => {
+          setPendingValuations((prev) => {
+            const next = { ...prev };
+            delete next[itemId];
+            return next;
+          });
+        }}
         onItemCreated={(item) => {
           setLastAddedId(item.id);
-          setPendingReload(true);
+          setPendingValuations((prev) => {
+            const next = { ...prev };
+            delete next[item.id];
+            return next;
+          });
+          state.reloadInventory();
         }}
       />
       {state.notice && (

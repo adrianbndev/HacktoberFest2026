@@ -8,10 +8,10 @@ colors:
   line: "#d7dbe1"
   ink: "#101114"
   ink-2: "#5b606b"
-  accent: "#4b3bff"
-  accent-hover: "#3b2ae8"
-  accent-soft: "#eceaff"
-  on-accent-2: "#e2dfff"
+  accent: "#0b6b3a"
+  accent-hover: "#095530"
+  accent-soft: "#e6f9ef"
+  on-accent-2: "#d7f5e6"
   wear-tint: "oklch(98.7% 0.022 95.277)"
   wear-ink: "oklch(47.3% 0.137 46.201)"
   wear-fill: "oklch(66.6% 0.179 58.318)"
@@ -166,14 +166,14 @@ components:
 
 **Creative North Star: "The Object Account"**
 
-SmartLoot reads like a mobile banking app whose currency is the stuff in your house. Total patrimony is the balance; every valuation is a movement that comes in. The world is white paper with fog-grey surfaces, near-black ink and one electric indigo. The balance block is the "card" of the account: a solid accent field with white type. Outside it, the accent only marks the primary action, the active tab and money arriving.
+SmartLoot reads like a mobile banking app whose currency is the stuff in your house. Total patrimony is the balance; every valuation is a movement that comes in. The world is white paper with fog-grey surfaces, near-black ink and one deep emerald. The balance block is the "card" of the account: a solid accent field with white type. Outside it, the accent only marks the primary action, the active tab and money arriving.
 
 Density is calm and legible from the back of a lit projection room: big tabular figures, 15px semibold controls, generous 20px panel corners, no borders where a tonal step will do. Euro amounts are always tabular and right-aligned in lists. Every price is shown as a range (venta rápida to máximo) with the fair price marked where it really falls, never as a lone number.
 
 The system is light mode only, on purpose: the demo is projected in a lit room. Do not add a dark variant without a deliberate decision.
 
 **Key Characteristics:**
-- One accent (electric indigo) used as a field once per screen and as a signal elsewhere.
+- One accent (deep emerald) used as a field once per screen and as a signal elsewhere.
 - Tonal layering (paper / fog / fog-2) instead of borders and shadows.
 - Funnel Display for money and page titles, Funnel Sans for everything else.
 - Pills for every control and status; 20px outer, 12px inner radii.
@@ -181,13 +181,13 @@ The system is light mode only, on purpose: the demo is projected in a lit room. 
 
 ## Colors
 
-A cool neutral bank-app ground with a single saturated indigo; warm colors appear only to warn.
+A cool neutral bank-app ground with a single deep emerald; warm colors appear only to warn.
 
 ### Primary
-- **Electric Indigo** (accent): the balance field, primary buttons, the active nav tab, link-like actions ("Ver todo", "Buscar"), the range ruler marker, focus outlines, caret and text selection, and the "+amount" of a newly arrived valuation. 6.2:1 against white both ways.
-- **Pressed Indigo** (accent-hover): hover state of accent-filled buttons only.
-- **Indigo Wash** (accent-soft): the transient tint a new movement row arrives with, fading to nothing.
-- **Indigo Mist** (on-accent-2): secondary text on the accent field (labels, explanations). 4.9:1 on accent.
+- **Deep Emerald** (accent): the balance field, primary buttons, the active nav tab, link-like actions ("Ver todo", "Buscar"), the range ruler marker, focus outlines, caret and text selection, and the "+amount" of a newly arrived valuation. 6.6:1 against white and 5.8:1 on fog.
+- **Pressed Emerald** (accent-hover): hover state of accent-filled buttons only.
+- **Emerald Wash** (accent-soft): the transient tint a new movement row arrives with, fading to nothing.
+- **Emerald Mist** (on-accent-2): secondary text on the accent field (labels, explanations). 5.7:1 on accent.
 
 ### Neutral
 - **Paper** (paper): page background, dialogs, menus, icon discs and secondary buttons that sit on fog.
@@ -257,7 +257,7 @@ Soft and rounded throughout. Outer containers (panels, cards, dialogs, the balan
 ### Buttons
 Tactile pills with a single filled voice per screen.
 - **Shape:** full pill, 48px tall for primary actions, 44px for dialog and secondary actions.
-- **Primary:** accent fill, white control text, 24px side padding, optional 20px leading icon; hover to pressed indigo.
+- **Primary:** accent fill, white control text, 24px side padding, optional 20px leading icon; hover to pressed emerald.
 - **On accent:** inside the balance field the primary becomes a white pill with accent text (hover scales to 1.02, active 0.98); its companion is a translucent white/12 pill with a white/35 inset ring.
 - **Secondary:** fog pill on paper (hover fog-2), or paper pill on fog inside cards ("Copiar anuncio", hover fog-2). Icon-only buttons are 36-44px circles.
 - **Danger:** danger rose fill, white text, only in confirmation dialogs.
@@ -292,13 +292,13 @@ A 6px track (fog-2, or white/25 on accent) filled up to the fair price (accent/3
 
 ### Motion
 - **Balance roll:** when the total changes, the figure rolls from old to new over 900ms with an exponential ease-out; a polite live region announces the final value. Instant under reduced motion.
-- **Row arrive:** 1.4s `cubic-bezier(0.16, 1, 0.3, 1)` from 6px above with an indigo-wash tint that fades out. Disabled under reduced motion.
+- **Row arrive:** 1.4s `cubic-bezier(0.16, 1, 0.3, 1)` from 6px above with an emerald-wash tint that fades out. Disabled under reduced motion.
 - **State transitions:** color transitions on hover; disclosure chevrons rotate 180deg when open.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep the accent (#4b3bff) to one filled field per screen plus signals: primary button, active tab, arriving amount, focus.
+- **Do** keep the accent (#0b6b3a) to one filled field per screen plus signals: primary button, active tab, arriving amount, focus.
 - **Do** separate surfaces with tone: fog (#eef0f3) panels on paper, paper discs and buttons inside fog.
 - **Do** show every price as a horquilla: venta rápida to máximo with the fair price marked on a range ruler.
 - **Do** set all euro amounts in tabular figures and right-align them in lists.
@@ -307,7 +307,7 @@ A 6px track (fog-2, or white/25 on accent) filled up to the fair price (accent/3
 - **Do** honor reduced motion for the balance roll and row arrival.
 
 ### Don't:
-- **Don't** introduce a second accent or a gradient; indigo is the only brand color.
+- **Don't** introduce a second accent or a gradient; emerald is the only brand color.
 - **Don't** use amber or rose for anything except value-losing conditions and destructive actions.
 - **Don't** build a bento of equal stat tiles or a wall of photo cards on Inicio; photos live in Mi inventario.
 - **Don't** add borders or shadows to panels at rest; shadows are for floating layers only.

@@ -18,7 +18,7 @@ services:
       DEEPSEEK_REASONING_MODEL: ${DEEPSEEK_REASONING_MODEL:-deepseek-v4-pro}
       DEEPSEEK_FAST_MODEL: ${DEEPSEEK_FAST_MODEL:-deepseek-flash}
       CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
-      CDP_URL: ${CDP_URL:-http://market-browser:9222}
+      CDP_URL: ${DOCKER_CDP_URL:-http://market-browser:9222}
       MARKET_ANALYSIS_ENABLED: ${MARKET_ANALYSIS_ENABLED:-true}
       MARKET_ANALYSIS_DEADLINE_SEC: ${MARKET_ANALYSIS_DEADLINE_SEC:-60}
       MARKET_SOURCE_TIMEOUT_SEC: ${MARKET_SOURCE_TIMEOUT_SEC:-25}
@@ -30,10 +30,10 @@ services:
       MARKET_MILANUNCIOS_TRANSPORT: ${MARKET_MILANUNCIOS_TRANSPORT:-auto}
       MARKET_BROWSER_POOL_SIZE: ${MARKET_BROWSER_POOL_SIZE:-2}
       MARKET_SOURCE_CONCURRENCY: ${MARKET_SOURCE_CONCURRENCY:-3}
-      MARKET_CACHE_PATH: ${MARKET_CACHE_PATH:-/app/data/market_cache.sqlite}
+      MARKET_CACHE_PATH: /app/data/market_cache.sqlite
       MARKET_CACHE_TTL_SEC: ${MARKET_CACHE_TTL_SEC:-900}
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./firebase-service-account.json:/app/firebase-service-account.json:ro
       - market-cache:/app/data
@@ -54,11 +54,13 @@ services:
     restart: unless-stopped
 
   lifeos-web:
+    profiles: ["web"]
     image: node:24-slim
     working_dir: /app
     command: sh -c "npm ci && npx next dev -H 0.0.0.0"
     environment:
       FASTAPI_INTERNAL_URL: http://lifeos-backend:8000
+      FASTAPI_MARKET_URL: http://lifeos-backend:8000
     ports:
       - "3000:3000"
     volumes:
@@ -78,7 +80,6 @@ services:
     profiles: ["tunnel"]
 
   market-browser:
-    profiles: ["browser"]
     build:
       context: ./backend
       dockerfile: Dockerfile.browser

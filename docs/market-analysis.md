@@ -492,10 +492,25 @@ docker compose up -d --force-recreate lifeos-backend
 curl -s http://127.0.0.1:8000/api/market/health | jq .recommendationEnabled
 ```
 
-## Docker
+## Local mode without Docker
+
+On a laptop without Docker, reuse the installed Chrome as the CDP browser:
 
 ```bash
-docker compose config
+./scripts/dev_chrome_cdp.sh          # Chrome with CDP on :9222, separate profile
+# .env
+CDP_URL=http://127.0.0.1:9222
+MARKET_CACHE_PATH=/absolute/path/to/data/market_cache.sqlite
+```
+
+Then start the backend (`npm run dev:api`) and check
+`curl -s http://127.0.0.1:8000/api/market/health`. A cold live `/analyze`
+measured 32.7 s on this Mac (eBay 56, Wallapop 34, Milanuncios 10 listings;
+181 / 226 / 280 €); the 15-minute cache makes the next call ~25 ms.
+
+## Docker
+
+```bashdocker compose config
 docker compose up --build lifeos-backend
 curl -s http://127.0.0.1:8000/api/market/health
 

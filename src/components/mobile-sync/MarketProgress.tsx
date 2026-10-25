@@ -58,14 +58,18 @@ function StatusIcon({ status }: { status: RowStatus }) {
   return <Ban className="size-4" aria-hidden />;
 }
 
-function buildRows(sources: MarketSourceResult[]): Array<{ source: MarketPlatform; status: RowStatus; sampleSize: number }> {
+function buildRows(
+  sources: MarketSourceResult[],
+  complete: boolean,
+): Array<{ source: MarketPlatform; status: RowStatus; sampleSize: number }> {
   const known = new Map(sources.map((source) => [source.source, source]));
+  const fallbackStatus: RowStatus = complete ? "no_listings" : "pending";
   const rows: Array<{ source: MarketPlatform; status: RowStatus; sampleSize: number }> = MARKET_ANALYSIS_SOURCES.map(
     (source) => {
       const result = known.get(source);
       return result
         ? { source, status: result.status, sampleSize: result.sampleSize }
-        : { source, status: "pending", sampleSize: 0 };
+        : { source, status: fallbackStatus, sampleSize: 0 };
     },
   );
   for (const result of sources) {
@@ -89,7 +93,7 @@ export function MarketProgress({
   complete = false,
   onRetry,
 }: MarketProgressProps) {
-  const rows = buildRows(sources);
+  const rows = buildRows(sources, complete);
   const usable = rows.filter((row) => row.status === "ok").length;
   const settled = rows.filter((row) => row.status !== "pending").length;
   const degraded = rows.some(

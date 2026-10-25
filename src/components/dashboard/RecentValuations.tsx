@@ -2,9 +2,10 @@
 
 import { createElement } from "react";
 import Link from "next/link";
-import { Camera, Plus } from "lucide-react";
+import { Camera, Loader2, Plus } from "lucide-react";
 import type { InventoryItem } from "@/types/sdd";
 import { STATUS_LABEL, categoryIcon, formatDayLabel, formatEur, formatTime } from "@/components/inventory/format";
+import { useDashboard } from "./DashboardShell";
 
 const RECENT_COUNT = 5;
 
@@ -84,10 +85,14 @@ export function RecentValuations({ items, lastAddedId, onCapture }: RecentValuat
 }
 
 function RecentRow({ item, isNew }: { item: InventoryItem; isNew: boolean }) {
+  const { pendingValuations } = useDashboard();
+  const isValuating = Boolean(pendingValuations[item.id]);
+
   return (
     <li>
       <Link
         href={`/inventario#${item.id}`}
+        aria-busy={isValuating}
         className={`flex items-center gap-3 rounded-inner px-3 py-3 transition-colors hover:bg-paper ${isNew ? "animate-row-arrive" : ""}`}
       >
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-paper text-ink">
@@ -95,18 +100,34 @@ function RecentRow({ item, isNew }: { item: InventoryItem; isNew: boolean }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 font-semibold leading-snug">{item.name}</span>
-          <span className="block truncate text-sm text-ink-2">
-            {formatTime(item.createdAt)} · {item.conditionLabel} · {STATUS_LABEL[item.status]}
-          </span>
+          {isValuating ? (
+            <span className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-accent">
+              <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+              <span className="truncate">Buscando precios para comparar…</span>
+            </span>
+          ) : (
+            <span className="block truncate text-sm text-ink-2">
+              {formatTime(item.createdAt)} · {item.conditionLabel} · {STATUS_LABEL[item.status]}
+            </span>
+          )}
         </span>
         <span className="shrink-0 text-right">
-          <span className={`block font-semibold tabular-nums ${isNew ? "text-accent" : ""}`}>
-            {isNew && "+"}
-            {formatEur(item.priceAvg)}
-          </span>
-          <span className="hidden text-sm tabular-nums text-ink-2 sm:block">
-            {formatEur(item.priceMin)}–{formatEur(item.priceMax)}
-          </span>
+          {isValuating ? (
+            <span className="flex flex-col items-end gap-1.5" aria-hidden>
+              <span className="block h-5 w-16 animate-pulse rounded-full bg-fog-2" />
+              <span className="hidden h-3.5 w-20 animate-pulse rounded-full bg-fog-2 sm:block" />
+            </span>
+          ) : (
+            <>
+              <span className={`block font-semibold tabular-nums ${isNew ? "text-accent" : ""}`}>
+                {isNew && "+"}
+                {formatEur(item.priceAvg)}
+              </span>
+              <span className="hidden text-sm tabular-nums text-ink-2 sm:block">
+                {formatEur(item.priceMin)}–{formatEur(item.priceMax)}
+              </span>
+            </>
+          )}
         </span>
       </Link>
     </li>

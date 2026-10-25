@@ -113,7 +113,7 @@
 * Conector Vinted.
 * `backend/mcp_server.py` (FastMCP CLI), Vinted y `/api/market/refresh` (Nivel 2) siguen diferidos en Fase 3. Las Fases 2–3 (`/analyze`, SSE, caché, pool y motor híbrido) ya están implementadas, pero el **gate del Nivel 1 permanece abierto** hasta la verificación end-to-end con la UI.
 * Espejo de campos opcionales en `src/types/sdd.ts` (MOD-00 / Track A).
-* Validación con una API key real de DeepSeek (no disponible en este entorno).
+* Validación con una API key real de DeepSeek: **hecha** (2026-10-24). `recommendationEnabled: true` y la recomendación llega por `event: recommendation` con `summary`, `suggestedPrice`, `bullets` y `risks` (Sony WH-1000XM3, 78/100: media 97 €, rango 90-101 €, precio sugerido 85 €).
 
 
 ## 6. Estado de implementación — Fase 2 (Browser Deep Analysis)
